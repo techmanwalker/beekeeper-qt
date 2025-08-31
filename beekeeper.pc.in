@@ -1,0 +1,13 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: beekeeper
+Description: Btrfs deduplication management library and tools
+Version: @PROJECT_VERSION@
+URL: https://github.com/yourusername/beekeeper
+Requires:
+Libs: -L${libdir}/beekeeper -lbeesdmgmt
+Libs.private: 
+Cflags: -I${includedir}

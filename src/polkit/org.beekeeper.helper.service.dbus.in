@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.beekeeper.Helper
+Exec=@libexecdir@/beekeeper/beekeeper-helper
+SystemdService=org.beekeeper.helper.service

@@ -13,6 +13,7 @@
 //
 #include <QDialog>
 #include <QStringList>
+#include "../polkit/multicommander.hpp"
 
 class QLineEdit;
 class QPushButton;

@@ -1,0 +1,16 @@
+[Unit]
+Description=BeeKeeper privileged helper (DBus-activated)
+After=dbus.service
+
+[Service]
+Type=dbus
+BusName=org.beekeeper.Helper
+ExecStart=@CMAKE_INSTALL_PREFIX@/lib/beekeeper/bin/beekeeper-helper
+Restart=on-failure
+
+# Hardening (keep, can extend later):
+NoNewPrivileges=yes
+ProtectSystem=full
+ReadWritePaths=/etc/bees
+ProtectHome=yes
+PrivateTmp=yes

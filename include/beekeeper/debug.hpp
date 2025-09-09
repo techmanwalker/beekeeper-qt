@@ -81,6 +81,20 @@ constexpr const char* strip_to_repo(const char* path) {
 
 #define __SHORT_FILE__ strip_to_repo(__FILE__)
 
+// Overloads
+
+// Handle C string literals
+inline void debug_print(std::ostream& os, const char* value) {
+    os << value;
+}
+
+// Handle integers (any integral type)
+template<typename T>
+inline std::enable_if_t<std::is_integral_v<T>, void>
+debug_print(std::ostream& os, T value) {
+    os << value;
+}
+
 
 // Debug logging macro
 #define DEBUG_LOG(...) do { \

@@ -1,7 +1,13 @@
+#include "beekeeper/debug.hpp"
+#include "beekeeper/qt-debug.hpp"
 #include "beekeeper/supercommander.hpp"
 #include "beekeeper/superlaunch.hpp"
-#include "beekeeper/debug.hpp"
+#include <algorithm>
+#include <beekeeper/util.hpp>
 #include <csignal>
+#include <filesystem>
+#include <QDBusArgument>
+#include <QDBusInterface>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -11,76 +17,105 @@
 #include <sstream>
 
 #include "globals.hpp"
-#include "socketoperations.hpp"
-using namespace beekeeper::privileged::socketops;
+
+namespace fs = std::filesystem;
 
 namespace beekeeper { namespace privileged {
 
-supercommander::~supercommander() {
-    if (superlaunch::instance().root_shell_alive())
-        superlaunch::instance().stop_root_shell();
-}
-
+// Execute a command in the DBus helper
 command_streams
-supercommander::execute_command_in_forked_shell(const std::string &subcmd) {
-    signal(SIGPIPE, SIG_IGN);
+supercommander::call_bk(const QString &verb,
+                        const QVariantMap &options,
+                        const QStringList &subjects)
+{
+    // For debugging
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    // Serialize options into "key=value" pairs
+    QStringList opts_serialized;
+    for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
+        opts_serialized << QString("%1=%2").arg(it.key(), it.value().toString());
+    }
+
+    // Serialize subjects as space-separated list
+    QString subjects_serialized = subjects.join(" ");
+
+    DEBUG_LOG("Executing command in DBus root helper");
+    DEBUG_LOG("verb: ", verb.toStdString());
+    DEBUG_LOG("options: ", opts_serialized.join(", ").toStdString());
+    DEBUG_LOG("subjects: ", subjects_serialized.toStdString());
+    #endif
+
     command_streams result;
-    auto &helper = superlaunch::instance();
-    if (!helper.root_shell_alive()) {
+
+    if (!launcher->root_alive) {
         DEBUG_LOG("[supercommander] helper not alive");
         return result;
     }
 
-    int fd = root_stdin_fd_;
+    QDBusInterface helper_iface(
+        "org.beekeeper.Helper",
+        "/org/beekeeper/Helper",
+        "org.beekeeper.Helper",
+        QDBusConnection::systemBus()
+    );
 
-    DEBUG_LOG("[supercommander] about to write command len=", subcmd.size());
-
-    if (!write_message(fd, subcmd)) {
-        DEBUG_LOG("[supercommander] write_message failed; fd=", fd,
-                  " errno=", errno, " strerr=", strerror(errno));
-        return result;
-    }
-    DEBUG_LOG("[supercommander] write_message succeeded, waiting for reply...");
-
-    std::string encoded = read_message(fd);
-    if (encoded.empty()) {
-        DEBUG_LOG("[supercommander] read_message returned empty (peer closed or error)");
+    if (!helper_iface.isValid()) {
+        DEBUG_LOG("[supercommander] helper DBus interface invalid:", helper_iface.lastError().message());
+        result.stderr_str = helper_iface.lastError().message().toStdString();
         return result;
     }
 
-    DEBUG_LOG("[supercommander] received encoded reply (len=", encoded.size(), "): ", encoded);
-
-    // Decode JSON reply (helper sends { stdout: "...", stderr: "..." })
-    QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(encoded), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        DEBUG_LOG("[supercommander] Failed to parse helper JSON response:", parseError.errorString().toStdString());
+    QDBusMessage reply_msg = helper_iface.call(QDBus::Block, "ExecuteCommand", verb, options, subjects);
+    if (reply_msg.type() == QDBusMessage::ErrorMessage) {
+        DEBUG_LOG("[supercommander] DBus call returned error:", reply_msg.errorMessage());
+        result.stderr_str = reply_msg.errorMessage().toStdString();
         return result;
     }
 
-    QJsonObject obj = doc.object();
-    result.stdout_str = obj.value("stdout").toString().toStdString();
-    result.stderr_str = obj.value("stderr").toString().toStdString();
+    if (reply_msg.arguments().isEmpty()) {
+        DEBUG_LOG("[supercommander] helper reply had no arguments");
+        return result;
+    }
+
+    QVariant arg = reply_msg.arguments().first();
+    QVariantMap out_map;
+    if (arg.canConvert<QVariantMap>()) {
+        // Directly a QVariantMap
+        out_map = arg.toMap();
+    } else if (arg.canConvert<QDBusArgument>()) {
+        // Wrapped as QDBusArgument → need to demarshal
+        QDBusArgument dbus_arg = arg.value<QDBusArgument>();
+        dbus_arg >> out_map;
+    } else {
+        DEBUG_LOG("[supercommander] helper reply in unexpected format, type=", arg.typeName());
+        return result;
+    }
+
+    result.stdout_str = out_map.value("stdout").toString().toStdString();
+    result.stderr_str = out_map.value("stderr").toString().toStdString();
+
+    DEBUG_LOG("[supercommander] helper finished; stdout len=", result.stdout_str.size(),
+              " stderr len=", result.stderr_str.size());
 
     return result;
 }
 
-
-void
-supercommander::execute_command_in_forked_shell_async(const std::string &subcmd)
+// Fully asynchronous call to the DBus helper
+QFuture<command_streams>
+supercommander::call_bk_async(const QString &verb,
+                              const QVariantMap &options,
+                              const QStringList &subjects)
 {
-    (void)QtConcurrent::run([this, subcmd](){
-        command_streams res = execute_command_in_forked_shell(subcmd);
-        emit command_finished(QString::fromStdString(subcmd),
-                              QString::fromStdString(res.stdout_str),
-                              QString::fromStdString(res.stderr_str));
+    // QtConcurrent::run will execute call_bk in a separate thread
+    return QtConcurrent::run([this, verb, options, subjects]() -> command_streams {
+        return this->call_bk(verb, options, subjects);
     });
 }
 
 bool
 supercommander::do_i_have_root_permissions()
 {
-    return superlaunch::instance().root_shell_alive();
+    return launcher->root_alive;
 }
 
 
@@ -89,28 +124,22 @@ supercommander::do_i_have_root_permissions()
 std::vector<std::map<std::string,std::string>>
 supercommander::btrfsls()
 {
+    QVariantMap opts;
+    opts.insert("json", "<default>");
+
+    command_streams res = call_bk("list", opts, QStringList{});
     std::vector<std::map<std::string,std::string>> result;
 
-    auto cmd_res = execute_command_in_forked_shell("/usr/local/bin/beekeeperman list -j");
-    if (!cmd_res.stdout_str.empty()) {
+    if (!res.stdout_str.empty()) {
         QJsonParseError parseError;
-        QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(cmd_res.stdout_str), &parseError);
-
-        if (parseError.error != QJsonParseError::NoError) {
-            qDebug() << "Failed to parse JSON:" << parseError.errorString();
-            return result;
-        }
-
-        if (!doc.isArray()) {
-            qDebug() << "Expected JSON array from beekeeperman list";
-            return result;
-        }
+        QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(res.stdout_str), &parseError);
+        if (parseError.error != QJsonParseError::NoError) return result;
+        if (!doc.isArray()) return result;
 
         QJsonArray fsArray = doc.array();
         for (const QJsonValue &val : fsArray) {
             if (!val.isObject()) continue;
             QJsonObject obj = val.toObject();
-
             std::map<std::string,std::string> entry;
             entry["uuid"]   = obj.value("uuid").toString("").toStdString();
             entry["label"]  = obj.value("label").toString("").toStdString();
@@ -125,7 +154,7 @@ supercommander::btrfsls()
 std::string
 supercommander::beesstatus(const std::string &uuid)
 {
-    command_streams res = execute_command_in_forked_shell("/usr/local/bin/beekeeperman status " + uuid);
+    command_streams res = call_bk("status", QVariantMap{}, QStringList(QString::fromStdString(uuid)));
 
     // Only care about stdout, ignore stderr
     std::string out = res.stdout_str;
@@ -146,65 +175,99 @@ supercommander::beesstatus(const std::string &uuid)
 bool
 supercommander::beesstart(const std::string &uuid, bool enable_logging)
 {
-    command_streams res = execute_command_in_forked_shell(beekeepermanpath + " start " + uuid);
-    Q_UNUSED(res)
-    return true; // simplification; could check stdout/stderr
+    QVariantMap opts;
+    enable_logging = false; // currently not implemented in GUI
+    if (enable_logging) opts.insert("enable-logging", "<default>");
+
+    call_bk("start", opts, QStringList{QString::fromStdString(uuid)});
+    return true;
 }
 
 bool
 supercommander::beesstop(const std::string &uuid)
 {
-    command_streams res = execute_command_in_forked_shell(beekeepermanpath + " stop " + uuid);
-    Q_UNUSED(res)
+    call_bk("stop", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
     return true;
 }
 
 bool
 supercommander::beesrestart(const std::string &uuid)
 {
-    command_streams res = execute_command_in_forked_shell(beekeepermanpath + " restart " + uuid);
-    Q_UNUSED(res)
+    call_bk("restart", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
     return true;
 }
 
 std::string
 supercommander::beeslog(const std::string &uuid)
 {
-    command_streams res = execute_command_in_forked_shell(beekeepermanpath + " log " + uuid);
+    command_streams res = call_bk("log", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
     return res.stdout_str;
 }
 
 bool
 supercommander::beesclean(const std::string &uuid)
 {
-    command_streams res = execute_command_in_forked_shell(beekeepermanpath + " clean " + uuid);
-    Q_UNUSED(res)
+    call_bk("clean", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
     return true;
 }
 
 std::string
 supercommander::beessetup(const std::string &uuid, size_t db_size)
 {
-    std::string cmd = beekeepermanpath + " setup --db-size " + std::to_string(db_size) + " " + uuid;
-    command_streams res = execute_command_in_forked_shell(cmd);
+    QVariantMap opts;
+    if (db_size) opts.insert("db_size", static_cast<qulonglong>(db_size));
+
+    command_streams res = call_bk("setup", opts, QStringList{QString::fromStdString(uuid)});
+
     if (!res.stdout_str.empty())
         return res.stdout_str;
     return "";
 }
 
+std::string
+supercommander::beeslocate(const std::string &uuid)
+{
+    // No options needed
+    QVariantMap opts;
+
+    // Call the "locate" command
+    command_streams res = call_bk("locate", opts, QStringList{QString::fromStdString(uuid)});
+
+    if (!res.stdout_str.empty())
+        return res.stdout_str;
+
+    return "";  // return empty string if not mounted / not found
+}
+
+
 bool
 supercommander::beesremoveconfig(const std::string &uuid)
 {
-    command_streams res = execute_command_in_forked_shell(beekeepermanpath + " remove-config " + uuid);
-    Q_UNUSED(res)
-    return true;
+    QVariantMap opts;
+    opts.insert("remove", "<default>");
+
+    command_streams res = call_bk("setup", opts, QStringList{QString::fromStdString(uuid)});
+
+    return !res.stdout_str.empty();
 }
 
 std::string
-supercommander::btrfstat(const std::string &uuid)
+supercommander::btrfstat(const std::string &uuid,
+                         const std::string &mode /* = "free" */)
 {
-    command_streams res = execute_command_in_forked_shell(beekeepermanpath + " stat " + uuid);
-    return res.stdout_str;
+    QVariantMap opts;
+
+    if (!mode.empty()) {
+        opts.insert("storage", QString::fromStdString(mode));
+    }
+
+    opts.insert("json", QString("1"));  // enforce JSON always
+
+    command_streams res = call_bk("stat", opts, QStringList{QString::fromStdString(uuid)});
+
+    if (!res.stdout_str.empty())
+        return res.stdout_str;
+    return "";
 }
 
 } // namespace privileged

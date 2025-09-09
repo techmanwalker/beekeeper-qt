@@ -377,44 +377,68 @@ bk_mgmt::beesstop (const std::string& uuid)
 
     std::lock_guard<std::mutex> lock(logger_mutex);
     if (logger_pids.find(uuid) != logger_pids.end()) {
-        kill(logger_pids[uuid], SIGTERM);
-        waitpid(logger_pids[uuid], nullptr, 0);
+        pid_t pid = logger_pids[uuid];
+        kill(pid, SIGTERM);
+
+        // Non-blocking waitpid loop
+        int status;
+        pid_t result;
+        for (int i = 0; i < 5; i++) { // 5 seconds max wait
+            result = waitpid(pid, &status, WNOHANG);
+            if (result > 0) {
+                stopped = true;
+                break;
+            }
+            usleep(200000); // check every 0.2 seconds
+        }
+
+        if (!stopped) {
+            kill(pid, SIGKILL);
+            waitpid(pid, nullptr, 0); // ensure termination
+            stopped = true;
+        }
+
         logger_pids.erase(uuid);
         return true;
     }
-    
+
     // First method: PID file approach
     if (bk_util::file_exists(pidfile)) {
         std::ifstream in(pidfile);
         pid_t pid;
         if (in >> pid) {
             if (kill(pid, SIGTERM) == 0) {
-                for (int i = 0; i < 10; i++) {
-                    if (kill(pid, 0) == -1) {
+                int status;
+                pid_t result;
+                stopped = false;
+                for (int i = 0; i < 5; i++) { // 5 seconds max
+                    result = waitpid(pid, &status, WNOHANG);
+                    if (result > 0) {
                         stopped = true;
                         break;
                     }
-                    sleep(1);
+                    usleep(200000); // 0.2s
                 }
             }
-            
+
             if (!stopped) {
                 kill(pid, SIGKILL);
+                waitpid(pid, nullptr, 0);
                 stopped = true;
             }
         }
     }
-    
+
     // Clean up PID file
     clean_pid_file(uuid);
-    
+
     // Fallback to pkill if PID file method failed
     if (!stopped) {
         std::string cmd = "pkill -f 'beesd .* " + uuid + "'";
         int status = std::system(cmd.c_str());
         stopped = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
     }
-    
+
     return stopped;
 }
 

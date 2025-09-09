@@ -14,10 +14,12 @@ public:
     root_shell_thread(superlaunch &launcher, QObject *parent = nullptr)
         : QThread(parent), launcher_(launcher) {}
 
-    void run() override;
-
 public slots:
-    void execute_command(const QString &cmd);
+    void
+    call_bk(const QString &verb,
+            const QVariantMap &options,
+            const QStringList &subjects);
+    void init_root_shell();
     
 signals:
     void root_shell_ready();

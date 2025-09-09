@@ -12,6 +12,7 @@
 
 #include "beekeeper/debug.hpp"
 #include "beekeeper/qt-debug.hpp"
+#include "mainwindow.hpp"
 #include "../polkit/globals.hpp" // launcher + komander
 #include "setupdialog.hpp"
 
@@ -23,6 +24,7 @@
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QMessageBox>
+#include <QtConcurrent/QtConcurrent>
 #include <string>
 
 using namespace beekeeper::privileged;
@@ -31,7 +33,7 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
     : QDialog(parent)
     , m_uuids(uuids)
 {
-    setWindowTitle("Setting up selected filesystems");
+    setWindowTitle(tr("Setting up selected filesystems"));
     setModal(true);
     setMinimumWidth(420);
 
@@ -39,7 +41,7 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
 
     // Label + numeric entry row
     auto *row = new QHBoxLayout();
-    QLabel *lbl = new QLabel("Database size, in bytes: ", this);
+    QLabel *lbl = new QLabel(tr("Database size, in bytes: "), this);
     row->addWidget(lbl);
 
     m_dbSizeEdit = new QLineEdit(this);
@@ -56,22 +58,22 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
     auto *btn_row = new QHBoxLayout();
     btn_row->addStretch(1);
 
-    m_acceptBtn = new QPushButton("Accept", this);
+    m_acceptBtn = new QPushButton(tr("Accept"), this);
     m_acceptBtn->setDefault(true);
     m_acceptBtn->setEnabled(true);
     connect(m_acceptBtn, &QPushButton::clicked, this, &SetupDialog::accept);
 
-    m_cancelBtn = new QPushButton("Cancel", this);
+    m_cancelBtn = new QPushButton(tr("Cancel"), this);
     connect(m_cancelBtn, &QPushButton::clicked, this, &SetupDialog::reject);
 
     btn_row->addWidget(m_acceptBtn);
     btn_row->addWidget(m_cancelBtn);
     main_layout->addLayout(btn_row);
 
-    // Help text
     QLabel *help = new QLabel(
-        "Only filesystems without an existing configuration will be modified.\n"
-        "Leave the field empty to use the default (1 GiB).", this);
+        tr("Only filesystems without an existing configuration will be modified.\n")
+        + tr("Leave the field empty to use the default (1 GiB). This value covers most of the use cases."), this
+    );
     help->setWordWrap(true);
     main_layout->insertWidget(0, help);
 }
@@ -86,46 +88,71 @@ SetupDialog::on_text_changed(const QString & /*text*/)
 void
 SetupDialog::accept()
 {
-    // Ensure root shell is alive
-    if (!launcher.root_shell_alive() && !launcher.start_root_shell()) {
-        QMessageBox::critical(this, "Error",
-                              "Cannot start root shell. Exiting setup.");
+    if (!launcher->root_alive && !launcher->start_root_shell()) {
+        QMessageBox::critical(this, tr("Error"),
+                              tr("Cannot start root shell. Exiting setup."));
         return;
     }
 
-    // Parse DB size (empty => 0)
+    // Parse DB size
     QString txt = m_dbSizeEdit->text().trimmed();
     size_t db_size = 0;
     if (!txt.isEmpty()) {
         bool ok = false;
         db_size = static_cast<size_t>(txt.toULongLong(&ok));
         if (!ok) {
-            QMessageBox::critical(this, "Invalid value",
-                                  "Database size must be a positive integer (bytes).");
+            QMessageBox::critical(this, tr("Invalid value"),
+                                  tr("Database size must be a positive integer (bytes)."));
             return;
         }
     }
 
-    // Run beessetup for each unconfigured filesystem
-    int success_count = 0;
-    int failed_count = 0;
+    // Filter uuids to only unconfigured filesystems
+    QStringList uuids_to_setup;
     for (const QString &q : m_uuids) {
         std::string uuid = q.toStdString();
-        DEBUG_LOG("About to set up filesystem " + uuid + " with db_size of " + std::to_string(db_size));
-        if (komander.btrfstat(uuid).find("No configuration found for") != std::string::npos) {
-            auto res = komander.beessetup(uuid, db_size);
-            if (!res.empty()) success_count++;
-            else failed_count++;
-        }
+        if (komander->btrfstat(uuid, "").find("No configuration found for") != std::string::npos)
+            uuids_to_setup.append(q);
     }
 
-    // Optionally, show summary
-    if (success_count > 0 || failed_count > 0) {
-        QString msg = QString("Setup completed.\nSuccess: %1\nFailed: %2")
-                          .arg(success_count)
-                          .arg(failed_count);
-        QMessageBox::information(this, "Setup summary", msg);
+    if (uuids_to_setup.isEmpty()) {
+        QDialog::accept();
+        return;
     }
 
+    // Launch all setups asynchronously
+    QList<QFuture<std::string>> futures;
+    QFutureSynchronizer<std::string> sync;
+
+    for (const QString &q : uuids_to_setup) {
+        auto f = komander->async->beessetup(q, db_size);
+        futures.append(f);
+        sync.addFuture(f);
+    }
+
+    // Close dialog immediately
     QDialog::accept();
+
+    // Wait for all futures to finish
+    sync.waitForFinished();
+
+    // Count successes and failures
+    int success_count = 0;
+    int failed_count = 0;
+    for (auto &f : futures) {
+        std::string result = f.result();
+        if (!result.empty() && result.find("No configuration found for") == std::string::npos)
+            success_count++;
+        else
+            failed_count++;
+    }
+
+    // Emit finished signal
+    MainWindow *mw = qobject_cast<MainWindow*>(parentWidget());
+    if (mw && mw->rootThread) {
+        QMetaObject::invokeMethod(mw->rootThread,
+                                [mw]() { emit mw->rootThread->command_finished("setup", "success", ""); },
+                                Qt::QueuedConnection);
+    }
 }
+

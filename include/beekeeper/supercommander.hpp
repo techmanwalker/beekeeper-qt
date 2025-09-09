@@ -36,10 +36,15 @@ class superlaunch;   // <--- forward declare so we can friend it later
 #include <vector>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <QObject>
+#include <QtConcurrent/QtConcurrent>
 
 namespace beekeeper {
 namespace privileged {
+
+// forward declaration
+class multicommander;
 
 class supercommander : public QObject
 {
@@ -48,32 +53,25 @@ class supercommander : public QObject
     friend class ::superlaunch;
 
 public:
-    static supercommander& instance()
-    {
-        static supercommander inst;
-        return inst;
-    }
+    supercommander() = default;
+    ~supercommander() = default;
 
-    ~supercommander();
+    supercommander(const supercommander&) = delete;
+    supercommander& operator=(const supercommander&) = delete;
 
-    command_streams // regular synchronous version
-    execute_command_in_forked_shell(const std::string &subcmd);
-    void execute_command_in_forked_shell_async(const std::string &subcmd);
+    // call the helper to do something
+    command_streams
+    call_bk(const QString &verb,
+            const QVariantMap &options,
+            const QStringList &subjects);
+
+    // Fully asynchronous call to the DBus helper
+    QFuture<command_streams>
+    call_bk_async(const QString &verb,
+                const QVariantMap &options,
+                const QStringList &subjects);
 
     bool do_i_have_root_permissions();
-
-    // Called by superlaunch once it creates the root shell so the commander
-    // can talk to that shell's stdio fds.
-    void set_root_shell_fds(int in, int out, int err) {
-        root_stdin_fd_  = in;
-        root_stdout_fd_ = out;
-        root_stderr_fd_ = err;
-        DEBUG_LOG("set_root_shell_fds(", in, ",", out, ",", err, ")");
-    }
-
-    void set_root_shell_pid (pid_t p) {
-        root_shell_pid_ = p;
-    }
 
     // High-level wrappers...
     std::vector<std::map<std::string,std::string>> btrfsls();
@@ -84,24 +82,12 @@ public:
     std::string beeslog(const std::string &uuid);
     bool beesclean(const std::string &uuid);
     std::string beessetup(const std::string &uuid, size_t db_size = 0);
+    std::string beeslocate(const std::string &uuid);
     bool beesremoveconfig(const std::string &uuid);
-    std::string btrfstat(const std::string &uuid);
+    std::string btrfstat(const std::string &uuid, const std::string &mode);
 
-    // Getters-only
-    pid_t root_shell_pid() const { return root_shell_pid_; }
-    int root_stdin_fd() const { return root_stdin_fd_; }
-    int root_stdout_fd() const { return root_stdout_fd_; }
-    int root_stderr_fd() const { return root_stderr_fd_; }
-
-private:
-    supercommander() = default;
-    supercommander(const supercommander&) = delete;
-    supercommander& operator=(const supercommander&) = delete;
-
-    pid_t root_shell_pid_ = -1;
-    int root_stdin_fd_ = -1;
-    int root_stdout_fd_ = -1;
-    int root_stderr_fd_ = -1;
+    // Async wrapper submethods
+    std::unique_ptr<multicommander> async;
 
 signals:
     void command_finished(const QString &cmd,

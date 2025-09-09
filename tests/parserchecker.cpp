@@ -1,4 +1,4 @@
-#include "../include/beekeeper/commandmachine.hpp"
+#include "beekeeper/commandmachine.hpp"
 #include <iostream>
 
 namespace cm = commandmachine;
@@ -7,7 +7,7 @@ int
 testparsing(const std::map<std::string, std::string>&, 
                 const std::vector<std::string>&);
 
-std::vector<cm::Command> command_registry = {
+std::vector<cm::command> command_registry = {
     {
         "test", 
         testparsing,
@@ -40,6 +40,6 @@ testparsing(const std::map<std::string, std::string>& options,
 
 int
 main(int argc, char* argv[]) {
-    auto parser = cm::CommandParser::create();
+    auto parser = cm::command_parser::create();
     return parser->parse(command_registry, argc, argv);
 }

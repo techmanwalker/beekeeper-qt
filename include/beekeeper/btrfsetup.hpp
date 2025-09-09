@@ -19,5 +19,15 @@ namespace beekeeper {
         // db_size = 0: do not change DB_SIZE if configuration file exists
         std::string
         beessetup (std::string uuid, size_t db_size = 0);
+
+        // Return mount point by uuid
+        std::string get_mount_path(const std::string &uuid);
+
+        namespace get_space {
+
+            int64_t free(const std::string &uuid);
+
+            int64_t used(const std::string &uuid);
+        }
     }
 }

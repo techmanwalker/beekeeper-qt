@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QFontMetrics>
 #include <QPainter>
+#include <QPalette>
 
 void
 StatusDotDelegate::paint(QPainter* p,
@@ -20,31 +21,44 @@ StatusDotDelegate::paint(QPainter* p,
     QString rawStatus   = idx.data(Qt::UserRole).toString().toLower();
     QString displayText = idx.data(Qt::DisplayRole).toString();
 
-    // --- dot color
-    QColor color = rawStatus.startsWith("running")       ? QColor("green")
-                : rawStatus == "stopped"                ? QColor("red")
-                : rawStatus == "unconfigured"           ? QColor("gray")
-                : rawStatus.contains("starting")        ? QColor("orange")
-                : rawStatus.contains("stopping")        ? QColor("orange")
-                : QColor("orange");
+    // --- dot color from palette
+    const QPalette &pal = o.palette;
 
-    int d = qMin(o.rect.height(), 6);
+    QColor color =
+      rawStatus.startsWith("running")       ? pal.color(QPalette::Highlight)     // active/accent
+    : rawStatus == "stopped"                ? pal.color(QPalette::Inactive, QPalette::Button)    // strong contrast, often red on KDE themes
+    : rawStatus == "unconfigured"           ? pal.color(QPalette::Mid)           // neutral grayish
+    : pal.color(QPalette::WindowText);                                          // fallback
+
+
+    // two characters wide padding
+    QFontMetrics fm(o.font);
+    int char_padding = fm.horizontalAdvance(QString(1, 'M')); // 2 chars wide
+
+    int dot_diameter = 8;
+
+    // --- real dot area
+    int d = qMin(o.rect.height(), dot_diameter);
 
     // --- left dummy dot
-    QRect leftDot(o.rect.left() + 6, o.rect.center().y() - d/2, d, d);
+    QRect leftDot(o.rect.left() + char_padding,
+              o.rect.center().y() - d/2,
+              d, d);
 
     // --- right real dot
-    QRect rightDot(o.rect.right() - d - 6, o.rect.center().y() - d/2, d, d);
+    QRect rightDot(o.rect.right() - char_padding - d,
+               o.rect.center().y() - d/2,
+               d, d);
 
-    // --- draw dummy dot
+    // --- draw left dot (clone of status dot)
     p->save();
     p->setRenderHint(QPainter::Antialiasing, true);
-    p->setBrush(QColor("gray")); // decorative
+    p->setBrush(color);
     p->setPen(Qt::NoPen);
     p->drawEllipse(leftDot);
     p->restore();
 
-    // --- draw real status dot
+    // --- draw right dot (clone of status dot)
     p->save();
     p->setRenderHint(QPainter::Antialiasing, true);
     p->setBrush(color);
@@ -53,8 +67,8 @@ StatusDotDelegate::paint(QPainter* p,
     p->restore();
 
     // --- text rect in between
-    int left = leftDot.right() + 6;
-    int right = rightDot.left() - 6;
+    int left = leftDot.right() + dot_diameter;
+    int right = rightDot.left() - dot_diameter;
     QRect textRect(left, o.rect.top(), right - left, o.rect.height());
 
     // --- draw text
@@ -72,7 +86,7 @@ StatusDotDelegate::sizeHint(const QStyleOptionViewItem &option,
     Q_UNUSED(idx);
 
     QFontMetrics fm(option.font);
-    int minWidth = fm.horizontalAdvance(QString(16, 'M')); // space for 24 chars
+    int minWidth = fm.horizontalAdvance(QString(18, 'M')); // space for 24 chars
     int height = qMax(24, option.rect.height());
 
     return QSize(minWidth, height); // Qt will treat this as *minimum*, not fixed

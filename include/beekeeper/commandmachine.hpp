@@ -1,4 +1,4 @@
-// commandmachine.h - Agnostic command parsing machinery
+// commandmachine.hpp - Agnostic command parsing machinery
 #pragma once
 
 #include <functional>
@@ -11,21 +11,21 @@
 namespace commandmachine {
 
 // Option specification structure
-struct OptionSpec {
+struct option_spec {
     std::string long_name;   // e.g. "enable-logging"
     std::string short_name;  // e.g. "l" (empty if no short form)
     bool requires_value;     // Does this option require a value?
 };
 
-// Command handler type
-using CommandHandler = std::function<int(const std::map<std::string, std::string>&, 
+// command handler type
+using command_handler = std::function<int(const std::map<std::string, std::string>&, 
                                          const std::vector<std::string>&)>;
 
-// Command metadata structure
-struct Command {
+// command metadata structure
+struct command {
     std::string name;
-    CommandHandler handler;
-    std::vector<OptionSpec> allowed_options;
+    command_handler handler;
+    std::vector<option_spec> allowed_options;
     std::string subject_name;
     std::string description;
     int min_subjects = 1;
@@ -34,12 +34,18 @@ struct Command {
 };
 
 // Parser interface
-class CommandParser {
+class command_parser {
 public:
-    virtual ~CommandParser() = default;
-    virtual int parse(const std::vector<Command>& commands, 
+    virtual ~command_parser() = default;
+    virtual int parse(const std::vector<command>& commands, 
                       int argc, char* argv[]) = 0;
-    static std::unique_ptr<CommandParser> create();
+                      
+    /**
+    * command_parser::create - Factory method for creating parser instances
+    * 
+    * @return Unique pointer to a new parser instance
+    */
+    static std::unique_ptr<command_parser> create();
 };
 
 } // namespace commandmachine

@@ -3,22 +3,48 @@ if(NOT EXISTS "@CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt")
     message(FATAL_ERROR "Cannot find install manifest: @CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt")
 endif()
 
+
+
 file(READ "@CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt" files)
 string(STRIP "${files}" files)
 string(REPLACE "\n" ";" files "${files}")
 
 foreach(file ${files})
     message(STATUS "Uninstalling: ${file}")
-    if(EXISTS "${file}")
-        exec_program(
-            "@CMAKE_COMMAND@" ARGS "-E remove \"${file}\""
-            OUTPUT_VARIABLE rm_out
-            RETURN_VALUE rm_retval
+    if(EXISTS "${file}" OR IS_SYMLINK "${file}")
+        execute_process(
+            COMMAND "${CMAKE_COMMAND}" -E remove "${file}"
         )
-        if(NOT "${rm_retval}" STREQUAL 0)
-            message(FATAL_ERROR "Problem when removing: ${file}")
-        endif()
     else()
         message(STATUS "File ${file} does not exist")
+    endif()
+endforeach()
+
+
+
+# Dynamically remove empty parent directories
+# Collect directories from the manifest
+set(dirs_to_check "")
+foreach(file ${files})
+    get_filename_component(dir "${file}" DIRECTORY)
+    list(APPEND dirs_to_check "${dir}")
+endforeach()
+
+# Deduplicate
+list(REMOVE_DUPLICATES dirs_to_check)
+
+# Sort from deepest to shallowest
+# This ensures child dirs are removed before parents
+list(SORT dirs_to_check CASE INSENSITIVE ORDER DESCENDING)
+
+foreach(dir ${dirs_to_check})
+    if(EXISTS "${dir}")
+        file(GLOB contents "${dir}/*")
+        if(NOT contents)
+            message(STATUS "Removing empty directory: ${dir}")
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}" -E remove_directory "${dir}"
+            )
+        endif()
     endif()
 endforeach()

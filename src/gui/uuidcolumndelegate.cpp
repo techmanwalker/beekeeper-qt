@@ -8,39 +8,41 @@
 #include <QString>
 
 void
-UUIDColumnDelegate::paint(QPainter* p, const QStyleOptionViewItem& opt,
-                               const QModelIndex& idx) const
+UUIDColumnDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
+                          const QModelIndex& index) const
 {
-    Q_UNUSED(idx);
-    p->save();
+    painter->save();
 
+    QStyleOptionViewItem opt = option;
+    initStyleOption(&opt, index); // important: populate opt with index data
+
+    // Draw the background correctly for selected / hovered / keyboard-focus states
+    QApplication::style()->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter);
+
+    // Draw the centered icon
     QRect r = opt.rect;
     QIcon icon = QApplication::style()->standardIcon(QStyle::SP_FileDialogDetailedView);
-    icon.paint(p, r, Qt::AlignCenter);
+    icon.paint(painter, r, Qt::AlignCenter);
 
-    p->restore();
+    painter->restore();
 }
 
 QSize
 UUIDColumnDelegate::sizeHint(const QStyleOptionViewItem& option,
-                                   const QModelIndex& index) const
+                             const QModelIndex& index) const
 {
     Q_UNUSED(option);
     Q_UNUSED(index);
 
-    // Use the standard small icon size
     int iconSize = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize, nullptr, nullptr);
-
-    int padding = 4; // optional extra padding
-    int side = iconSize + padding;
-
-    return QSize(side, side);
+    int padding = 4; // extra space
+    return QSize(iconSize + padding, iconSize + padding);
 }
 
 bool
 UUIDColumnDelegate::editorEvent(QEvent* event, QAbstractItemModel* model,
-                                     const QStyleOptionViewItem& option,
-                                     const QModelIndex& index)
+                                const QStyleOptionViewItem& option,
+                                const QModelIndex& index)
 {
     if (!index.isValid())
         return false;
@@ -52,17 +54,9 @@ UUIDColumnDelegate::editorEvent(QEvent* event, QAbstractItemModel* model,
             if (me->button() == Qt::LeftButton) {
                 QApplication::clipboard()->setText(uuid);
                 QToolTip::showText(me->globalPosition().toPoint(),
-                                   // "UUID copied: " + uuid.left(8) + "…"
-                                   "UUID copied to clipboard."
-                );
+                                   tr("UUID copied to clipboard."));
                 return true;
             }
-        }
-    } else if (event->type() == QEvent::ToolTip) {
-        if (auto* he = dynamic_cast<QHelpEvent*>(event)) {
-            // QHelpEvent still uses globalPos() in Qt6
-            QToolTip::showText(he->globalPos(), uuid);
-            return true;
         }
     }
 

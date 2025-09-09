@@ -49,5 +49,20 @@ namespace beekeeper {
         // Get a binary full path
         std::string
         which(const std::string &program);
+
+        std::string
+        json_escape (const std::string &s);
+
+        // Quoting is important
+        std::string
+        trip_quotes(const std::string &s);
+
+        // Divide and apply the suffix to a byte size
+        std::string
+        auto_size_suffix(size_t size_in_bytes);
+
+        // Trim helper: remove everything up to and including the first ':' and trim whitespace
+        std::string
+        trim_config_path_after_colon(const std::string &raw);
     }
 }

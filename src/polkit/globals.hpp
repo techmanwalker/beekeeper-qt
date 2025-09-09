@@ -14,9 +14,10 @@
 #include "beekeeper/superlaunch.hpp"
 #include "beekeeper/supercommander.hpp"
 #include "beekeeper/util.hpp"
+#include <memory>
 
-using beekeeper::privileged::supercommander;
+extern std::unique_ptr<superlaunch> launcher;
+extern std::unique_ptr<beekeeper::privileged::supercommander> komander;
 
-inline superlaunch& launcher = superlaunch::instance();
-inline supercommander& komander = supercommander::instance();
-inline std::string beekeepermanpath = ( bk_util::which("beekeeperman") != "" ? bk_util::which("beekeeperman") : "./beekeeperman");
+void init_globals();  // to be called early in main()
+void shutdown_globals(); // safe teardown, komander and helpers closure and clean exit

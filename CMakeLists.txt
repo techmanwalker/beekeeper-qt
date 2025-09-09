@@ -1,198 +1,219 @@
-cmake_minimum_required(VERSION 3.10)
-project(beekeeper)
-set(PROJECT_VERSION 0.0.1)
-set(PROJECT_VERSION_MAJOR 0)
+cmake_minimum_required(VERSION 3.21)
+project(beekeeper VERSION 0.0.1 LANGUAGES CXX)
 
-# ------------ Qt6 ------------
-find_package(Qt6 COMPONENTS Core Widgets DBus Concurrent REQUIRED)
-
-# ------------ Polkit (optional) ------------
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(POLKIT QUIET polkit-gobject-1)
-    if(POLKIT_FOUND)
-        message(STATUS "Found Polkit: ${POLKIT_VERSION}")
-    else()
-        message(WARNING "Polkit not found - GUI will require manual privilege escalation")
-    endif()
-endif()
-
-# ------------ Build type / debug flags ------------
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release")
-endif()
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Debug logging enabled for Debug builds")
-    set(ENABLE_BEEKEEPER_DEBUG 1)
-elseif(DEFINED ENV{BEEKEEPER_DEBUG})
-    message(STATUS "Debug logging enabled via environment variable")
-    set(ENABLE_BEEKEEPER_DEBUG 1)
-endif()
-
-# ------------ C++ standard ------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ------------ RPATH ------------
-set(CMAKE_INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib/beekeeper")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set(CMAKE_SKIP_BUILD_RPATH FALSE)
-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-
-# ------------ Output dirs ------------
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-# ------------ Qt automoc ------------
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+# ------------------------------
+# Qt6
+# ------------------------------
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets DBus Concurrent LinguistTools)
 
+# ------------------------------
+# Polkit
+# ------------------------------
+set(POLKIT_INCLUDES "")
+set(POLKIT_LIBS "")
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(POLKIT_QT6 QUIET polkit-qt6-1)
+    if(POLKIT_QT6_FOUND)
+        message(STATUS "Found Polkit-Qt6: ${POLKIT_QT6_VERSION}")
+        set(POLKIT_INCLUDES ${POLKIT_QT6_INCLUDE_DIRS})
+        set(POLKIT_LIBS ${POLKIT_QT6_LIBRARIES})
+    else()
+        message(WARNING "Polkit-Qt6 not found - GUI will require manual privilege escalation")
+    endif()
+endif()
+
+set(BEEKEEPER_HELPER_PATH "${CMAKE_INSTALL_FULL_LIBDIR}/beekeeper/bin/beekeeper-helper")
+
+# ------------------------------
+# Debug logging
+# ------------------------------
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(BEEKEEPER_DEBUG_LOGGING=1)
+endif()
+
+# ------------------------------
+# Build directories & autogen
+# ------------------------------
 include(GNUInstallDirs)
+set(BUILD_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
+file(MAKE_DIRECTORY ${BUILD_INCLUDE_DIR})
 
-# ====================================
-# Core library
-# ====================================
-set_source_files_properties(
-    src/core/beesdmgmt.cpp
-    include/beekeeper/debug.hpp
-    PROPERTIES
-    COMPILE_FLAGS "-Wno-backslash-newline"
+# Configure helperpath.hpp
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/beekeeper/cmakedependentvariables/helperpath.hpp.in"
+    "${BUILD_INCLUDE_DIR}/beekeeper/cmakedependentvariables/helperpath.hpp"
+    @ONLY
 )
 
-add_library(beesdmgmt SHARED
+# Configure systemd & DBus services
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/helper.service.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/helper.service" @ONLY
+)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/dbus.service.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/helper.dbus.service" @ONLY
+)
+
+# Configure policy file
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/policy.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/policy" @ONLY
+)
+
+# Set up the helper path
+add_compile_definitions(BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
+
+# ------------------------------
+# Core library
+# ------------------------------
+add_library(beekeeper SHARED
     src/core/beesdmgmt.cpp
     src/core/btrfsetup.cpp
     src/core/util.cpp
 )
-
-set_target_properties(beesdmgmt PROPERTIES
-    OUTPUT_NAME beesdmgmt
+set_target_properties(beekeeper PROPERTIES
     VERSION ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}
+    SOVERSION 1
 )
-
-target_include_directories(beesdmgmt PUBLIC
+target_include_directories(beekeeper PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# ====================================
+# ------------------------------
 # CLI executable
-# ====================================
+# ------------------------------
 add_executable(beekeeperman
     src/cli/beekeeperman.cpp
     src/cli/commandmachine/parser.cpp
+    src/cli/handlers.cpp
+    src/core/util.cpp
 )
-
-target_link_libraries(beekeeperman beesdmgmt)
-
 set_target_properties(beekeeperman PROPERTIES
-    INSTALL_RPATH "$ORIGIN/../lib/beekeeper"
-    INSTALL_RPATH_USE_LINK_PATH TRUE
+    BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
+    INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/beekeeper"
 )
+target_link_libraries(beekeeperman PRIVATE beekeeper)
 
-# ====================================
-# GUI sources (Qt)
-# ====================================
-set(GUI_SRCS
+# ------------------------------
+# GUI sources
+# ------------------------------
+# --- Polkit sources (exclude beekeeper-helper.cpp)
+file(GLOB POLKIT_SRCS src/polkit/*.cpp include/beekeeper/supercommander.hpp)
+list(REMOVE_ITEM GUI_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/gui/main.cpp)
+
+# --- GUI sources (exclude main.cpp)
+file(GLOB_RECURSE GUI_SRCS src/gui/*.cpp)
+list(REMOVE_ITEM POLKIT_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/beekeeper-helper.cpp)
+
+# ------------------------------
+# GUI executable
+# ------------------------------
+add_executable(beekeeper-qt
+    ${GUI_SRCS}
+    ${POLKIT_SRCS}
     src/gui/main.cpp
-    src/gui/mainwindow.cpp
-    src/gui/rootshellthread.cpp
-    src/gui/setupdialog.cpp
-    src/gui/statusdotdelegate.cpp
-    src/gui/uuidcolumndelegate.cpp
+)
+target_include_directories(beekeeper-qt PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${BUILD_INCLUDE_DIR}
+    ${POLKIT_INCLUDES}
+)
+set_target_properties(beekeeper-qt PROPERTIES
+    BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
+    INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/beekeeper"
+)
+target_link_libraries(beekeeper-qt PRIVATE
+    Qt6::Core Qt6::Concurrent Qt6::Widgets Qt6::DBus
+    beekeeper ${POLKIT_LIBS}
 )
 
-# Polkit/privileged GUI-side glue (NO helper main here!)
-set(POLKIT_GUI_SRCS
-    src/polkit/socketoperations.cpp
-    src/polkit/superlaunch.cpp
-    src/polkit/supercommander.cpp
-    src/polkit/polkit.cpp
-    include/beekeeper/supercommander.hpp
+# ------------------------------
+# Helper executable
+# ------------------------------
+add_executable(beekeeper-helper
+    ${POLKIT_SRCS}
+    src/polkit/beekeeper-helper.cpp
+    src/cli/handlers.cpp
+)
+target_include_directories(beekeeper-helper PRIVATE
+    ${BUILD_INCLUDE_DIR}
+    ${POLKIT_INCLUDES}
+)
+target_link_libraries(beekeeper-helper PRIVATE
+    Qt6::Core Qt6::Widgets Qt6::DBus Qt6::Concurrent
+    beekeeper ${POLKIT_LIBS}
 )
 
-# Path to the privileged helper binary
-set(BEEKEEPER_HELPER_PATH "${CMAKE_INSTALL_FULL_LIBDIR}/beekeeper/bin/beekeeper-helper")
+# For executables/libraries that include helperpath.hpp
+target_compile_definitions(beekeeper-qt PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
+target_compile_definitions(beekeeper-helper PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
+target_compile_definitions(beekeeperman PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
+target_compile_definitions(beekeeper PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
 
+# Absolute RPATH
+set_target_properties(beekeeper-helper PROPERTIES
+    INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/beekeeper"
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
+    SKIP_BUILD_RPATH FALSE
+)
+
+# ------------------------------
+# Translations
+# ------------------------------
+set(TRANSLATION_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/translations")
+file(GLOB TRANSLATION_FILES "${TRANSLATION_SRC_DIR}/*.ts")
+
+# Configure translationsdir.hpp
+set(TRANSLATIONS_DIR "${CMAKE_INSTALL_FULL_DATADIR}/beekeeper/translations")
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/beekeeper/superlaunch.hpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper/superlaunch.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/beekeeper/cmakedependentvariables/translationsdir.hpp.in"
+    "${BUILD_INCLUDE_DIR}/beekeeper/cmakedependentvariables/translationsdir.hpp"
     @ONLY
 )
 
-add_executable(beekeeper-qt
-    ${GUI_SRCS}
-    ${POLKIT_GUI_SRCS}
+# Generate .qm files immediately without creating target dependencies
+qt_add_translations(
+    TARGETS beekeeper-qt            # Target that will use the .qm files
+    TS_FILES ${TRANSLATION_FILES}   # Explicit .ts files
+    QM_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/translations"
+    QM_FILES_OUTPUT_VARIABLE QM_FILES
 )
 
-target_link_libraries(beekeeper-qt
-    Qt6::Core
-    Qt6::Concurrent
-    Qt6::Widgets
-    Qt6::DBus
-    beesdmgmt
-)
+# Install the .qm files
+install(FILES ${QM_FILES} DESTINATION ${TRANSLATIONS_DIR})
 
-target_include_directories(beekeeper-qt PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/gui
-    /usr/include/polkit-qt6-1
-)
-
-set_target_properties(beekeeper-qt PROPERTIES
-    INSTALL_RPATH "$ORIGIN/../lib/beekeeper"
-    INSTALL_RPATH_USE_LINK_PATH TRUE
-)
-
-add_executable(beekeeper-helper
-    ${POLKIT_GUI_SRCS}
-    src/polkit/beekeeper-helper.cpp
-)
-
-
-set_target_properties(beekeeper-helper PROPERTIES
-    INSTALL_RPATH "$ORIGIN/../"
-    INSTALL_RPATH_USE_LINK_PATH TRUE
-)
-
-target_include_directories(beekeeper-helper PRIVATE
-    "${CMAKE_CURRENT_BINARY_DIR}"
-)
-
-# Link with supercommander + beesdmgmt
-target_link_libraries(beekeeper-helper
-    beesdmgmt
-    Qt6::Core
-    Qt6::Widgets
-    Qt6::DBus
-)
-
-# ====================================
-# Per-target compile defs
-# ====================================
+# ------------------------------
+# Enable debugging
+# ------------------------------
 if(ENABLE_BEEKEEPER_DEBUG)
-    target_compile_definitions(beesdmgmt PRIVATE BEEKEEPER_DEBUG_LOGGING)
-    target_compile_definitions(beekeeperman PRIVATE BEEKEEPER_DEBUG_LOGGING)
-    target_compile_definitions(beekeeper-qt PRIVATE BEEKEEPER_DEBUG_LOGGING)
+    target_compile_definitions(beesdmgmt PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
+    target_compile_definitions(beekeeperman PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
+    target_compile_definitions(beekeeper-qt PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
 endif()
 
-# Pass it to the compiler only if the option is ON
+# Pass it to the compiler only if the option is ON 
 if(BEEKEEPER_DEBUG_LOGGING)
     add_compile_definitions(BEEKEEPER_DEBUG_LOGGING=1)
 endif()
 
-# ====================================
-# Install
-# ====================================
-
-install(TARGETS beesdmgmt
+# ------------------------------
+# Installation
+# ------------------------------
+install(TARGETS beekeeper
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/beekeeper
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/beekeeper
-    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/beekeeper
 )
 
 install(TARGETS beekeeperman
@@ -203,112 +224,106 @@ install(TARGETS beekeeper-qt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(DIRECTORY include/beekeeper
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.hpp"
-)
-
 install(TARGETS beekeeper-helper
-        RUNTIME DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/beekeeper/bin")
+    RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}/beekeeper/bin"
+)
 
-#install(FILES src/gui/beekeeper.desktop
-#    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
-#)
-
-# ------------ Polkit action dir ------------
-# By default, Polkit ignores /usr/local/share. If the prefix is still the default,
-# override to /usr/share/polkit-1/actions. Otherwise follow DATADIR.
-
-
+# systemd & DBus service dirs
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(POLKIT_ACTION_DIR "/usr/share/polkit-1/actions"
-        CACHE PATH "Where to install polkit .policy files" FORCE)
+    set(SYSTEMD_DIR "/usr/lib/systemd/system")
+    set(DBUS_DIR "/usr/share/dbus-1/system-services")
+    set(POLKIT_ACTIONS_DIR "/usr/share/polkit-1/actions")
+    set(DBUS_SYSTEM_DIR "/usr/share/dbus-1/system.d")
 else()
-    set(POLKIT_ACTION_DIR "${CMAKE_INSTALL_FULL_DATADIR}/polkit-1/actions"
-        CACHE PATH "Where to install polkit .policy files" FORCE)
+    set(SYSTEMD_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/systemd/system")
+    set(DBUS_DIR "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system-services")
+    set(POLKIT_ACTIONS_DIR "${CMAKE_INSTALL_FULL_DATADIR}/polkit-1/actions")
+    set(DBUS_SYSTEM_DIR "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system.d")
 endif()
 
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/org.beekeeper.policy.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/org.beekeeper.policy"
-    @ONLY
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/helper.service"
+    DESTINATION "${SYSTEMD_DIR}"
+    RENAME org.beekeeper.helper.service
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/helper.dbus.service"
+    DESTINATION "${DBUS_DIR}"
+    RENAME org.beekeeper.Helper.service
 )
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/org.beekeeper.policy"
-        DESTINATION "${POLKIT_ACTION_DIR}")
+# policy file
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/policy"
+    DESTINATION "${POLKIT_ACTIONS_DIR}"
+    RENAME org.beekeeper.policy
+)
 
-# --------------------------------------------------------------------
-# Tests (never installed)
-# Only build if -DBUILD_TESTS=ON
-# --------------------------------------------------------------------
+# dbus policy file
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/dbus.conf"
+    DESTINATION "${DBUS_SYSTEM_DIR}"
+    RENAME org.beekeeper.dbus.conf
+)
 
-if(BUILD_TESTS)
-    message(STATUS "Building Beekeeper tests...")
-
-    # Non-Qt tests
-    add_executable(beesdmgmttest tests/beesdmgmttest.cpp)
-    target_link_libraries(beesdmgmttest PRIVATE beesdmgmt)
-
-    add_executable(btrfsls tests/btrfsls.cpp)
-    target_link_libraries(btrfsls PRIVATE beesdmgmt)
-
-    add_executable(parserchecker tests/parserchecker.cpp src/cli/commandmachine/parser.cpp)
-    target_link_libraries(parserchecker PRIVATE beesdmgmt)
-
-    add_executable(setuppipeline tests/setuppipeline.cpp)
-    target_link_libraries(setuppipeline PRIVATE beesdmgmt)
-
-    # Qt-dependent test
-    add_executable(supertest
-        tests/supertest.cpp
-        src/polkit/polkit.cpp
-        src/polkit/socketoperations.cpp
-        src/polkit/supercommander.cpp
-        src/polkit/superlaunch.cpp
-        include/beekeeper/supercommander.hpp
-    )
-    target_link_libraries(supertest PRIVATE beesdmgmt Qt6::Core Qt6::Widgets Qt6::DBus)
-    set_target_properties(supertest PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
-    if(ENABLE_BEEKEEPER_DEBUG)
-        target_compile_definitions(supertest PRIVATE BEEKEEPER_DEBUG_LOGGING)
-    endif()
-endif()
-
-
-# pkg-config
-configure_file(
+# pkg-config file
+install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/beekeeper.pc.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper.pc"
-    @ONLY
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/beekeeper.pc"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
-)
+# the desktop entry
+install(FILES src/gui/entry.desktop
+        DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/applications
+        RENAME beekeeper-qt.desktop)
 
-
-
-# Uninstall target
-if(NOT TARGET uninstall)
-    configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-        IMMEDIATE @ONLY
-    )
-    add_custom_target(uninstall
-        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
-    )
+# ------------------------------
+# Tests
+# ------------------------------
+if(BUILD_TESTS)
+    file(GLOB TEST_SRCS tests/*.cpp)
+    foreach(TEST_FILE ${TEST_SRCS})
+        get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
+        add_executable(
+            ${TEST_NAME}
+            ${TEST_FILE}
+            ${POLKIT_SRCS}
+            src/cli/commandmachine/parser.cpp
+        )
+        target_link_libraries(${TEST_NAME} PRIVATE beekeeper Qt6::Core Qt6::Widgets Qt6::DBus ${POLKIT_LIBS})
+        target_include_directories(${TEST_NAME} PRIVATE
+            ${BUILD_INCLUDE_DIR}
+            ${POLKIT_INCLUDES}    # Polkit headers
+        )
+        # Apply debug compile definition if enabled
+        if(ENABLE_BEEKEEPER_DEBUG)
+            target_compile_definitions(${TEST_NAME} PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
+        endif()
+    endforeach()
 endif()
 
+# ------------------------------
+# Uninstall target
+# ------------------------------
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake" IMMEDIATE @ONLY
+)
+add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+)
+
+# ------------------------------
 # Summary
+# ------------------------------
 message(STATUS "")
 message(STATUS "Beekeeper Configuration Summary:")
 message(STATUS "  Version: ${PROJECT_VERSION}")
 message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Install Prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "  Qt6: ${Qt6_VERSION}")
-message(STATUS "  Polkit: ${POLKIT_FOUND}")
-if(POLKIT_FOUND)
-    message(STATUS "    Version: ${POLKIT_VERSION}")
+message(STATUS "  Polkit: ${POLKIT_QT6_FOUND}")
+if(POLKIT_QT6_FOUND)
+    message(STATUS "    Version: ${POLKIT_QT6_VERSION}")
 endif()
 message(STATUS "")

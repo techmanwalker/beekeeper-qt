@@ -6,9 +6,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <unistd.h> 
+#include <vector>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -155,17 +158,122 @@ bk_util::to_lower(const std::string& str) {
 }
 
 std::string
-bk_util::which(const std::string &program) {
+bk_util::which(const std::string &program)
+{
+    std::string cmd = bk_util::trim_string(program);
+
+    // Take only the first word up to the first space
+    size_t space_pos = cmd.find(' ');
+    if (space_pos != std::string::npos) {
+        cmd = cmd.substr(0, space_pos);
+    }
+
     const char *pathEnv = std::getenv("PATH");
     if (!pathEnv) return "";
 
     std::stringstream ss(pathEnv);
     std::string dir;
     while (std::getline(ss, dir, ':')) {
-        std::string candidate = dir + "/" + program;
+        std::string candidate = dir + "/" + cmd;
         if (::access(candidate.c_str(), X_OK) == 0) {
-            return candidate; // found
+            return candidate;
         }
     }
-    return ""; // not found
+
+    return "";
+}
+
+// Helper: escape string for safe embedding into a JSON string value.
+// Minimal escaping for JSON string values: backslash, quote and control chars.
+std::string
+bk_util::json_escape (const std::string &s)
+{
+    std::string out;
+    out.reserve(s.size() + 8);
+    for (unsigned char c : s) {
+        switch (c) {
+            case '\\': out += "\\\\"; break;
+            case '"':  out += "\\\""; break;
+            case '\b': out += "\\b";  break;
+            case '\f': out += "\\f";  break;
+            case '\n': out += "\\n";  break;
+            case '\r': out += "\\r";  break;
+            case '\t': out += "\\t";  break;
+            default:
+                if (c < 0x20) {
+                    // control character -> \u00XX
+                    char buf[8];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    out += buf;
+                } else {
+                    out += static_cast<char>(c);
+                }
+                break;
+        }
+    }
+    return out;
+}
+
+std::string
+bk_util::trip_quotes(const std::string &s)
+{
+    if (s.size() >= 2 && s.front() == '"' && s.back() == '"') {
+        return s.substr(1, s.size() - 2);
+    }
+    return s;
+}
+
+// Divide and apply suffix to a byte size number
+std::string
+bk_util::auto_size_suffix(size_t size_in_bytes)
+{
+    double size = static_cast<double>(size_in_bytes);
+    std::vector<std::string> suffixes = {"", "KiB", "MiB", "GiB", "TiB", "PiB"};
+
+    size_t i = 0;
+    while (i + 1 < suffixes.size() && size >= 1024.0) {
+        size /= 1024.0;
+        ++i;
+    }
+
+    // Round to 2 decimal places
+    std::ostringstream oss;
+    if (std::fabs(size - std::round(size)) < 1e-9) {
+        // Integer, drop decimals
+        oss << static_cast<int64_t>(std::round(size));
+    } else {
+        // Up to 2 decimals
+        oss << std::fixed << std::setprecision(2) << size;
+    }
+
+    if (!suffixes[i].empty()) {
+        oss << " " << suffixes[i];
+    }
+
+    return oss.str();
+}
+
+// Trim helper: remove everything up to and including the first ':' and trim whitespace
+std::string
+bk_util::trim_config_path_after_colon(const std::string &raw)
+{
+    if (raw.empty())
+        return "";
+
+    // special-case beekeeperman "no config" message
+    if (raw.rfind("No configuration found", 0) == 0)
+        return "";
+
+    std::string s = raw;
+    auto pos = s.find(':');
+    if (pos != std::string::npos) {
+        s = s.substr(pos + 1);
+    }
+    // trim leading
+    s.erase(0, s.find_first_not_of(" \t\n\r"));
+    // trim trailing
+    if (!s.empty()) {
+        s.erase(s.find_last_not_of(" \t\n\r") + 1);
+    }
+    return s;
 }

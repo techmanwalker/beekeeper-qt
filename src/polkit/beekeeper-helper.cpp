@@ -1,135 +1,150 @@
 // beekeeper-helper.cpp
-
-#include "../../include/beekeeper/internalaliases.hpp"
-#include "../../include/beekeeper/supercommander.hpp"
-#include "beekeeper/superlaunch.hpp"
+#include "beekeeper-helper.hpp"
+#include "../cli/handlers.hpp"
+#include "beekeeper/internalaliases.hpp"
+#include "../cli/commandregistry.hpp"
 #include "beekeeper/debug.hpp"
-#include "socketoperations.hpp"
-#include "../../include/beekeeper/util.hpp"  // bk_util::exec_command
-#include <QJsonObject>
-#include <QJsonDocument>
+
+#include <QCoreApplication>
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QString>
-
-using namespace beekeeper::privileged::socketops;
-
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/un.h>
-#include <unistd.h>
-#include <cerrno>
-#include <cstring>
+#include <QStringList>
+#include <QVariantMap>
 #include <iostream>
+#include <map>
+#include <vector>
 #include <string>
-#include <signal.h>
 
-static volatile bool g_running = true;
-void handle_signal(int) { g_running = false; }
+// Add this at the top (after includes)
+HelperObject::HelperObject(QObject *parent)
+    : QObject(parent)
+{
+    // no-op
+}
 
-static const char* g_socket_path = nullptr;
-static void cleanup_socket() { if (g_socket_path) unlink(g_socket_path); }
+// Converts QVariantMap -> std::map<std::string, std::string>
+static std::map<std::string, std::string>
+convert_options(const QVariantMap &options)
+{
+    std::map<std::string, std::string> out;
+    for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
+        out[it.key().toStdString()] = it.value().toString().toStdString();
+    }
+    return out;
+}
 
-int main(int argc, char** argv) {
-    if (argc != 5 || std::string(argv[1]) != "--socket" || std::string(argv[3]) != "--token") {
-        std::cerr << "Usage: " << argv[0] << " --socket <path> --token <value>\n";
+// Converts QStringList -> std::vector<std::string>
+static std::vector<std::string>
+convert_subjects(const QStringList &subjects)
+{
+    std::vector<std::string> out;
+    out.reserve(subjects.size());
+    for (const QString &s : subjects) {
+        out.push_back(s.toStdString());
+    }
+    return out;
+}
+
+QVariantMap
+HelperObject::ExecuteCommand(const QString &verb,
+                             const QVariantMap &options,
+                             const QStringList &subjects)
+{
+    QVariantMap reply_map;
+    reply_map.insert("stdout", QString());
+    reply_map.insert("stderr", QString());
+
+    std::string verb_std = verb.toStdString();
+    std::map<std::string, std::string> opts_std = convert_options(options);
+    std::vector<std::string> subs_std = convert_subjects(subjects);
+
+    DEBUG_LOG("[beekeeper-helper] Received command verb: ", verb_std);
+    DEBUG_LOG("[beekeeper-helper] Options size: ", std::to_string(opts_std.size()));
+    DEBUG_LOG("[beekeeper-helper] Subjects size: ", std::to_string(subs_std.size()));
+
+    // Find handler in registry
+    auto it = std::find_if(command_registry.begin(), command_registry.end(),
+                           [&verb_std](const cm::command &cmd) {
+                               return cmd.name == verb_std;
+                           });
+
+    if (it == command_registry.end()) {
+        std::string err = "Unknown command verb: " + verb_std;
+        DEBUG_LOG(err);
+        reply_map["stderr"] = QString::fromStdString(err);
+        return reply_map;
+    }
+
+    // Capture stdout/stderr
+    std::stringstream cout_buf, cerr_buf;
+    auto* old_cout = std::cout.rdbuf(cout_buf.rdbuf());
+    auto* old_cerr = std::cerr.rdbuf(cerr_buf.rdbuf());
+
+    int ret = it->handler(opts_std, subs_std);
+
+    // Restore original streams
+    std::cout.rdbuf(old_cout);
+    std::cerr.rdbuf(old_cerr);
+
+    // Fill reply_map with captured output
+    reply_map["stdout"] = QString::fromStdString(cout_buf.str());
+    reply_map["stderr"] = QString::fromStdString(cerr_buf.str());
+
+    if (ret != 0) {
+        QString err_text = reply_map["stderr"].toString();
+        err_text += QString("Handler returned non-zero exit code: %1\n").arg(ret);
+        reply_map["stderr"] = err_text;
+    }
+
+    return reply_map;
+}
+
+QVariantMap
+HelperObject::whoami()
+{
+    QVariantMap reply_map;
+    reply_map.insert("stdout", QString());
+    reply_map.insert("stderr", QString());
+
+    command_streams res = bk_util::exec_command("whoami");
+
+    reply_map["stdout"] = QString::fromStdString(res.stdout_str);
+    reply_map["stderr"] = QString::fromStdString(res.stderr_str);
+    return reply_map;
+}
+
+int
+main(int argc, char **argv)
+{
+    QCoreApplication app(argc, argv);
+
+    QDBusConnection bus = QDBusConnection::systemBus();
+    if (!bus.isConnected()) {
+        std::cerr << "System D-Bus is not connected; aborting helper\n";
         return 1;
     }
-    g_socket_path = argv[2];
-    std::string expectedToken = argv[4];
-    DEBUG_LOG("[beekeeper-helper] Starting with socket path: ", g_socket_path);
-    atexit(cleanup_socket);
-    signal(SIGINT, handle_signal);
-    signal(SIGTERM, handle_signal);
 
-    // Remove stale socket
-    unlink(g_socket_path);
-
-    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (fd < 0) { std::cerr << "socket() failed: " << strerror(errno) << "\n"; return 1; }
-
-    sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, g_socket_path, sizeof(addr.sun_path)-1);
-
-    const char* pk_uid = getenv("PKEXEC_UID");
-    uid_t client_uid = (pk_uid && *pk_uid) ? static_cast<uid_t>(strtoul(pk_uid, nullptr, 10)) : 0;
-
-    if (bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-        perror("bind");
-        std::cerr << "bind() failed: " << strerror(errno) << "\n"; return 1;
-        exit(1);
+    if (bus.interface()->isServiceRegistered("org.beekeeper.Helper")) {
+        DEBUG_LOG("[beekeeper-helper] DBus name already owned, exiting cleanly");
+        return 0;
     }
 
-    umask(0);
-    if (client_uid != 0) {
-        // get primary gid for that uid if you want, or just set gid to client_uid too
-        // simplest:
-        chown(g_socket_path, client_uid, client_uid);
-        chmod(g_socket_path, 0600);
+    if (!bus.registerService("org.beekeeper.Helper")) {
+        std::cerr << "Failed to claim DBus name org.beekeeper.Helper\n";
+        return 2;
     }
 
-    if (listen(fd, 1) < 0) { std::cerr << "listen() failed: " << strerror(errno) << "\n"; return 1; }
+    DEBUG_LOG("[beekeeper-helper] registered service org.beekeeper.Helper");
 
-    // Ready token for parent
-    std::cout << "__BK_READY__\n"; std::cout.flush();
-
-    DEBUG_LOG("[beekeeper-helper] Socket bound and listening at: ", g_socket_path);
-    DEBUG_LOG("[beekeeper-helper] Listening for parent connection...");
-
-    DEBUG_LOG("[beekeeper-helper] Waiting for accept...");
-    int client_fd = accept(fd, nullptr, nullptr);
-    if (client_fd < 0) {
-        std::cerr << "accept() failed: " << strerror(errno) << std::endl;
-        DEBUG_LOG("[beekeeper-helper] accept() failed: errno=", errno, strerror(errno));
+    HelperObject helper;
+    if (!bus.registerObject("/org/beekeeper/Helper", &helper,
+                            QDBusConnection::ExportAllSlots |
+                            QDBusConnection::ExportAllSignals)) {
+        std::cerr << "Failed to register DBus object /org/beekeeper/Helper\n";
         return 1;
-    } else {
-        DEBUG_LOG("[beekeeper-helper] Parent connected, fd=", client_fd);
     }
 
-    if (!expectedToken.empty()) {
-        // JSON encode the token for the parent
-        QJsonObject ready_obj;
-        ready_obj["stdout"] = QString::fromStdString(expectedToken); // token goes in stdout
-        ready_obj["stderr"] = QString("");
-        QJsonDocument ready_doc(ready_obj);
-        std::string ready_encoded = ready_doc.toJson(QJsonDocument::Compact).toStdString();
-
-        if (!write_message(client_fd, ready_encoded)) {
-            DEBUG_LOG("[beekeeper-helper] Failed to send token over socket");
-        } else {
-            DEBUG_LOG("[beekeeper-helper] Sent expected token to parent via socket: ", ready_encoded);
-        }
-    }
-
-    // Main loop: read one command at a time until parent disconnects
-    while (g_running) {
-        std::string command;
-        if (!read_message(client_fd, command)) {
-            DEBUG_LOG("[beekeeper-helper] Parent disconnected or read failed");
-            break;
-        }
-
-        DEBUG_LOG("[beekeeper-helper] Received command: ", command);
-
-        // Execute command and capture stdout/stderr
-        command_streams res = bk_util::exec_command(command.c_str());
-        DEBUG_LOG("[beekeeper-helper] stdout:", res.stdout_str);
-        DEBUG_LOG("[beekeeper-helper] stderr:", res.stderr_str);
-
-        // Encode stdout/stderr in JSON
-        QJsonObject out_obj;
-        out_obj["stdout"] = QString::fromStdString(res.stdout_str);
-        out_obj["stderr"] = QString::fromStdString(res.stderr_str);
-
-        QJsonDocument doc(out_obj);
-        std::string encoded = doc.toJson(QJsonDocument::Compact).toStdString();
-
-        // Send encoded message
-        write_message(client_fd, encoded);
-    }
-
-    close(client_fd);
-    close(fd);
-    DEBUG_LOG("[beekeeper-helper] Exiting gracefully");
-    return 0;
+    DEBUG_LOG("[beekeeper-helper] Helper DBus service ready and waiting for calls");
+    return app.exec();
 }

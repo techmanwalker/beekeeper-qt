@@ -86,6 +86,10 @@ public:
     bool beesremoveconfig(const std::string &uuid);
     std::string btrfstat(const std::string &uuid, const std::string &mode);
 
+    // Autostart control
+    bool add_uuid_to_autostart(const std::string &uuid);
+    bool remove_uuid_from_autostart(const std::string &uuid);
+
     // Async wrapper submethods
     std::unique_ptr<multicommander> async;
 

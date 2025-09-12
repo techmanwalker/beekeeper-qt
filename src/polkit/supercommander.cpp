@@ -28,6 +28,7 @@ supercommander::call_bk(const QString &verb,
                         const QVariantMap &options,
                         const QStringList &subjects)
 {
+    /*
     // For debugging
     #ifdef BEEKEEPER_DEBUG_LOGGING
     // Serialize options into "key=value" pairs
@@ -44,6 +45,7 @@ supercommander::call_bk(const QString &verb,
     DEBUG_LOG("options: ", opts_serialized.join(", ").toStdString());
     DEBUG_LOG("subjects: ", subjects_serialized.toStdString());
     #endif
+    */
 
     command_streams result;
 
@@ -94,8 +96,10 @@ supercommander::call_bk(const QString &verb,
     result.stdout_str = out_map.value("stdout").toString().toStdString();
     result.stderr_str = out_map.value("stderr").toString().toStdString();
 
+    /*
     DEBUG_LOG("[supercommander] helper finished; stdout len=", result.stdout_str.size(),
               " stderr len=", result.stderr_str.size());
+    */
 
     return result;
 }
@@ -176,7 +180,6 @@ bool
 supercommander::beesstart(const std::string &uuid, bool enable_logging)
 {
     QVariantMap opts;
-    enable_logging = false; // currently not implemented in GUI
     if (enable_logging) opts.insert("enable-logging", "<default>");
 
     call_bk("start", opts, QStringList{QString::fromStdString(uuid)});
@@ -268,6 +271,26 @@ supercommander::btrfstat(const std::string &uuid,
     if (!res.stdout_str.empty())
         return res.stdout_str;
     return "";
+}
+
+bool
+supercommander::add_uuid_to_autostart(const std::string &uuid)
+{
+    QVariantMap opts;
+    opts.insert("add", "<default>");
+
+    command_streams res = call_bk("autostartctl", opts, QStringList(QString::fromStdString(uuid)));
+    return true;
+}
+
+bool
+supercommander::remove_uuid_from_autostart(const std::string &uuid)
+{
+    QVariantMap opts;
+    opts.insert("remove", "<default>");
+
+    command_streams res = call_bk("autostartctl", opts, QStringList(QString::fromStdString(uuid)));
+    return true;
 }
 
 } // namespace privileged

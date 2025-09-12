@@ -12,7 +12,17 @@
 
 namespace fs = std::filesystem;
 
+using mapper = refresh_fs_helpers::status_text_mapper;
+
 namespace refresh_fs_helpers {
+
+    // Return the number of rows actually selected in the table
+int
+selected_rows_count(QTableWidget *table)
+{
+    if (!table) return 0;
+    return table->selectionModel()->selectedRows().size();
+}
 
 // Helper to map raw status (lowercase trimmed) to UI text
 QString
@@ -65,9 +75,6 @@ update_or_insert_rows(QTableWidget *fs_table,
                       QSet<QString> &incoming_uuids,
                       const QMap<QString, QString> &uuid_status_map)
 {
-    // To be able to map status texts to their full name and translate them
-    refresh_fs_helpers::status_text_mapper mapper;
-
     for (const auto &fs : filesystems) {
         QString uuid = QString::fromStdString(fs.at("uuid"));
         incoming_uuids.insert(uuid);
@@ -75,7 +82,7 @@ update_or_insert_rows(QTableWidget *fs_table,
 
         QString status = QString::fromStdString(bk_util::trim_string(uuid_status_map.value(uuid, "unconfigured").toStdString()));
 
-        QString display_status = mapper.map_status_text(status);
+        QString display_status = mapper().map_status_text(status);
 
         if (current_uuid_map.contains(uuid)) {
             int row = current_uuid_map[uuid];
@@ -105,6 +112,7 @@ update_or_insert_rows(QTableWidget *fs_table,
             uuid_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
 
             QTableWidgetItem *name_item = new QTableWidgetItem(label);
+            name_item->setData(Qt::UserRole, label);
             name_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
 
             QTableWidgetItem *status_item = new QTableWidgetItem(display_status);
@@ -135,47 +143,14 @@ remove_vanished_rows(QTableWidget *fs_table,
 
 // -------------------------
 void
-update_button_states(QTableWidget *fs_table,
-                          QPushButton *start_btn,
-                          QPushButton *stop_btn,
-                          QPushButton *setup_btn,
-                          std::function<void()> update_remove_btn)
-{
-    auto selected_rows = fs_table->selectionModel()->selectedRows();
-    QList<int> rows_to_check;
-    if (selected_rows.isEmpty()) {
-        for (int r = 0; r < fs_table->rowCount(); ++r) rows_to_check.append(r);
-    } else {
-        for (auto idx : selected_rows) rows_to_check.append(idx.row());
-    }
-
-    bool any_stopped = false, any_running = false, any_unconfigured = false;
-    for (int row : rows_to_check) {
-        QString status = fs_table->item(row, 2)->data(Qt::UserRole).toString().toLower();
-        if (status.startsWith("running")) any_running = true;
-        else if (status == "stopped") any_stopped = true;
-        else if (status == "unconfigured") any_unconfigured = true;
-    }
-
-    start_btn->setEnabled(any_stopped);
-    stop_btn->setEnabled(any_running);
-    setup_btn->setEnabled(any_unconfigured);
-    update_remove_btn();
-}
-
-// -------------------------
-void
 update_status_manager(QTableWidget *fs_table,
                       DedupStatusManager &statusManager)
 {
-    // To be able to map status texts to their full name and translate them
-    refresh_fs_helpers::status_text_mapper mapper;
-
     for (int row = 0; row < fs_table->rowCount(); ++row) {
         QString uuid = fs_table->item(row, 0)->data(Qt::UserRole).toString();
         QString status_raw = fs_table->item(row, 2)->data(Qt::UserRole).toString();
 
-        fs::path start_file = fs::path("/tmp") / (".beekeeper-" + uuid.toStdString()) / "startingfreespace";
+        fs::path start_file = fs::path("/tmp") / ".beekeeper" / uuid.toStdString() / "startingfreespace";
 
         // query current free
         std::string free_str = komander->btrfstat(uuid.toStdString(), "free");
@@ -184,7 +159,7 @@ update_status_manager(QTableWidget *fs_table,
         QString line;
 
         if (!fs::exists(start_file)) {
-            line = mapper.map_status_manager_text(0, free_bytes);
+            line = mapper().map_status_manager_text(0, free_bytes);
             statusManager.set_status(uuid, line);
         }
 
@@ -194,7 +169,7 @@ update_status_manager(QTableWidget *fs_table,
         in >> starting_free;
 
         // build line
-        line = mapper.map_status_manager_text(starting_free, free_bytes);
+        line = mapper().map_status_manager_text(starting_free, free_bytes);
 
         // cache in manager (works both running and stopped)
         statusManager.set_status(uuid, line);
@@ -216,15 +191,6 @@ read_starting_free_space(const QString &uuid)
     if (line.empty()) return 0;
 
     try { return std::stoll(line); } catch(...) { return 0; }
-}
-
-// -------------------------
-QString
-trim_config_path_after_colon(const std::string &cfg)
-{
-    auto pos = cfg.find(':');
-    if (pos == std::string::npos) return QString::fromStdString(cfg);
-    return QString::fromStdString(cfg.substr(0, pos));
 }
 
 } // namespace refresh_fs_helpers

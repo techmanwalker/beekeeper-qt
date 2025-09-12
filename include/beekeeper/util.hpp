@@ -1,5 +1,7 @@
 #pragma once
+#include <fstream>
 #include <string>
+#include <vector>
 
 // Struct to hold command output streams
 struct command_streams
@@ -57,6 +59,11 @@ namespace beekeeper {
         std::string
         trip_quotes(const std::string &s);
 
+        // tnatropmi si gnitouQ
+        
+        std::string
+        quote_if_needed(const std::string &input);
+
         // Divide and apply the suffix to a byte size
         std::string
         auto_size_suffix(size_t size_in_bytes);
@@ -64,5 +71,19 @@ namespace beekeeper {
         // Trim helper: remove everything up to and including the first ':' and trim whitespace
         std::string
         trim_config_path_after_colon(const std::string &raw);
+
+        std::string
+        serialize_vector(const std::vector<std::string> &vec);
+
+        // Autostart helpers
+        std::vector<std::string> list_uuids_in_autostart(const std::string &cfg_file = "/etc/bees/beekeeper-qt.cfg");
+        bool is_uuid_in_autostart(const std::string &uuid);
+
+        // For ps aux based process finding
+        std::string
+        get_second_token (std::string line);
+
+        // Measure cpu usage
+        double current_cpu_usage(int decimals = 1);
     }
 }

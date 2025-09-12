@@ -1,8 +1,9 @@
 // src/cli/commandmachine/parser.cpp
 #include "beekeeper/commandmachine.hpp"
 #include "parser.hpp"
-#include <iostream>
 #include <cctype>
+#include <iostream>
+#include <sstream>
 
 using cpi = commandmachine::command_parser_impl;
 using commandmachine::command;
@@ -47,7 +48,70 @@ cpi::parse(const std::vector<command>& commands,
 
     // Stage 2: Identify the command
     std::string command_name = argv[first_command_index];
-    
+
+    // --- New: support compound command token like "start -l" passed as a single argv[1] ---
+    // If the command token contains whitespace, try splitting it and reinjecting the pieces
+    auto contains_whitespace = [](const std::string &s) -> bool {
+        return s.find_first_of(" \t") != std::string::npos;
+    };
+
+    // We only attempt to rewrite argv when the token has whitespace
+    // and the first word matches a registered command.
+    std::vector<std::string> args_storage;     // holds reconstructed arg strings (lifetime for char* below)
+    std::vector<char*> tmp_argv;               // C-style argv pointers (non-owning; point into args_storage)
+    if (contains_whitespace(command_name)) {
+        // split on whitespace using istringstream (simple, respects multiple spaces/tabs)
+        std::istringstream iss(command_name);
+        std::string tok;
+        std::vector<std::string> split_tokens;
+        while (iss >> tok) {
+            split_tokens.push_back(tok);
+        }
+
+        if (!split_tokens.empty()) {
+            // test whether the first split token is a known command
+            const command* maybe_cmd = find_command(commands, split_tokens[0]);
+            if (maybe_cmd) {
+                // Build new argument vector:
+                // - argv[0] .. argv[first_command_index-1] unchanged
+                // - replace argv[first_command_index] with split_tokens[0]
+                // - insert the remaining split_tokens[1..] before the original argv[first_command_index+1..]
+                for (int k = 0; k <= first_command_index - 1; ++k) {
+                    args_storage.emplace_back(std::string(argv[k]));
+                }
+                // push the corrected command token (first split word)
+                args_storage.emplace_back(split_tokens[0]);
+
+                // push the rest of the split tokens (these become additional argv items)
+                for (size_t sidx = 1; sidx < split_tokens.size(); ++sidx) {
+                    args_storage.emplace_back(split_tokens[sidx]);
+                }
+
+                // append the remaining original argv items (those that were after the original command token)
+                for (int k = first_command_index + 1; k < argc; ++k) {
+                    args_storage.emplace_back(std::string(argv[k]));
+                }
+
+                // prepare tmp_argv pointers to the strings' c_str()
+                tmp_argv.reserve(args_storage.size() + 1);
+                for (auto &sref : args_storage) {
+                    tmp_argv.push_back(const_cast<char*>(sref.c_str()));
+                }
+                // argv-style null-terminated array
+                tmp_argv.push_back(nullptr);
+
+                // Update argc and argv to point to the reconstructed arrays for the remainder of parsing.
+                argc = static_cast<int>(args_storage.size());
+                argv = tmp_argv.data();
+
+                // Update the command_name variable to the canonical command
+                command_name = argv[first_command_index];
+            }
+            // if first split token is not a recognized command, we leave argv untouched
+        }
+    }
+    // --- End of injection handling ---
+
     // Special case: 'help' command
     if (command_name == "help") {
         print_help(commands);
@@ -381,7 +445,7 @@ cpi::print_help(const std::vector<command>& commands)
 {
     if (commands.empty()) return;
     
-    std::cout << "Usage: " << program_name << " [global-options] <command> [options] [--] [<" 
+    std::cout << "Usage: " << " [global-options] <command> [options] [--] [<" 
             << commands[0].subject_name << "> ...]\n\n";
     std::cout << "Global options:\n";
     std::cout << "  --help, -h       Show this help message\n\n";

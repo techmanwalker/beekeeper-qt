@@ -1,0 +1,10 @@
+# Build directories
+build/
+.cache/
+benchmarks/
+
+# Editor/OS files
+*.swp
+*.swo
+*.DS_Store
+*~

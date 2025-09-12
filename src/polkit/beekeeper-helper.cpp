@@ -4,6 +4,7 @@
 #include "beekeeper/internalaliases.hpp"
 #include "../cli/commandregistry.hpp"
 #include "beekeeper/debug.hpp"
+#include "beekeeper/util.hpp"
 
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -15,12 +16,12 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <sstream>
 
-// Add this at the top (after includes)
 HelperObject::HelperObject(QObject *parent)
     : QObject(parent)
 {
-    // no-op
+    run_autostart_tasks();
 }
 
 // Converts QVariantMap -> std::map<std::string, std::string>
@@ -46,6 +47,29 @@ convert_subjects(const QStringList &subjects)
     return out;
 }
 
+void HelperObject::run_autostart_tasks()
+{
+    const char *flag_file = "/tmp/.beekeeper/already-ran";
+    std::ifstream check_flag(flag_file);
+    if (check_flag.good())
+        return; // Already ran
+
+    std::vector<std::string> uuids = bk_util::list_uuids_in_autostart();
+
+    for (const std::string &uuid_str : uuids) {
+        QString uuid = QString::fromStdString(uuid_str);
+        QVariantMap empty_options;
+        QStringList subject;
+        subject << uuid;
+        ExecuteCommand("start", empty_options, subject);
+    }
+
+    std::ofstream flag_out(flag_file);
+    flag_out << "1\n";
+
+    DEBUG_LOG("[beekeeper-helper] Autostart tasks completed");
+}
+
 QVariantMap
 HelperObject::ExecuteCommand(const QString &verb,
                              const QVariantMap &options,
@@ -59,9 +83,11 @@ HelperObject::ExecuteCommand(const QString &verb,
     std::map<std::string, std::string> opts_std = convert_options(options);
     std::vector<std::string> subs_std = convert_subjects(subjects);
 
+    /*
     DEBUG_LOG("[beekeeper-helper] Received command verb: ", verb_std);
     DEBUG_LOG("[beekeeper-helper] Options size: ", std::to_string(opts_std.size()));
     DEBUG_LOG("[beekeeper-helper] Subjects size: ", std::to_string(subs_std.size()));
+    */
 
     // Find handler in registry
     auto it = std::find_if(command_registry.begin(), command_registry.end(),

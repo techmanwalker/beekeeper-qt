@@ -1,9 +1,11 @@
+#include "dedupstatusmanager.hpp"
 #include "keyboardnav.hpp"
 #include "mainwindow.hpp"
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
 #include <QHeaderView>
+#include <QMenuBar>
 #include <QPalette>
 #include <QTableWidget>
 
@@ -45,6 +47,43 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
     auto buttons = toolbarButtons();
 
     // ---------------------------------------------------
+    // Global shortcuts
+    // ---------------------------------------------------
+    if (ke->key() == Qt::Key_F10) {
+        QMenuBar *bar = mainWindow->menuBar();
+        if (bar && !bar->actions().isEmpty()) {
+            // Activate the first menu (usually File)
+            bar->setActiveAction(bar->actions().first());
+            bar->actions().first()->menu()->popup(bar->mapToGlobal(QPoint(0, bar->height())));
+        }
+        return true;
+    }
+
+    if (ke->modifiers() & Qt::AltModifier) {
+        QMenuBar *bar = mainWindow->menuBar();
+
+        if (ke->key() == Qt::Key_F) { // Alt+F
+            QAction *file_act = bar->actions().first(); // assuming File is first
+            bar->setActiveAction(file_act);
+            if (file_act->menu())
+                file_act->menu()->popup(bar->mapToGlobal(QPoint(0, bar->height())));
+            return true;
+        }
+        else if (ke->key() == Qt::Key_H) { // Alt+H
+            QAction *help_act = bar->actions().last(); // assuming Help is last
+            bar->setActiveAction(help_act);
+            if (help_act->menu())
+                help_act->menu()->popup(bar->mapToGlobal(QPoint(0, bar->height())));
+            return true;
+        }
+    }
+
+    if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_Q) {
+        QApplication::closeAllWindows(); // close app
+        return true;
+    }
+
+    // ---------------------------------------------------
     // Escape key hierarchy
     // ---------------------------------------------------
     if (ke->key() == Qt::Key_Escape) {
@@ -80,7 +119,8 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
             if (sel->hasSelection()) {
                 sel->clearSelection();
                 last_selected_row = -1;
-                updateStatusBar();
+                update_status_bar();
+                mainWindow->statusBar->showMessage(tr("Press Esc again to exit beekeeper-qt."));
             } else {
                 // No selection or already cleared → close app
                 QApplication::closeAllWindows(); // Alt+F4 behavior
@@ -140,7 +180,7 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
                     if (sel->hasSelection()) {
                         sel->clearSelection();
                         last_selected_row = -1;
-                        updateStatusBar();
+                        update_status_bar();
                     }
                 }
             }
@@ -177,11 +217,11 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
             return true;
         case Qt::Key_Enter:
         case Qt::Key_Return:
+        case Qt::Key_Space:
             selectHover(ke->modifiers() & Qt::ShiftModifier,
                         ke->modifiers() & Qt::ControlModifier);
-            return true;
-        case Qt::Key_Space:
             activateToolbar(); // move focus & highlight first enabled button
+            return true;
             return true;
         case Qt::Key_Left:
         case Qt::Key_Right:
@@ -239,25 +279,14 @@ void KeyboardNav::moveHover(int delta)
 
     // Update visual hover & notify MainWindow
     highlightRow(new_row);
-    updateStatusBar();
+    update_status_bar();
 
     // Only show toolbar hint if more than 1 row exists
     if (hit_edge && rowCount > 1) {
-        QString temp_msg = tr("Do you want to access the toolbar? Press Enter or Space.");
-
-        // Cache current status bar
-        status_cache = mainWindow->statusBar->currentMessage();
-        last_temp_status = temp_msg;
-
-        mainWindow->statusBar->showMessage(temp_msg);
-
-        // Restore cached message after 2 seconds if not overwritten
-        QTimer::singleShot(2000, [this, temp_msg]() {
-            if (!mainWindow) return;
-            if (mainWindow->statusBar->currentMessage() == temp_msg) {
-                mainWindow->statusBar->showMessage(status_cache);
-            }
-        });
+        mainWindow->set_temporal_status_message(
+            tr("Do you want to access the toolbar? Press Enter or Space."),
+            2000
+        );
     }
 }
 
@@ -292,7 +321,7 @@ void KeyboardNav::selectHover(bool shift, bool ctrl)
     }
 
     last_selected_row = keyboard_hover_row;
-    updateStatusBar();
+    update_status_bar();
 }
 
 // Highlight keyboard hovered row
@@ -314,7 +343,9 @@ void KeyboardNav::highlightRow(int row)
     if (row < 0 || row >= table->rowCount()) return;
 
     QPalette pal = table->palette();
-    QColor highlight = pal.color(QPalette::Midlight); // lighter for inactive effect
+    QPalette inactivePal = pal;
+    inactivePal.setCurrentColorGroup(QPalette::Inactive);
+    QColor highlight = inactivePal.color(QPalette::Highlight); // lighter for inactive effect
 
     for (int col = 0; col < table->columnCount(); ++col) {
         QTableWidgetItem *item = table->item(row, col);
@@ -340,8 +371,10 @@ void KeyboardNav::highlightButton(QWidget *btn)
     }
 
     // Apply midlight only to current button
-    QPalette pal = btn->palette();
-    QColor highlight = pal.color(QPalette::Midlight);
+    QPalette pal = mainWindow->fs_table->palette();
+    QPalette inactivePal = pal;
+    inactivePal.setCurrentColorGroup(QPalette::Inactive);
+    QColor highlight = inactivePal.color(QPalette::Highlight); // lighter for inactive effect
     btn->setStyleSheet(QString("background-color: %1").arg(highlight.name()));
     btn->update();
 
@@ -367,7 +400,7 @@ void KeyboardNav::selectAll()
 
     table->selectAll();
     last_selected_row = keyboard_hover_row;
-    updateStatusBar();
+    update_status_bar();
 }
 
 //---------------------------------------------------------
@@ -416,7 +449,7 @@ void KeyboardNav::copyUUIDs()
 //---------------------------------------------------------
 // Wrapper to update status bar in MainWindow
 //---------------------------------------------------------
-void KeyboardNav::updateStatusBar()
+void KeyboardNav::update_status_bar()
 {
     if (!mainWindow) return;
 
@@ -431,10 +464,16 @@ QList<QWidget*> KeyboardNav::toolbarButtons()
     QList<QWidget*> buttons;
     if (!mainWindow) return buttons;
 
+    // Include all buttons including autostart
     buttons << mainWindow->refresh_btn
             << mainWindow->start_btn
             << mainWindow->stop_btn
             << mainWindow->setup_btn
+            << mainWindow->add_autostart_btn
+            << mainWindow->remove_autostart_btn
+            #ifdef BEEKEEPER_DEBUG_LOGGING
+            << mainWindow->showlog_btn
+            #endif
             << mainWindow->remove_btn;
 
     return buttons;

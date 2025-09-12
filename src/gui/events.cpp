@@ -7,7 +7,7 @@ MainWindow::update_status_bar()
 {
     if (!fs_table || !statusBar) return; // <-- avoids crash at startup
 
-    int selected_count = selected_rows_count();
+    int selected_count = refresh_fs_helpers::selected_rows_count(fs_table);
 
     // New: peek hovered UUID even when multiple selections
     if (selected_count > 1 && !current_hovered_uuid.isEmpty()) {
@@ -34,7 +34,7 @@ MainWindow::eventFilter(QObject *obj, QEvent *event)
     if (!fs_table || !statusBar) return false;
 
     QString message;
-    int selected_count = selected_rows_count();
+    int selected_count = refresh_fs_helpers::selected_rows_count(fs_table);
 
     // -------------------------------------------------
     // Table hover handling

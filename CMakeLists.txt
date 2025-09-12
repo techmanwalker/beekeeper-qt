@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # ------------------------------
 # Qt6
 # ------------------------------
@@ -97,6 +99,7 @@ target_include_directories(beekeeper PUBLIC
 add_executable(beekeeperman
     src/cli/beekeeperman.cpp
     src/cli/commandmachine/parser.cpp
+    src/cli/commandregistry.cpp
     src/cli/handlers.cpp
     src/core/util.cpp
 )
@@ -146,6 +149,8 @@ add_executable(beekeeper-helper
     ${POLKIT_SRCS}
     src/polkit/beekeeper-helper.cpp
     src/cli/handlers.cpp
+    src/cli/commandregistry.cpp
+    src/cli/commandmachine/parser.cpp
 )
 target_include_directories(beekeeper-helper PRIVATE
     ${BUILD_INCLUDE_DIR}
@@ -300,6 +305,30 @@ if(BUILD_TESTS)
             target_compile_definitions(${TEST_NAME} PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
         endif()
     endforeach()
+endif()
+
+# ------------------------------
+# Automatic documentation
+# ------------------------------
+if(MAKE_DOCS)
+    find_package(Doxygen)
+
+    if(DOXYGEN_FOUND)
+        set(DOXYGEN_IN  ${CMAKE_SOURCE_DIR}/Doxyfile.in)
+        set(DOXYGEN_OUT ${CMAKE_BINARY_DIR}/Doxyfile)
+
+        # Configure Doxyfile with CMake variables
+        configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+
+        add_custom_target(doc
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating API documentation with Doxygen"
+            VERBATIM
+        )
+    else()
+        message(WARNING "Doxygen not found: documentation target will not be available")
+    endif()
 endif()
 
 # ------------------------------

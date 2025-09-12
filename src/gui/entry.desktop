@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Beekeeper GUI
+Name=beekeeper-qt
 Comment=Manage Beesd deduplication engine
 Exec=beekeeper-qt
 Icon=text-plain

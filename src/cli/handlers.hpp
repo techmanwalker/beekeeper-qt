@@ -54,5 +54,9 @@ int
 handle_locate(const std::map<std::string, std::string>& options,
               const std::vector<std::string>& subjects);
 
+int
+handle_autostartctl(const std::map<std::string, std::string> &options,
+            const std::vector<std::string> &subjects);
+
 } // namespace cli
 } // namespace beekeeper

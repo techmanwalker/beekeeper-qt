@@ -16,6 +16,9 @@ class HelperObject : public QObject, protected QDBusContext
 public:
     HelperObject(QObject *parent = nullptr);
 
+private:
+    void run_autostart_tasks();
+
 public slots:
     // ExecuteCommand: (s, a{ss}, as) -> a{ss}
     QVariantMap ExecuteCommand(const QString &verb, const QVariantMap &options, const QStringList &subjects);

@@ -20,8 +20,6 @@ public:
     // Install event filters / shortcuts
     void init();
 
-    static QString help_text(); // function, returns translated string
-
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
@@ -44,7 +42,7 @@ private:
     void selectAll();
     void activateToolbar();
     void copyUUIDs();
-    void updateStatusBar();             // Wrapper to call MainWindow::update_status_bar() properly
+    void update_status_bar();             // Wrapper to call MainWindow::update_status_bar() properly
 
     QList<QWidget*> toolbarButtons();   // Convenience for navigating buttons
 };

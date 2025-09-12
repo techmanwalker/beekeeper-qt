@@ -11,6 +11,7 @@
 //   SetupDialog dlg(selectedUuids, this);
 //   if (dlg.exec() == QDialog::Accepted) { /* setup completed */ }
 //
+#include <QComboBox>
 #include <QDialog>
 #include <QStringList>
 #include "../polkit/multicommander.hpp"
@@ -35,7 +36,7 @@ private slots:
 
 private:
     QStringList m_uuids;
-    QLineEdit *m_dbSizeEdit = nullptr;
+    QComboBox *m_dbSizeCombo = nullptr;
     QPushButton *m_acceptBtn = nullptr;
     QPushButton *m_cancelBtn = nullptr;
 };

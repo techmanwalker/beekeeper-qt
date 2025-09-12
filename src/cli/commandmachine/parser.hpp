@@ -1,11 +1,9 @@
-// src/cli/commandmachine/parser.cpp
-#include "../../../include/beekeeper/commandmachine.hpp"
+// src/cli/commandmachine/parser.hpp
+#include "beekeeper/commandmachine.hpp"
 #include <iostream>
 #include <cctype>
 
 namespace commandmachine {
-
-namespace {
 
 /**
  * command_parser_impl - The concrete implementation of the command parser
@@ -38,6 +36,14 @@ public:
     int
     parse(const std::vector<command>& commands, 
               int argc, char* argv[]) override;
+    
+        /**
+     * print_help - Display help information for all commands
+     * 
+     * @param commands command registry to display
+     */
+    void
+    print_help(const std::vector<command>& commands);
 
 private:
     /**
@@ -119,17 +125,8 @@ private:
                         const std::string& token,
                         int& i, int argc, char* argv[]);
 
-
-    /**
-     * print_help - Display help information for all commands
-     * 
-     * @param commands command registry to display
-     */
-    void
-    print_help(const std::vector<command>& commands);
     
     std::string program_name;  // Store program name for help messages
 };
 
-} // anonymous namespace
 } // namespace commandmachine

@@ -1,12 +1,7 @@
-#include "../keyboardnav.hpp"
-#include "keyboardnavhelp.hpp"
-#include "../mainwindow.hpp"
-#include <QString>
-#include <QTextBlock>
-#include <QTextEdit>
-#include <QTextList>
+#include "texts.hpp"
 
-QString KeyboardNav::help_text()
+QString
+helptexts::keyboardnav ()
 {
     return tr("# Keyboard navigation in beekeeper-qt") + "\n\n"
         + tr("## 1. Table navigation") + "\n"
@@ -42,44 +37,18 @@ QString KeyboardNav::help_text()
         + tr("Summary: The keyboard navigation system separates highlight (hover-like visual feedback) from selection. The table handles moving the highlight and selecting filesystems, while the toolbar handles button activation and cyclic navigation. Tab consolidates horizontal toolbar movement without affecting table selection.");
 }
 
-KeyboardNavHelpDialog::KeyboardNavHelpDialog(QWidget *parent)
-    : QDialog(parent)
+QString
+helptexts::what_is_beekeeper_qt()
 {
-    setWindowTitle(tr("Keyboard Navigation Help"));
-    setModal(true);
-    resize(600, 500);
-
-    QVBoxLayout *layout = new QVBoxLayout(this);
-
-    QTextEdit *text_area = new QTextEdit(this);
-    text_area->setReadOnly(true);
-    layout->addWidget(text_area);
-
-    setupTextArea(text_area);
-
-    QPushButton *ok_btn = new QPushButton(tr("Accept"), this);
-    connect(ok_btn, &QPushButton::clicked, this, &QDialog::accept);
-    layout->addWidget(ok_btn);
-
-    setLayout(layout);
-}
-
-void KeyboardNavHelpDialog::setupTextArea(QTextEdit *text_area)
-{
-    text_area->setMarkdown(KeyboardNav::help_text());
-    text_area->setReadOnly(true);
-
-    // Estilo CSS para listas y spacing
-    QString style = R"(
-        ul {
-            margin-left: 20px;      /* left margin */
-            margin-right: 10px;     /* right margin */
-            padding-left: 0px;      /* avoid extra padding */
-        }
-        ul li {
-            font-size: 10pt;        /* bullet size */
-            line-height: 1.4;       /* line height */
-        }
-    )";
-    text_area->document()->setDefaultStyleSheet(style);
+    return tr("# What is beekeeper-qt?") + "\n\n"
+        + tr("**beekeeper-qt**, with the help of another program called ``beesd``, scans your entire filesystem for redundancies and duplicate content beyond the file level—at the block level. "
+             "beekeeper-qt can remove repeating data patterns inside files, outside files, and even across your whole disk; in other words, it **deduplicates** unnecessary data to free up disk space.") + "\n\n"
+        + tr("Combined with *transparent compression* (not yet implemented in beekeeper-qt), it can reduce disk usage by up to 50%, because patterns that commonly repeat in executables get deduplicated. "
+             "Wine prefixes used to install Windows programs and games are unified at the disk level, making the prefix overhead practically zero, resulting in more free space.") + "\n\n"
+        + tr("To set it up, just press the **Setup** button in the toolbar and hit Enter.") + "\n\n"
+        + tr("The first time it runs, depending on how much space is used, your CPU may reach nearly 100%, which will drop once your entire disk has been scanned and deduplicated. "
+             "At first, your free space may temporarily decrease because the hash table ``beesd`` uses for deduplication has to be refreshed. "
+             "When transparent compression is implemented, a warning will inform you that CPU usage will increase depending on your current disk usage, but during normal use, CPU usage will be minimal—unless you move large amounts of data frequently, in which case, it is recommended to deduplicate only when not actively using your system.") + "\n\n"
+        + tr("Press the **+** button to have beekeeper-qt start deduplicating your filesystems on system boot.") + "\n\n"
+        + tr("__\"Storage is cheap in the big 2025, they say... Pfft.\"__");
 }

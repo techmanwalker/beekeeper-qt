@@ -1,8 +1,8 @@
-#include "../../include/beekeeper/beesdmgmt.hpp"
-#include "../../include/beekeeper/btrfsetup.hpp"
-#include "../../include/beekeeper/internalaliases.hpp" // required for bk_mgmt and bk_util
-#include "../../include/beekeeper/debug.hpp"
-#include "../../include/beekeeper/util.hpp"
+#include "beekeeper/beesdmgmt.hpp"
+#include "beekeeper/btrfsetup.hpp"
+#include "beekeeper/internalaliases.hpp" // required for bk_mgmt and bk_util
+#include "beekeeper/debug.hpp"
+#include "beekeeper/util.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -19,125 +19,285 @@ namespace fs = std::filesystem;
 
 // -- LOGGING --
 
-// Global map to track logger PIDs
-static std::map<std::string, pid_t> logger_pids;
-static std::mutex logger_mutex;
-
-// Helper: Get PID file path for UUID
-static std::string
-get_pid_path (const std::string& uuid)
-{
-    return "/var/run/beesd-" + uuid + ".pid";
-}
-
 // Helper: Get log directory path
-static std::string
-get_log_dir ()
+std::string
+bk_mgmt::get_log_dir ()
 {
     return "/var/log/beesd/";
 }
 
 // Helper: Get log file path
-static std::string
-get_log_path (const std::string& uuid)
+std::string
+bk_mgmt::get_log_path (const std::string& uuid)
 {
-    return "/var/log/beesd/" + uuid + ".log";
+    return get_log_dir() + uuid + ".log";
 }
 
 // Helper: Create log directory if needed
-static void
-ensure_log_dir ()
+void
+bk_mgmt::ensure_log_dir ()
 {
-    std::string log_dir = get_log_dir();
+    std::string log_dir = bk_mgmt::get_log_dir();
     if (!bk_util::file_exists(log_dir)) {
         fs::create_directories(log_dir);
-        fs::permissions(log_dir, fs::perms::owner_all);
+        // Owner: rwx, Group: r-x, Others: r-x
+        fs::permissions(
+            log_dir,
+            fs::perms::owner_all |
+            fs::perms::group_read | fs::perms::group_exec |
+            fs::perms::others_read | fs::perms::others_exec,
+            fs::perm_options::replace
+        );
     }
 }
 
-// Helper: Start logger process
-static pid_t
-start_logger (const std::string& uuid, const std::string& log_path)
+void
+bk_mgmt::clear_log_file_for_uuid(const std::string &uuid)
 {
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
-        return -1;
-    }
-
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Logger process
-        close(pipefd[1]);  // Close write end
-        
-        // Open log file (create new/truncate existing)
-        int log_fd = open(log_path.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0600);
-        if (log_fd < 0) {
-            exit(EXIT_FAILURE);
+    std::string log_path = bk_mgmt::get_log_path(uuid);
+    if (bk_util::file_exists(log_path)) {
+        try {
+            if (fs::remove(log_path)) {
+                DEBUG_LOG("Successfully removed old log file: ", log_path);
+            } else {
+                DEBUG_LOG("Failed to remove log file: ", log_path);
+                std::cerr << "Warning: Failed to remove existing log file: " << log_path << std::endl;
+            }
+        } catch (const fs::filesystem_error &e) {
+            DEBUG_LOG("Exception removing log: ", e.what());
+            std::cerr << "Warning: Failed to remove log file: " << e.what() << std::endl;
         }
-        
-        char buffer[4096];
-        ssize_t count;
-        
-        // Perform the read operation
-        while ((count = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
-            // Write the data we just read
-            write(log_fd, buffer, count);
-        }
-        
-        close(pipefd[0]);
-        close(log_fd);
-        exit(EXIT_SUCCESS);
-    } else if (pid > 0) {
-        // Parent process - start beesd
-        close(pipefd[0]);  // Close read end
-        
-        pid_t beesd_pid = fork();
-        if (beesd_pid == 0) {
-            // Beesd process
-            dup2(pipefd[1], STDOUT_FILENO);
-            dup2(pipefd[1], STDERR_FILENO);
-            close(pipefd[1]);
-            
-            execlp("beesd", "beesd", uuid.c_str(), (char*)NULL);
-            exit(EXIT_FAILURE);
-        } else {
-            close(pipefd[1]);
-            return pid;  // Return logger PID
-        }
-    }
-    return -1;
-}
-
-// Stop logger process
-static void
-stop_logger(const std::string& uuid)
-{
-    std::lock_guard<std::mutex> lock(logger_mutex);
-    auto it = logger_pids.find(uuid);
-    if (it != logger_pids.end()) {
-        kill(-it->second, SIGTERM);  // Kill entire process group
-        waitpid(it->second, nullptr, 0);
-        logger_pids.erase(it);
     }
 }
 
 // -- END LOGGING --
 
-// Helper: Clean up PID file for UUID
-static void
-clean_pid_file (const std::string& uuid)
+// ----- PID FILE MANAGEMENT -----
+
+// Helper: Get PID file path for UUID
+std::string
+bk_mgmt::get_pid_path (const std::string& uuid)
 {
-    std::string pidfile = get_pid_path(uuid);
+    return "/var/run/beesd-" + uuid + ".pid";
+}
+
+// Helper: Clean up PID file for UUID
+void
+bk_mgmt::clean_pid_file (const std::string& uuid)
+{
+    std::string pidfile = bk_mgmt::get_pid_path(uuid);
     if (bk_util::file_exists(pidfile)) {
         fs::remove(pidfile);
     }
 }
 
-// Helper: Find the PID of the bees worker process for a given UUID
-static pid_t
-find_bees_worker_pid (const std::string& uuid)
+bool
+bk_mgmt::check_if_pidfile_process_is_running(const std::string &pidfile)
 {
-    std::string cmd = "ps aux | grep -e 'bees' | grep '" + uuid + "' | grep -v beekeeper | grep -v beesstatus | grep -v grep";
+    // Check if the pidfile exists
+    if (!bk_util::file_exists(pidfile)) return false;
+
+    std::ifstream in(pidfile);
+    pid_t pid = 0;
+    if (!(in >> pid) || pid <= 0) {
+        // Empty or invalid pidfile → immediately false
+        clean_pid_file(pidfile);
+        return false;
+    }
+
+    // kill with signal 0 checks if the process exists
+    if (kill(pid, 0) == 0 && verify_beesd_process(pid)) {
+        return true;
+    }
+
+    // Cleanup stale pidfile
+    clean_pid_file(pidfile);
+    return false;
+}
+
+// Wait for pid file process to start or stop
+
+bool
+bk_mgmt::wait_for_pid_file_process_to_start(const std::string &pidfile, int retries, int usleep_microseconds, pid_t fork_pid)
+{
+    for (int i = 0; i < retries; ++i) {
+        if (check_if_pidfile_process_is_running(pidfile)) {
+            // Reap the forked child (if still around)
+            if (fork_pid > 0) {
+                // Non-blocking reap
+                waitpid(fork_pid, nullptr, WNOHANG);
+            }
+
+            // Small sleep after confirming start
+            usleep(usleep_microseconds);
+            return true;
+        }
+
+        usleep(usleep_microseconds);
+    }
+
+    // Final reap attempt even if process never appeared
+    if (fork_pid > 0) {
+        waitpid(fork_pid, nullptr, WNOHANG);
+    }
+
+    return false;
+}
+
+bool
+bk_mgmt::wait_for_pid_file_process_to_stop(const std::string &pidfile, int retries, int usleep_microseconds)
+{
+    for (int i = 0; i < retries; ++i) {
+        if (!check_if_pidfile_process_is_running(pidfile)) return true;
+        usleep(usleep_microseconds);
+    }
+    return false;
+}
+
+void
+bk_mgmt::write_pid_file_for_uuid(const std::string &uuid, pid_t pid)
+{
+    std::string pidfile = get_pid_path(uuid);
+    std::ofstream out(pidfile);
+    if (out) {
+        out << pid;
+        DEBUG_LOG("PID ", pid, " written to ", pidfile);
+    } else {
+        DEBUG_LOG("Failed to write PID file: ", pidfile);
+        std::cerr << "Warning: Failed to create PID file: " << pidfile << std::endl;
+    }
+}
+
+bool
+bk_mgmt::kill_pidfile_process(const std::string &pidfile, int sig, int wait_retries, int wait_usleep)
+{
+    if (!bk_util::file_exists(pidfile)) return false;
+
+    std::ifstream in(pidfile);
+    pid_t pid;
+    if (!(in >> pid)) return false;
+
+    bool killed = false;
+
+    // First attempt: send the desired signal
+    if (kill(pid, sig) == 0) {
+        for (int i = 0; i < wait_retries; ++i) {
+            if (!check_if_pidfile_process_is_running(pidfile)) {
+                killed = true;
+                break;
+            }
+            usleep(wait_usleep);
+        }
+    }
+
+    // Force kill if not stopped yet
+    if (!killed) {
+        kill(pid, SIGKILL);
+        waitpid(pid, nullptr, 0);
+        killed = true;
+    }
+
+    // Cleanup pidfile
+    clean_pid_file(pidfile);
+    return killed;
+}
+
+// ----- END OF PID FILE MANAGEMENT -----
+
+// ----- AUTOSTART CONTROL -----
+void
+bk_mgmt::add_uuid_to_autostart(const std::string &uuid)
+{
+    if (uuid.empty())
+        return;
+
+    // Read existing lines if file exists
+    std::vector<std::string> lines;
+    if (std::filesystem::exists(cfg_file)) {
+        std::ifstream infile(cfg_file);
+        std::string line;
+        while (std::getline(infile, line)) {
+            line = bk_util::trim_string(line);
+            if (!line.empty())
+                lines.push_back(line);
+        }
+        infile.close();
+    }
+
+    if (std::find(lines.begin(), lines.end(), uuid) != lines.end())
+        return; // Already present
+
+    // Ensure the parent directory exists
+    std::filesystem::create_directories(std::filesystem::path(cfg_file).parent_path());
+
+    // Append new UUID (this will create the file if it didn't exist)
+    std::ofstream outfile(cfg_file, std::ios::app);
+    if (!outfile.is_open())
+        return;
+
+    outfile << uuid << "\n";
+    outfile.close();
+
+    // Make file world-readable
+    std::filesystem::permissions(cfg_file,
+        std::filesystem::perms::owner_read |
+        std::filesystem::perms::owner_write |
+        std::filesystem::perms::group_read |
+        std::filesystem::perms::others_read,
+        std::filesystem::perm_options::add);
+}
+
+
+void
+bk_mgmt::remove_uuid_from_autostart(const std::string &uuid)
+{
+    if (uuid.empty())
+        return;
+
+    if (!bk_util::is_uuid_in_autostart(uuid))
+        return;
+
+    std::vector<std::string> lines;
+    if (std::filesystem::exists(cfg_file)) {
+        std::ifstream infile(cfg_file);
+        std::string line;
+        while (std::getline(infile, line)) {
+            line = bk_util::trim_string(line);
+            if (!line.empty() && line != uuid)
+                lines.push_back(line);
+        }
+        infile.close();
+    }
+
+    std::ofstream outfile(cfg_file, std::ios::trunc);
+    if (!outfile.is_open())
+        return;
+
+    for (const auto &l : lines)
+        outfile << l << "\n";
+    outfile.close();
+}
+
+// ----- END OF AUTOSTART CONTROL -----
+
+/**
+ * @brief Find the PID of the bees daemon or its worker process for a given UUID.
+ *
+ * This function searches for the process corresponding to the given UUID.
+ * Depending on the `find_worker_pid` flag, it can either return:
+ *   - the main beesd daemon PID (`find_worker_pid == false`)
+ *   - the child worker bees process PID (`find_worker_pid == true`)
+ *
+ * @param uuid The UUID associated with the beesd process.
+ * @param find_worker_pid If true, search for the child worker bees process; otherwise, search for the main beesd daemon.
+ * @return The PID of the matching process, or 0 if not found.
+ */
+pid_t
+bk_mgmt::find_beesd_process (const std::string& uuid, bool find_worker_pid)
+{
+    std::string cmd = std::string("ps aux | grep -e ") + (find_worker_pid ? "bees" : "beesd") +
+                    " | grep '" + uuid + "' | grep -v beekeeper | grep -v beesstatus | grep -v defunct | grep -v grep";
+
     std::string output = bk_util::exec_command(cmd.c_str()).stdout_str;
     
     if (output.empty()) {
@@ -153,25 +313,7 @@ find_bees_worker_pid (const std::string& uuid)
     
     // Only process the first line of output
     if (std::getline(iss, line)) {
-        // String copy to cut it freely
-        std::string pid_str = line;
-
-        // Shove off the first token
-        size_t start = line.find_first_of(" \t");
-        if (start == std::string::npos) {
-            return 0;  // Empty line
-        }
-        pid_str = pid_str.substr(start);
-
-        // Trim whitespace
-        pid_str = bk_util::trim_string(pid_str);
-        
-        // Find first whitespace after PID to shove off everything else
-        size_t end = pid_str.find_first_of(" \t", start);
-        if (end == std::string::npos) {
-            end = line.length();
-        }
-        pid_str = pid_str.substr(0, end);
+        std::string pid_str = bk_util::get_second_token(line);
         
         // Extract PID substring
         DEBUG_LOG("Found candidate PID: ", pid_str);
@@ -190,8 +332,8 @@ find_bees_worker_pid (const std::string& uuid)
 }
 
 // Helper: verify that PID is actually a beesd process
-static bool
-verify_beesd_process(pid_t pid) {
+bool
+bk_mgmt::verify_beesd_process(pid_t pid) {
     std::string proc_path = "/proc/" + std::to_string(pid);
     if (!bk_util::file_exists(proc_path)) {
         DEBUG_LOG("Process directory does not exist for PID: ", pid);
@@ -211,160 +353,149 @@ verify_beesd_process(pid_t pid) {
         std::replace(cmdline.begin(), cmdline.end(), '\0', ' ');
         
         // Look for any bees-related process
-        DEBUG_LOG("Command line for PID ", pid, ": ", cmdline);
+        // DEBUG_LOG("Command line for PID ", pid, ": ", cmdline);
         return cmdline.find("bees") != std::string::npos;
     }
     return false;
 }
 
+// Overload: verify that the process in a PID file is actually a beesd process
+bool
+bk_mgmt::verify_beesd_process(const std::string &pidfile)
+{
+    if (!bk_util::file_exists(pidfile)) {
+        DEBUG_LOG("PID file does not exist: ", pidfile);
+        return false;
+    }
+
+    std::ifstream in(pidfile);
+    if (!in) {
+        DEBUG_LOG("Failed to open PID file: ", pidfile);
+        return false;
+    }
+
+    pid_t pid;
+    if (!(in >> pid)) {
+        DEBUG_LOG("Failed to read PID from file: ", pidfile);
+        return false;
+    }
+
+    return verify_beesd_process(pid);
+}
+
+
+// --------------- THE TOP GLOBALS (literally) ---------------
+
+
+
+
+
 // Start beesd daemon using UUID
 bool
-bk_mgmt::beesstart (const std::string& uuid, bool enable_logging)
+bk_mgmt::beesstart(const std::string& uuid, bool enable_logging)
 {
     DEBUG_LOG("==== Starting beesd for UUID: ", uuid, " ====");
     DEBUG_LOG("Logging enabled: ", (enable_logging ? "yes" : "no"));
-    
+
     // Check for root privileges
     if (!bk_util::is_root()) {
-        std::cerr << "Error: beesstsart requires root privileges. Please run with sudo." << std::endl;
+        std::cerr << "Error: beesstart requires root privileges. Please run with sudo." << std::endl;
+        return false;
+    }
+
+    // Check if configuration exists
+    std::string config_path = btrfstat(uuid);
+    if (config_path.empty()) {
+        std::cerr << "Error: UUID " << uuid << " is not configured. "
+                  << "Please run 'sudo beekeeperman setup " << uuid << "' first." 
+                  << std::endl;
         return false;
     }
 
     // Check if already running
-    std::string status = bk_mgmt::beesstatus(uuid);
-    DEBUG_LOG("Current status: ", status);
-    if (status == "running") {
-        std::cerr << "Warning: There is already a running instance for " 
+    if (beesstatus(uuid) == "running") {
+        std::cerr << "Warning: There is already a running instance for "
                   << uuid << ". Ignoring start request." << std::endl;
         return true;
     }
-    
-    // Clean up any old PID file
+
+    // Clean up any old PID file and logs
     clean_pid_file(uuid);
     ensure_log_dir();
+    clear_log_file_for_uuid(uuid);
 
-    // Always remove existing log file before starting
-    std::string log_path = get_log_path(uuid);
-    if (bk_util::file_exists(log_path)) {
-        DEBUG_LOG("Found existing log file - removing");
-        try {
-            if (fs::remove(log_path)) {
-                DEBUG_LOG("Successfully removed old log file");
-            } else {
-                DEBUG_LOG("Failed to remove log file");
-                std::cerr << "Warning: Failed to remove existing log file: " 
-                          << log_path << std::endl;
-            }
-        } catch (const fs::filesystem_error& e) {
-            DEBUG_LOG("Exception removing log: ", e.what());
-            std::cerr << "Warning: Failed to remove log file: " 
-                      << e.what() << std::endl;
-        }
-    } else {
-        DEBUG_LOG("No existing log file found");
+    // === Double-fork to detach ===
+    pid_t pid = fork();
+    if (pid < 0) {
+        DEBUG_LOG("fork() failed: ", strerror(errno));
+        return false;
     }
-    
-    // Only create logs when explicitly enabled due to their huge size
-    // (300 MB+ for short runs)
-    if (enable_logging) {
-        // Start logger process
-        std::lock_guard<std::mutex> lock(logger_mutex);
-        pid_t logger_pid = start_logger(uuid, log_path);
-        if (logger_pid <= 0) {
-            DEBUG_LOG("Failed to start logger");
-            return false;
+
+    if (pid == 0) {
+        // First child
+        pid_t gpid = fork();
+        if (gpid < 0) {
+            DEBUG_LOG("second fork() failed: ", strerror(errno));
+            exit(EXIT_FAILURE);
         }
-        
-        logger_pids[uuid] = logger_pid;
-        DEBUG_LOG("Logger started with PID: ", logger_pid);
-        
-        // Write PID to file
-        std::string pidfile = get_pid_path(uuid);
-        std::ofstream out(pidfile);
-        if (out) {
-            out << logger_pid;
-            DEBUG_LOG("PID written to file: ", pidfile);
-        } else {
-            DEBUG_LOG("Failed to write PID file: ", pidfile);
-            std::cerr << "Warning: Failed to create PID file: " << pidfile << std::endl;
-        }
-        
-        return true;
-    } else {
-        // Start without logging
-        pid_t pid = fork();
-        if (pid < 0) {
-            DEBUG_LOG("fork() failed: ", strerror(errno));
-            return false;
-        } else if (pid == 0) {
-            // Child process
-            // Create a temporary log file for startup errors
-            std::string error_log = "/tmp/beesd-start-" + uuid + ".log";
-            int log_fd = open(error_log.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0600);
+
+        if (gpid == 0) {
+            // Grandchild → becomes beesd
+            setsid(); // detach from terminal
+
+            int log_fd = -1;
+            std::string log_path;
+            if (enable_logging) {
+                log_path = get_log_path(uuid);
+                log_fd = open(log_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            } else {
+                log_path = "/tmp/beesd-start-" + uuid + ".log";
+                log_fd = open(log_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
+            }
+
             if (log_fd >= 0) {
                 dup2(log_fd, STDOUT_FILENO);
                 dup2(log_fd, STDERR_FILENO);
                 close(log_fd);
             }
-            
-            execlp("beesd", "beesd", uuid.c_str(), (char*)NULL);
-            
-            // If we get here, exec failed
+
+            execlp("beesd", "beesd", uuid.c_str(), (char*)nullptr);
+
+            // If exec fails
             DEBUG_LOG("execlp() failed: ", strerror(errno));
             exit(EXIT_FAILURE);
-        } else {
-            // Parent process
-            std::string pidfile = get_pid_path(uuid);
-            std::ofstream out(pidfile);
-            if (out) {
-                out << pid;
-                DEBUG_LOG("PID ", pid, " written to ", pidfile);
-            } else {
-                DEBUG_LOG("Failed to write PID file: ", pidfile);
-                std::cerr << "Warning: Failed to create PID file: " << pidfile << std::endl;
-            }
-            
-            // Verify process is running after 300ms for 5 times
-            bool is_running = false;
-            pid_t worker_pid = 0;
-
-            for (int i = 0; i < 5; i++) {
-                usleep(300000);
-                
-                worker_pid = find_bees_worker_pid(uuid);
-                if (worker_pid > 0) {
-                    DEBUG_LOG("Found worker PID: ", worker_pid);
-                    is_running = true;
-                    break;
-                }
-            }
-
-            if (is_running) {
-                // Update PID file with actual worker PID
-                std::ofstream out(pidfile);
-                if (out) {
-                    out << worker_pid;
-                    DEBUG_LOG("Worker PID ", worker_pid, " written to ", pidfile);
-                } else {
-                    DEBUG_LOG("Failed to update PID file with worker PID: ", pidfile);
-                }
-                return true;
-            } else {
-                DEBUG_LOG("Process verification failed");
-                clean_pid_file(uuid);
-                return false;
-            }
-            
-            return true;
         }
-        
-    
+
+        // First child exits immediately → parent will reap it
+        exit(EXIT_SUCCESS);
     }
+
+    // If PID file not updated by beesstatus, make sure we write it
+    pid_t gpid = bk_mgmt::find_beesd_process(uuid, false);
+    if (gpid > 0) {
+        write_pid_file_for_uuid(uuid, gpid);
+        DEBUG_LOG("Grandchild PID ", gpid, " written to pidfile");
+    } else {
+        DEBUG_LOG("Warning: unable to determine grandchild PID for ", uuid);
+    }
+
+    // Wait up to ~5s for PID file to appear
+    wait_for_pid_file_process_to_start(get_pid_path(uuid), 17, 300000);
+
+    // Check status via beesstatus (will internally fallback to find_beesd_process if needed)
+    std::string status = beesstatus(uuid);
+
+    if (status != "running" && status != "running (with logging)") {
+        DEBUG_LOG("Beesd failed to start for UUID: ", uuid);
+        return false;
+    }
+
+    return true;
 }
 
 // Stop beesd daemon using UUID
 bool
-bk_mgmt::beesstop (const std::string& uuid)
+bk_mgmt::beesstop(const std::string& uuid)
 {
     // Check for root privileges
     if (!bk_util::is_root()) {
@@ -372,59 +503,26 @@ bk_mgmt::beesstop (const std::string& uuid)
         return false;
     }
 
-    std::string pidfile = get_pid_path(uuid);
-    bool stopped = false;
-
-    std::lock_guard<std::mutex> lock(logger_mutex);
-    if (logger_pids.find(uuid) != logger_pids.end()) {
-        pid_t pid = logger_pids[uuid];
-        kill(pid, SIGTERM);
-
-        // Non-blocking waitpid loop
-        int status;
-        pid_t result;
-        for (int i = 0; i < 5; i++) { // 5 seconds max wait
-            result = waitpid(pid, &status, WNOHANG);
-            if (result > 0) {
-                stopped = true;
-                break;
-            }
-            usleep(200000); // check every 0.2 seconds
-        }
-
-        if (!stopped) {
-            kill(pid, SIGKILL);
-            waitpid(pid, nullptr, 0); // ensure termination
-            stopped = true;
-        }
-
-        logger_pids.erase(uuid);
+    // If already stopped or never configured, consider it success
+    std::string status = beesstatus(uuid);
+    if (status == "stopped" || status == "unconfigured") {
+        DEBUG_LOG("beesstop: UUID ", uuid, " is already stopped or unconfigured");
         return true;
     }
 
-    // First method: PID file approach
-    if (bk_util::file_exists(pidfile)) {
-        std::ifstream in(pidfile);
-        pid_t pid;
-        if (in >> pid) {
-            if (kill(pid, SIGTERM) == 0) {
-                int status;
-                pid_t result;
-                stopped = false;
-                for (int i = 0; i < 5; i++) { // 5 seconds max
-                    result = waitpid(pid, &status, WNOHANG);
-                    if (result > 0) {
-                        stopped = true;
-                        break;
-                    }
-                    usleep(200000); // 0.2s
-                }
-            }
+    std::string pidfile = get_pid_path(uuid);
+    bool stopped = false;
 
+    // First method: PID file approach
+    if (check_if_pidfile_process_is_running(pidfile)) {
+        kill_pidfile_process(pidfile);
+        if (wait_for_pid_file_process_to_stop(pidfile)) {
+            stopped = true;
+        } else {
+            kill_pidfile_process(pidfile);
+            stopped = wait_for_pid_file_process_to_stop(pidfile);
             if (!stopped) {
-                kill(pid, SIGKILL);
-                waitpid(pid, nullptr, 0);
-                stopped = true;
+                std::cerr << "Beesd process for UUID " << uuid << " failed to stop." << std::endl;
             }
         }
     }
@@ -435,54 +533,52 @@ bk_mgmt::beesstop (const std::string& uuid)
     // Fallback to pkill if PID file method failed
     if (!stopped) {
         std::string cmd = "pkill -f 'beesd .* " + uuid + "'";
-        int status = std::system(cmd.c_str());
-        stopped = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
+        int status_code = std::system(cmd.c_str());
+        stopped = (WIFEXITED(status_code) && WEXITSTATUS(status_code) == 0);
     }
+
+    // Clean logs
+    clear_log_file_for_uuid(uuid);
 
     return stopped;
 }
 
 // Restart beesd daemon
 bool
-bk_mgmt::beesrestart (const std::string& uuid)
+bk_mgmt::beesrestart(const std::string& uuid)
 {
-    return bk_mgmt::beesstop(uuid) && sleep(1) == 0 && beesstart(uuid);
+    if (beesstatus(uuid) == "running") {
+        // Only stop if it's running
+        if (!beesstop(uuid)) {
+            DEBUG_LOG("Failed to stop beesd for UUID ", uuid);
+            return false;
+        }
+        sleep(1); // Wait a bit before starting
+    }
+
+    // Start the daemon (whether it was stopped or just stopped now)
+    return beesstart(uuid);
 }
+
 
 // Check daemon status using UUID
 std::string
 bk_mgmt::beesstatus(const std::string& uuid)
 {
     std::string pidfile = get_pid_path(uuid);
-    std::lock_guard<std::mutex> lock(logger_mutex);
 
     // 1. Check logger processes first
-    auto logger_it = logger_pids.find(uuid);
-    if (logger_it != logger_pids.end()) {
-        pid_t logger_pid = logger_it->second;
-        if (kill(logger_pid, 0) == 0) {
-            return "running (with logging)";
-        } else {
-            // Clean up stale logger entry
-            logger_pids.erase(logger_it);
-        }
-    }
+    // No-op: logging removed temporarily
 
     // 2. Check PID file
-    if (bk_util::file_exists(pidfile)) {
-        std::ifstream in(pidfile);
-        pid_t pid;
-        if (in >> pid) {
-            if (kill(pid, 0) == 0 && verify_beesd_process(pid)) {
-                return "running";
-            } else {
-                clean_pid_file(uuid);
-            }
-        }
+    if (check_if_pidfile_process_is_running(pidfile) && verify_beesd_process(pidfile)) {
+        return std::string("running") + (bk_util::file_exists(get_log_path(uuid)) ? " (with logging)" : "");
+    } else {
+        clean_pid_file(uuid);
     }
 
     // 3. Fallback to system process check
-    pid_t worker_pid = find_bees_worker_pid(uuid);
+    pid_t worker_pid = find_beesd_process(uuid, true);
     if (worker_pid > 0 && verify_beesd_process(worker_pid)) {
         // Update PID file
         std::ofstream out(pidfile);
@@ -505,35 +601,22 @@ bk_mgmt::beesstatus(const std::string& uuid)
 void
 bk_mgmt::beeslog (const std::string& uuid)
 {
-    std::string log_path = get_log_path(uuid);
-    std::string status = bk_mgmt::beesstatus(uuid);
-    
-    if (status.find("running") != std::string::npos) {
-        // Daemon is running
-        if (bk_util::file_exists(log_path)) {
-            std::system(("tail -f \"" + log_path + "\"").c_str());
-        } else {
-            std::cerr << "Warning: Logging is disabled. No live logs available.\n";
-            std::cerr << "Beesd is running and deduplicating your files.\n";
-            std::cerr << "Start with --enable-logging to see live logs.\n";
-        }
-    } else {
-        // Daemon is stopped
-        if (bk_util::file_exists(log_path)) {
-            std::cerr << "Warning: Beesd is not running. Printing last session log...\n";
-            sleep(3);
-            std::system(("cat \"" + log_path + "\"").c_str());
-        } else {
-            std::cerr << "Beesd is not running and there is no log information available.\n";
-            std::cerr << "Start with --enable-logging to enable logging for future sessions.\n";
-        }
-    }
+    // No-op: logging temporarily removed
 }
 
 
 // Clean up PID file
+// Clean up PID file
 void
-bk_mgmt::beescleanlogfiles (const std::string& uuid)
+bk_mgmt::beescleanlogfiles(const std::string& uuid)
 {
-    clean_pid_file(uuid);
+    clear_log_file_for_uuid(uuid);
+
+    // Only clean PID file if beesd is not running
+    std::string status = beesstatus(uuid);
+    if (status == "stopped" || status == "unconfigured") {
+        clean_pid_file(uuid);
+    } else {
+        DEBUG_LOG("beesd is running, not cleaning PID file for UUID ", uuid);
+    }
 }

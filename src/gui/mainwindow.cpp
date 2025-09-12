@@ -12,12 +12,16 @@
 #include "statusdotdelegate.hpp"
 #include "uuidcolumndelegate.hpp"
 
+#include "help/helpdialog.hpp"
+#include "help/texts.hpp"
+
 #include <QApplication>
 #include <QFile>
 #include <QHeaderView>
 #include <QIcon>
 #include <QMenu>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QToolTip>
 #include <QVBoxLayout>
@@ -33,12 +37,23 @@ MainWindow
     start_btn   = new QPushButton(QIcon::fromTheme("media-playback-start"), "");
     stop_btn    = new QPushButton(QIcon::fromTheme("media-playback-stop"), "");
     setup_btn   = new QPushButton(QIcon::fromTheme("system-run"), "");
+    add_autostart_btn = new QPushButton(QIcon::fromTheme("list-add"), "");
+    remove_autostart_btn = new QPushButton(QIcon::fromTheme("list-remove"), "");
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    showlog_btn = new QPushButton(QIcon::fromTheme("text-x-log"), "");
+    #endif
+    remove_btn = new QPushButton(QIcon::fromTheme("user-trash"), "");
     refresh_timer = new QTimer(this);
 
     refresh_btn->setToolTip(tr("Refresh"));
     start_btn->setToolTip(tr("Start"));
     stop_btn->setToolTip(tr("Stop"));
     setup_btn->setToolTip(tr("Setup"));
+    add_autostart_btn->setToolTip(tr("Add selected filesystems to autostart"));
+    remove_autostart_btn->setToolTip(tr("Remove selected filesystems from autostart"));
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    showlog_btn->setToolTip(tr("Show logs"));
+    #endif
 
     setup_ui();
 
@@ -53,10 +68,11 @@ MainWindow
     connect(start_btn,   &QPushButton::clicked, this, &MainWindow::handle_start);
     connect(stop_btn,    &QPushButton::clicked, this, &MainWindow::handle_stop);
     connect(setup_btn,   &QPushButton::clicked, this, &MainWindow::handle_setup);
-
-    // selection change should update the remove button state
-    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &MainWindow::toggle_remove_button_enabled);
+    connect(add_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_add_to_autostart);
+    connect(remove_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_remove_from_autostart);
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    connect(showlog_btn, &QPushButton::clicked, this, &MainWindow::handle_showlog);
+    #endif
 }
 
 void
@@ -69,9 +85,51 @@ MainWindow::setup_ui()
     toolbar->addWidget(refresh_btn);
     toolbar->addWidget(start_btn);
     toolbar->addWidget(stop_btn);
+
+    // --- Separator (optional visual, can be just spacing)
+    int half_btn_width = stop_btn->sizeHint().width() / 2;
+    toolbar->addSpacing(half_btn_width);
+
     toolbar->addWidget(setup_btn);
+    toolbar->addWidget(add_autostart_btn);
+    toolbar->addWidget(remove_autostart_btn);
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    toolbar->addWidget(showlog_btn);
+    #endif
     toolbar->addStretch();
     main_layout->addLayout(toolbar);
+
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+        // Add context menu to Start button
+        start_btn->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(start_btn, &QPushButton::customContextMenuRequested,
+                this, [this](const QPoint &pos) {
+            QMenu menu;
+            QAction *log_act = menu.addAction(tr("Start with logging enabled"));
+
+            connect(log_act, &QAction::triggered, this, [this]() {
+                QString p1 = tr("Logging the Beesd deduplication is very resource intensive and takes a lot of disk space because Beesd logs are massive and only intended for debugging purposes.");
+                QString p2 = tr("It is discouraged to enable it by the normal user, hence that's why this is only visible in the Debug release of beekeeper-qt.");
+                QString p3 = tr("If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much free space you had before and how much you have free now.");
+                QString p4 = tr("Again, this is purely for debugging purposes and otherwise discouraged to enable.");
+                QString p5 = tr("Are you sure you want to continue?");
+
+                QMessageBox::StandardButton reply = QMessageBox::warning(
+                    this,
+                    tr("Warning"),
+                    p1 + "\n\n" + p2 + "\n\n" + p3 + "\n\n" + p4 + "\n\n" + p5,
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::No
+                );
+
+                if (reply == QMessageBox::Yes) {
+                    handle_start(true);
+                }
+            });
+
+            menu.exec(start_btn->mapToGlobal(pos));
+        });
+    #endif
 
     fs_table->setColumnCount(3);
     fs_table->setHorizontalHeaderLabels({tr("UUID"), tr("Name"), tr("Dedup status")});
@@ -113,24 +171,41 @@ MainWindow::setup_ui()
 
 
     QMenu *file_menu = menuBar()->addMenu(tr("&File"));
-
-    // Debugging logs (only enable with CMake flag)
-    #ifdef BEEKEEPER_DEBUG_LOGGING
-    QAction* view_logs_action = new QAction(QIcon::fromTheme("text-x-log"), tr("View debug logs"), this);
-    connect(view_logs_action, &QAction::triggered, this, &MainWindow::showDebugLog);
-    file_menu->addAction(view_logs_action); // developer-only tool
-    #endif
+    file_menu->setObjectName("fileMenu");
 
     // Keep Remove menu action for backward compatibility, but the button is the primary UI.
     QAction *quit_act   = file_menu->addAction(QIcon::fromTheme("application-exit"), tr("Quit"));
 
+    // --- HELP ---
+
     // Add the help dialog
     QMenu *help_menu = menuBar()->addMenu(tr("&Help"));
-    QAction *keyboard_nav_act = help_menu->addAction(tr("Keyboard navigation"));
+    help_menu->setObjectName("helpMenu");
+
+    // Keyboard navigation action
+    QAction *keyboard_nav_act = help_menu->addAction(
+        QIcon::fromTheme("input-keyboard"),   // themed keyboard icon
+        tr("Keyboard navigation")
+    );
     connect(keyboard_nav_act, &QAction::triggered, this, &MainWindow::show_keyboard_nav_help);
 
+    // About beekeeper-qt action
+    QAction *about_act = help_menu->addAction(
+        QIcon::fromTheme("help-about"),       // standard info icon
+        tr("About beekeeper-qt")
+    );
+    connect(about_act, &QAction::triggered, this, [this]() {
+        // Creamos el dialogo con título y mensaje (Markdown)
+        help_dialog *dlg = new help_dialog(
+            this,
+            tr("About beekeeper-qt"),
+            helptexts().what_is_beekeeper_qt()
+        );
+        dlg->exec();
+    });
+    // --- END HELP ---
+
     // In MainWindow::setup_ui(), add a new toolbar button for Remove configuration
-    remove_btn = new QPushButton(QIcon::fromTheme("user-trash"), "");
     remove_btn->setToolTip(tr("Remove configuration file"));
     remove_btn->setEnabled(false); // disabled at startup
     toolbar->addWidget(remove_btn);
@@ -152,6 +227,15 @@ MainWindow::setup_ui()
     connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
             this, &MainWindow::update_status_bar);
 
+    // CPU usage meter on the status bar
+    cpu_label = new QLabel("CPU: --%", this);
+    statusBar->addPermanentWidget(cpu_label, 0);
+
+    cpu_timer = new QTimer(this);
+    connect(cpu_timer, &QTimer::timeout, this, &MainWindow::handle_cpu_timer);
+    cpu_timer->start(500); // refresh every 500ms
+
+
     // When root privileged operations are ready, inmediately refresh
     connect(this, &MainWindow::root_shell_ready_signal, this, [this]() {
         DEBUG_LOG("[MainWindow] Root shell ready signal received!");
@@ -160,6 +244,10 @@ MainWindow::setup_ui()
 
     // connect menu action if used
     connect(quit_act, &QAction::triggered, this, &QWidget::close);
+
+    // update button states every time the table selection changes
+    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
+        this, &MainWindow::update_button_states);
 }
 
 void
@@ -170,6 +258,9 @@ MainWindow::refresh_filesystems()
         start_btn->setEnabled(false);
         stop_btn->setEnabled(false);
         setup_btn->setEnabled(false);
+        #ifdef BEEKEEPER_DEBUG_LOGGING
+        showlog_btn->setEnabled(false);
+        #endif
         remove_btn->setEnabled(false);
         return;
     }
@@ -195,5 +286,5 @@ MainWindow::refresh_filesystems()
     // --- update table
     refresh_fs_helpers::update_or_insert_rows(fs_table, filesystems, current_uuid_map, incoming_uuids, uuid_status_map);
     refresh_fs_helpers::remove_vanished_rows(fs_table, incoming_uuids);
-    refresh_fs_helpers::update_button_states(fs_table, start_btn, stop_btn, setup_btn, [this](){ toggle_remove_button_enabled(); });
+    update_button_states();
 }

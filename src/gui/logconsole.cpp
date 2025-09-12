@@ -1,8 +1,5 @@
 #include "mainwindow.hpp"
 #include <QVBoxLayout>
-
-// Show debug logs (only enabled with CMake flag)
-#ifdef BEEKEEPER_DEBUG_LOGGING
 #include <QFontDatabase>
 #include <QScrollBar>
 #include <QTextEdit>
@@ -24,10 +21,10 @@ QString formatLogLine(const QString &line)
 }
 
 void
-MainWindow::showDebugLog()
+MainWindow::showLog(const QString &logpath, const QString &customTitle)
 {
     auto *dialog = new QDialog(this);
-    dialog->setWindowTitle("Beekeeper Debug Log");
+    dialog->setWindowTitle((customTitle.isEmpty() ? logpath : customTitle));
     dialog->resize(900, 600);
 
     auto *layout = new QVBoxLayout(dialog);
@@ -38,15 +35,14 @@ MainWindow::showDebugLog()
     layout->addWidget(logView);
 
     // Auto-scroll control
-    auto *autoScrollButton = new QPushButton("Auto scrolling");
+    auto *autoScrollButton = new QPushButton(tr("Auto scrolling"));
     autoScrollButton->setCheckable(true);
     autoScrollButton->setChecked(true); // enabled by default
     layout->addWidget(autoScrollButton);
 
-    QString logPath = "/tmp/beekeeper-debug.log";
-    auto *file = new QFile(logPath, dialog);
+    auto *file = new QFile(logpath, dialog);
     if (!file->open(QIODevice::ReadOnly | QIODevice::Text)) {
-        logView->setPlainText("Failed to open debug log at " + logPath);
+        logView->setPlainText(tr("Failed to open log at ") + logpath);
     } else {
         QTextStream in(file);
         while (!in.atEnd()) {
@@ -83,4 +79,3 @@ MainWindow::showDebugLog()
 
     dialog->show();
 }
-#endif

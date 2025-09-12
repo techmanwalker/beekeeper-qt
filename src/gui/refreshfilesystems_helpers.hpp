@@ -9,10 +9,15 @@
 
 namespace refresh_fs_helpers {
 
+// Return the number of rows actually selected in the table
+int
+selected_rows_count(QTableWidget *table);
+
 // -------------------------
 // Build map UUID -> row
 // -------------------------
-QMap<QString,int> build_current_uuid_map(QTableWidget *fs_table);
+QMap<QString,int>
+build_current_uuid_map(QTableWidget *fs_table);
 
 // -------------------------
 // Update existing rows or insert new ones
@@ -31,19 +36,11 @@ void remove_vanished_rows(QTableWidget *fs_table,
                           const QSet<QString> &incoming_uuids);
 
 // -------------------------
-// Update button states
-// -------------------------
-void update_button_states(QTableWidget *fs_table,
-                          QPushButton *start_btn,
-                          QPushButton *stop_btn,
-                          QPushButton *setup_btn,
-                          std::function<void()> update_remove_btn);
-
-// -------------------------
 // Update status manager (dedup lines)
 // -------------------------
-void update_status_manager(QTableWidget *fs_table,
-                           class DedupStatusManager &statusManager);
+void
+update_status_manager(QTableWidget *fs_table,
+                      DedupStatusManager &statusManager);
 
 // -------------------------
 // Read starting free space from file

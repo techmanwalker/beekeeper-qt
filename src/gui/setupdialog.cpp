@@ -1,8 +1,8 @@
 // setupdialog.cpp
 //
 // Implementation of SetupDialog. On Accept it:
-//  - Parses the db size (empty => 0)
-//  - Filters uuids to those that need setup (supercommander->btrfstat(uuid).empty())
+//  - Parses the db size from the combo box (default 256 MiB)
+//  - Filters uuids to those that need setup (supercommander->btrfstat(uuid) indicates no config)
 //  - Calls supercommander->beessetup(uuid, db_size) for each
 //  - Shows a summary (success / failures)
 //
@@ -17,12 +17,10 @@
 #include "setupdialog.hpp"
 
 #include <QLabel>
-#include <QLineEdit>
+#include <QList>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QRegularExpression>
-#include <QRegularExpressionValidator>
 #include <QMessageBox>
 #include <QtConcurrent/QtConcurrent>
 #include <string>
@@ -39,19 +37,50 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
 
     auto *main_layout = new QVBoxLayout(this);
 
-    // Label + numeric entry row
+    // Help label
+    QLabel *help = new QLabel(
+        tr("Only filesystems without an existing configuration will be modified.\n")
+        + tr("Select the database size. This value covers most of the use cases."), this
+    );
+    help->setWordWrap(true);
+    main_layout->addWidget(help);
+
+    // Label + combo box row
     auto *row = new QHBoxLayout();
-    QLabel *lbl = new QLabel(tr("Database size, in bytes: "), this);
+    QLabel *lbl = new QLabel(tr("Database size: "), this);
     row->addWidget(lbl);
 
-    m_dbSizeEdit = new QLineEdit(this);
-    m_dbSizeEdit->setPlaceholderText("1073741824 (1 GiB)");
-    QRegularExpression re("^\\d{0,20}$"); // digits only, empty allowed
-    m_dbSizeEdit->setValidator(new QRegularExpressionValidator(re, this));
-    connect(m_dbSizeEdit, &QLineEdit::textChanged, this, &SetupDialog::on_text_changed);
-    m_dbSizeEdit->setMaximumWidth(300);
-    row->addWidget(m_dbSizeEdit, /*stretch=*/1);
+    m_dbSizeCombo = new QComboBox(this);
 
+    // Define fixed database size options
+    struct SizeOption {
+        size_t value;
+        QString display;
+    };
+
+    QList<SizeOption> options;
+
+    options.append(SizeOption{16 * 1024 * 1024, tr("16 MiB")});
+    options.append(SizeOption{128 * 1024 * 1024, tr("128 MiB")});
+    options.append(SizeOption{256 * 1024 * 1024, tr("256 MiB")});
+    options.append(SizeOption{1 * 1024 * 1024 * 1024, tr("1 GiB")});
+    options.append(SizeOption{4ULL * 1024 * 1024 * 1024, tr("4 GiB")});
+
+
+
+    for (const auto &opt : options)
+        m_dbSizeCombo->addItem(opt.display, QVariant::fromValue<qulonglong>(opt.value));
+
+    // Set default to 256 MiB
+    for (int i = 0; i < m_dbSizeCombo->count(); ++i) {
+        if (m_dbSizeCombo->itemData(i).toULongLong() == 256 * 1024 * 1024) {
+            m_dbSizeCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+
+    m_dbSizeCombo->setMaximumWidth(300);
+    row->addWidget(m_dbSizeCombo, /*stretch=*/1);
     main_layout->addLayout(row);
 
     // Buttons row
@@ -69,19 +98,12 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
     btn_row->addWidget(m_acceptBtn);
     btn_row->addWidget(m_cancelBtn);
     main_layout->addLayout(btn_row);
-
-    QLabel *help = new QLabel(
-        tr("Only filesystems without an existing configuration will be modified.\n")
-        + tr("Leave the field empty to use the default (1 GiB). This value covers most of the use cases."), this
-    );
-    help->setWordWrap(true);
-    main_layout->insertWidget(0, help);
 }
 
 void
 SetupDialog::on_text_changed(const QString & /*text*/)
 {
-    // Always keep Accept enabled; validator restricts input
+    // Always keep Accept enabled; input is restricted by combo box
     m_acceptBtn->setEnabled(true);
 }
 
@@ -94,17 +116,10 @@ SetupDialog::accept()
         return;
     }
 
-    // Parse DB size
-    QString txt = m_dbSizeEdit->text().trimmed();
+    // Parse DB size from combo box
     size_t db_size = 0;
-    if (!txt.isEmpty()) {
-        bool ok = false;
-        db_size = static_cast<size_t>(txt.toULongLong(&ok));
-        if (!ok) {
-            QMessageBox::critical(this, tr("Invalid value"),
-                                  tr("Database size must be a positive integer (bytes)."));
-            return;
-        }
+    if (m_dbSizeCombo) {
+        db_size = static_cast<size_t>(m_dbSizeCombo->currentData().toULongLong());
     }
 
     // Filter uuids to only unconfigured filesystems
@@ -155,4 +170,3 @@ SetupDialog::accept()
                                 Qt::QueuedConnection);
     }
 }
-

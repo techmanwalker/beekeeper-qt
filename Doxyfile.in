@@ -1,0 +1,31 @@
+# Doxyfile.in - Minimal configuration for beekeeper-qt
+# This file is processed by CMake (configure_file) to generate Doxyfile
+
+# Project info
+PROJECT_NAME           = beekeeper-qt
+PROJECT_BRIEF          = "Deduplicate redundant data in your disk and save space"
+OUTPUT_DIRECTORY       = @CMAKE_BINARY_DIR@/docs
+
+# Input
+INPUT                  = @CMAKE_SOURCE_DIR@/src
+RECURSIVE              = YES
+
+# Extraction
+EXTRACT_ALL            = YES
+
+# Graphs (requires Graphviz/dot)
+HAVE_DOT               = YES
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+DOT_MULTI_TARGETS      = YES
+
+# Documentation output
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_RTF           = NO
+GENERATE_XML           = NO
+
+# Warnings (optional)
+WARN_IF_UNDOCUMENTED   = YES
+QUIET                  = NO

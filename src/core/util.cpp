@@ -9,11 +9,22 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <regex>
 #include <sstream>
 #include <unistd.h> 
 #include <vector>
 #include <sys/stat.h>
 #include <sys/wait.h>
+
+#ifdef __linux__
+#include <fstream>
+#endif
+
+#ifdef __FreeBSD__
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 
 // Simple case-insensitive character comparison
 bool
@@ -223,6 +234,18 @@ bk_util::trip_quotes(const std::string &s)
     return s;
 }
 
+std::string
+bk_util::quote_if_needed(const std::string &input)
+{
+    if (input.empty())
+        return "\"\"";
+
+    if (input.front() == '"' && input.back() == '"')
+        return input;
+
+    return "\"" + input + "\"";
+}
+
 // Divide and apply suffix to a byte size number
 std::string
 bk_util::auto_size_suffix(size_t size_in_bytes)
@@ -276,4 +299,159 @@ bk_util::trim_config_path_after_colon(const std::string &raw)
         s.erase(s.find_last_not_of(" \t\n\r") + 1);
     }
     return s;
+}
+
+std::string
+bk_util::serialize_vector(const std::vector<std::string> &vec)
+{
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        oss << vec[i];
+        if (i + 1 < vec.size())
+            oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+}
+
+// Autostart helpers
+
+std::vector<std::string>
+bk_util::list_uuids_in_autostart(const std::string &cfg_file)
+{
+    std::vector<std::string> uuids;
+
+    std::ifstream file(cfg_file);
+    if (!file.is_open())
+        return uuids; // archivo no existe
+
+    std::string line;
+    std::regex uuid_pattern(
+        R"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+    );
+
+    while (std::getline(file, line))
+    {
+        // recorta espacios al inicio/final si quieres
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+
+        if (line.empty())
+            continue;
+
+        if (std::regex_match(line, uuid_pattern))
+            uuids.push_back(line);
+    }
+
+    return uuids;
+}
+
+bool
+bk_util::is_uuid_in_autostart(const std::string &uuid)
+{
+    std::vector<std::string> uuids = list_uuids_in_autostart();
+
+    // Trim the input UUID just in case
+    std::string trimmed_uuid = trim_string(uuid);
+
+    // Si el vector está vacío, devuelve false inmediatamente
+    if (uuids.empty())
+        return false;
+
+    for (auto &u : uuids) {
+        if (trim_string(u) == trimmed_uuid)
+            return true;
+    }
+
+    return false;
+}
+
+std::string
+bk_util::get_second_token (std::string line)
+{
+    // Shove off the first token
+    size_t start = line.find_first_of(" \t");
+    if (start == std::string::npos) {
+        return 0;  // Empty line
+    }
+    line = line.substr(start);
+
+    // Trim whitespace
+    line = bk_util::trim_string(line);
+    
+    // Find first whitespace after PID to shove off everything else
+    size_t end = line.find_first_of(" \t", start);
+    if (end == std::string::npos) {
+        end = line.length();
+    }
+    std::string token = line.substr(0, end);
+
+    return token;
+}
+
+double
+bk_util::current_cpu_usage(int decimals)
+{
+#ifdef __linux__
+    static std::vector<unsigned long long> last_total;
+    static std::vector<unsigned long long> last_idle;
+
+    std::ifstream file("/proc/stat");
+    if (!file.is_open()) return -1.0;
+
+    std::vector<unsigned long long> total;
+    std::vector<unsigned long long> idle;
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.substr(0, 3) != "cpu") break; // stop after cpu lines
+        std::istringstream ss(line);
+        std::string cpu;
+        ss >> cpu;
+
+        unsigned long long user, nice, system, idle_time, iowait, irq, softirq, steal;
+        ss >> user >> nice >> system >> idle_time >> iowait >> irq >> softirq >> steal;
+
+        unsigned long long tot = user + nice + system + idle_time + iowait + irq + softirq + steal;
+        total.push_back(tot);
+        idle.push_back(idle_time + iowait);
+    }
+
+    double usage = 0.0;
+    for (size_t i = 1; i < total.size(); ++i) { // skip total (0)
+        unsigned long long d_total = total[i] - (i < last_total.size() ? last_total[i] : 0);
+        unsigned long long d_idle  = idle[i]  - (i < last_idle.size()  ? last_idle[i]  : 0);
+        if (d_total > 0) usage += 100.0 * (d_total - d_idle) / d_total;
+    }
+
+    last_total = total;
+    last_idle  = idle;
+
+    // Average per core
+    if (total.size() > 1) usage /= (total.size() - 1);
+
+    double factor = std::pow(10.0, decimals);
+    return std::round(usage * factor) / factor;
+
+#elif defined(__FreeBSD__)
+    long cp_time[CPUSTATES];
+    size_t len = sizeof(cp_time);
+
+    if (sysctlbyname("kern.cp_time", &cp_time, &len, nullptr, 0) == -1) return -1.0;
+
+    unsigned long long total = 0;
+    for (int i = 0; i < CPUSTATES; ++i) total += cp_time[i];
+
+    unsigned long long idle = cp_time[CP_IDLE] + cp_time[CP_IDLE]; // conservative
+    double usage = 100.0 * (total - idle) / total;
+
+    double factor = std::pow(10.0, decimals);
+    return std::round(usage * factor) / factor;
+
+#else
+    // Fallback: not supported
+    return -1.0;
+#endif
 }

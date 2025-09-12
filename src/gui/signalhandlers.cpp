@@ -2,8 +2,7 @@
 
 void
 MainWindow::on_root_shell_ready() {
-    DEBUG_LOG("[MainWindow] Root shell ready signal received!");
-    DEBUG_LOG("[MainWindow] performAuthentication succeeded: authorized"); // Mark launcher/komander as authorized/alive
+    DEBUG_LOG("[MainWindow] Root shell ready signal received!"); // Mark launcher/komander as authorized/alive
     launcher->root_alive = true;
     refresh_filesystems(); // now safe to enable root-only controls
 }

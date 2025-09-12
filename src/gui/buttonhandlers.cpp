@@ -1,120 +1,171 @@
+#include "beekeeper/beesdmgmt.hpp"
 #include "beekeeper/debug.hpp"
+#include "beekeeper/internalaliases.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "mainwindow.hpp"
 #include "refreshfilesystems_helpers.hpp"
 #include <filesystem>
 #include <QMessageBox>
+#include <QPushButton>
+#include <string>
 
 namespace fs = std::filesystem;
 
+// -------------------------
 void
-MainWindow::handle_start()
+MainWindow::update_button_states()
 {
-    if (!komander->do_i_have_root_permissions()) return;
+    // Enable if any selected filesystem is stopped, or
+    // if none is selected and at least one of the whole table is stopped
+    start_btn->setEnabled(
+        any_stopped()
+            ||
+        (
+            refresh_fs_helpers::selected_rows_count(fs_table) == 0 
+                &&
+            any_stopped(true)
+        )
+    );
 
-    auto selected_rows = fs_table->selectionModel()->selectedRows();
-    if (selected_rows.isEmpty()) {
-        for (int i = 0; i < fs_table->rowCount(); ++i)
-            selected_rows.append(fs_table->model()->index(i, 0));
+    // Enable if any selected filesystem is running, or
+    // if none is selected and at least one of the whole table is running
+    stop_btn->setEnabled(
+        any_running()
+            ||
+        (
+            refresh_fs_helpers::selected_rows_count(fs_table) == 0
+                &&
+            any_running(true)
+        )
+    );
+
+    // Enable if any selected filesystem is not configured, or
+    // if none is selected and at least one of the whole table is not configured
+    setup_btn->setEnabled(
+        at_least_one_configured(true, false)
+            ||
+        (
+            refresh_fs_helpers::selected_rows_count(fs_table) == 0
+                &&
+            at_least_one_configured(true, true)
+        )
+    );
+
+    // Enable if any of the selected fs is not in autostart
+    add_autostart_btn->setEnabled(
+        at_least_one_configured()
+            &&
+        any_selected_in_autostart(true)
+    );
+
+    remove_autostart_btn->setEnabled(
+        at_least_one_configured()
+            &&
+        any_selected_in_autostart()
+    );
+
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    // enable logs button only if exactly 1 row and it’s running with logging
+    showlog_btn->setEnabled(
+        refresh_fs_helpers::selected_rows_count(fs_table) == 1
+            &&
+        any_running_with_logging()
+    );
+    #endif
+
+    // Enable only if more than 1 is selected,
+    // none of them is running
+    // and at least one is configured
+    remove_btn->setEnabled(
+        refresh_fs_helpers::selected_rows_count(fs_table) == 1
+            &&
+        at_least_one_configured()
+            &&
+        any_stopped()
+    );
+}
+
+void
+MainWindow::handle_start(bool enable_logging)
+{
+    if (!komander->do_i_have_root_permissions())
+        return;
+
+    auto *futures = new QList<QFuture<bool>>;
+
+    // Decide which rows to process
+    QList<QModelIndex> rows_to_process = fs_table->selectionModel()->selectedRows();
+    if (rows_to_process.isEmpty()) {
+        // No selection → consider all rows
+        for (int r = 0; r < fs_table->rowCount(); ++r)
+            rows_to_process.append(fs_table->model()->index(r, 0));
     }
 
-    QList<QFuture<bool>> futures;
-    for (auto idx : selected_rows) {
+    for (auto idx : rows_to_process) {
         QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-        QString status = fs_table->item(idx.row(), 2)->data(Qt::UserRole).toString();
 
-        if (!is_running(status)) {
-            // Compute current free space
+        // Discard running and unconfigured filesystems
+        if (is_running(idx) || !is_configured(idx))
+            continue;
+
+        // Only create starting free space if it doesn't exist
+        fs::path start_file = fs::path("/tmp") / ".beekeeper" / uuid.toStdString() / "startingfreespace";
+        if (!fs::exists(start_file)) {
+            fs::create_directories(start_file.parent_path());
+
             qint64 free_bytes = QString::fromStdString(
                 komander->btrfstat(uuid.toStdString(), "free")
             ).toLongLong();
 
-            // Save starting free space if not already present
-            fs::path start_file = fs::path("/tmp") / (".beekeeper-" + uuid.toStdString()) / "startingfreespace";
-            fs::create_directories(start_file.parent_path());
-            if (!fs::exists(start_file)) {
-                std::ofstream ofs(start_file);
-                if (ofs.is_open()) {
-                    ofs << free_bytes;
-                    ofs.close();
-                }
+            std::ofstream ofs(start_file);
+            if (ofs.is_open()) {
+                ofs << free_bytes;
+                ofs.close();
             }
-
-            futures.append(komander->async->beesstart(uuid));
         }
+
+        // Queue the async start job
+        futures->append(komander->async->beesstart(uuid, enable_logging));
     }
 
-    if (futures.isEmpty()) return;
-
-    auto remaining = new int(futures.size());
-    auto success_count = new int(0);
-    for (auto &f : futures) {
-        auto *watcher = new QFutureWatcher<bool>(this);
-        watcher->setFuture(f);
-
-        connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, remaining, success_count]() {
-            if (watcher->result()) (*success_count)++;
-            watcher->deleteLater();
-
-            (*remaining)--;
-            if (*remaining == 0) {
-                int failed_count = *success_count - (*success_count); // compute failures if needed
-                QMetaObject::invokeMethod(this->rootThread,
-                          [this]() { emit this->rootThread->command_finished("start", "success", ""); },
-                          Qt::QueuedConnection);
-                delete remaining;
-                delete success_count;
-            }
-        });
-    }
-
-    // Show the "started with and now you have" right at start
-    refresh_fs_helpers::update_status_manager(fs_table, statusManager);
+    // Hand over the queued futures for processing
+    process_fs_async(futures);
 }
 
 void
 MainWindow::handle_stop()
 {
-    if (!komander->do_i_have_root_permissions()) return;
+    if (!komander->do_i_have_root_permissions())
+        return;
 
-    auto selected_rows = fs_table->selectionModel()->selectedRows();
-    if (selected_rows.isEmpty()) {
-        for (int i = 0; i < fs_table->rowCount(); ++i)
-            selected_rows.append(fs_table->model()->index(i, 0));
+    // Decide which rows to process
+    QList<QModelIndex> rows_to_process = fs_table->selectionModel()->selectedRows();
+    if (rows_to_process.isEmpty()) {
+        // No selection → consider all rows
+        for (int r = 0; r < fs_table->rowCount(); ++r)
+            rows_to_process.append(fs_table->model()->index(r, 0));
     }
 
-    QList<QFuture<bool>> futures;
-    for (auto idx : selected_rows) {
+    // Use heap allocation so the futures survive after this function returns
+    auto *futures = new QList<QFuture<bool>>;
+
+    for (auto idx : rows_to_process) {
         QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-        QString status = fs_table->item(idx.row(), 2)->data(Qt::UserRole).toString();
-        if (is_running(status)) {
-            futures.append(komander->async->beesstop(uuid));
-        }
+
+        // Discard stopped filesystems
+        if (is_stopped(idx))
+            continue;
+
+        // Discard unconfigured filesystems
+        if (!is_configured(idx))
+            continue;
+
+        // Queue the async stop job
+        futures->append(komander->async->beesstop(uuid));
     }
 
-    if (futures.isEmpty()) return;
-
-    auto remaining = new int(futures.size());
-    auto success_count = new int(0);
-    for (auto &f : futures) {
-        auto *watcher = new QFutureWatcher<bool>(this);
-        watcher->setFuture(f);
-
-        connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, remaining, success_count]() {
-            if (watcher->result()) (*success_count)++;
-            watcher->deleteLater();
-
-            (*remaining)--;
-            if (*remaining == 0) {
-                int failed_count = *remaining - *success_count; // or recompute properly
-                QMetaObject::invokeMethod(this->rootThread,
-                          [this]() { emit this->rootThread->command_finished("stop", "success", ""); },
-                          Qt::QueuedConnection);
-                delete remaining;
-                delete success_count;
-            }
-        });
-    }
+    // Hand over the queued futures for processing
+    process_fs_async(futures);
 }
 
 void
@@ -141,93 +192,74 @@ MainWindow::handle_setup()
         dlg.exec();
         refresh_filesystems();
     }
+
+    update_button_states();
 }
 
-// ----------- CONFIG REMOVAL LOGIC ------------
-
-// Called when selection changes; only toggles the toolbar remove button.
 void
-MainWindow::toggle_remove_button_enabled()
+MainWindow::handle_showlog()
 {
     if (!komander->do_i_have_root_permissions()) {
-        remove_btn->setEnabled(false);
         return;
     }
 
-    const auto selected_rows = fs_table->selectionModel()->selectedRows();
-    if (selected_rows.isEmpty()) {
-        remove_btn->setEnabled(false);
+    if (refresh_fs_helpers::selected_rows_count(fs_table) != 1) {
+        QMessageBox::warning(this,
+                             tr("Show logs"),
+                             tr("Please select only one filesystem to show its deduplication logs."));
         return;
     }
 
-    // Check if any selected filesystem is running
-    for (auto idx : selected_rows) {
-        QString status = fs_table->item(idx.row(), 2)->data(Qt::UserRole).toString().toLower();
-        DEBUG_LOG("Iterating for toggle remove button. row status: " + status);
-        if (status.startsWith("running")) {
-            remove_btn->setEnabled(false);
-            return;
-        }
-    }
+    auto idx = fs_table->selectionModel()->selectedRows().first();
+    QString uuid   = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
+    QString name   = fs_table->item(idx.row(), 1)->data(Qt::UserRole).toString();
+    QString status = fs_table->item(idx.row(), 2)->data(Qt::UserRole).toString().toLower();
 
-    // Enable remove button if at least one selected FS is configured
-    remove_btn->setEnabled(at_least_one_configured(false));
+    // Always attempt to show logs, regardless of status
+    QString logpath = QString::fromStdString(bk_mgmt::get_log_path(uuid.toStdString()));
+    showLog(logpath, tr("Filesystem logs for: ") + name);
+
+    update_button_states();
 }
+
 
 void
 MainWindow::handle_remove_button()
 {
-    if (!komander->do_i_have_root_permissions()) return;
+    if (!komander->do_i_have_root_permissions())
+        return;
 
+    // Get selected filesystems
     auto selected_rows = fs_table->selectionModel()->selectedRows();
     if (selected_rows.isEmpty()) {
-        QMessageBox::information(this, "No selection", "Please select at least one filesystem to remove its configuration.");
-        return;
-    }
-
-    // Collect selected filesystems that actually have a configuration
-    QStringList uuids_to_remove;
-    bool blocked_running = false;
-    for (auto idx : selected_rows) {
-        QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-
-        // Check status to forbid removal of running configs
-        QString status = fs_table->item(idx.row(), 2)->data(Qt::UserRole).toString().toLower();
-        if (status.startsWith("running")) {
-            blocked_running = true;
-            DEBUG_LOG("Skipping deletion of running filesystem config: " + uuid.toStdString());
-            continue;
-        }
-
-        std::string path = komander->btrfstat(uuid.toStdString(), "");
-
-        // trim everything after the ':' and remove whitespaces
-        path = bk_util::trim_string(bk_util::trim_config_path_after_colon(path));
-
-        if (!path.empty())
-            uuids_to_remove.append(uuid);
-    }
-
-    if (blocked_running) {
-        QMessageBox::warning(
+        QMessageBox::information(
             this,
-            "Forbidden",
-            "One or more selected filesystems are being deduplicated.\n"
-            "Deleting the configuration of a running deduplication daemon is forbidden."
+            tr("No selection"),
+            tr("Please select at least one filesystem to remove its Beesd configuration.")
         );
         return;
     }
 
-    if (uuids_to_remove.isEmpty()) {
-        QMessageBox::information(this, "No configuration found", "None of the selected filesystems have a configuration to remove.");
+    QList<QModelIndex> rows_to_process;
+
+    // Progressive discard: skip running or unconfigured filesystems
+    for (auto idx : selected_rows) {
+        if (is_running(idx))
+            continue;
+        if (!is_configured(idx))
+            continue;
+        rows_to_process.append(idx);
+    }
+
+    if (rows_to_process.isEmpty()) {
+        // Nothing to remove
         return;
     }
 
-    // Confirm deletion
+    // Confirm deletion dialog
     QString line1 = tr("You're about to remove the file deduplication engine configuration.\n");
     QString line2 = tr("This does not provoke data loss but you won't have file deduplication functionality unless you set up Beesd again by selecting the filesystem and clicking the Setup button.\n\n");
     QString line3 = tr("Are you sure?");
-
     QString message = line1 + line2 + line3;
 
     QMessageBox::StandardButton reply = QMessageBox::question(
@@ -237,25 +269,53 @@ MainWindow::handle_remove_button()
         QMessageBox::Yes | QMessageBox::No
     );
 
-    if (reply != QMessageBox::Yes) return;
+    if (reply != QMessageBox::Yes)
+        return;
 
-    // Remove each config one at a time
-    for (const QString &q : uuids_to_remove) {
-        std::string uuid = q.toStdString();
-        std::string path = komander->btrfstat(uuid, "");
-
-        auto pos = path.find(':');
-        if (pos != std::string::npos)
-            path = path.substr(pos + 1);
-        path.erase(0, path.find_first_not_of(" \t\n\r"));
-        path.erase(path.find_last_not_of(" \t\n\r") + 1);
-
-        // delete it
-        DEBUG_LOG("Removing config file for uuid ", uuid);
-        komander->beesremoveconfig(uuid);
+    // Remove configs for surviving filesystems
+    for (auto idx : rows_to_process) {
+        std::string uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString().toStdString();
+        std::string configfilepath = bk_util::trim_config_path_after_colon(
+            komander->btrfstat(uuid, "")
+        );
+        if (!configfilepath.empty()) {
+            komander->beesremoveconfig(uuid);
+        }
     }
 
-    // Refresh table and statuses
-    toggle_remove_button_enabled();
+    // Refresh UI at the end
     refresh_filesystems();
+    update_button_states();
+}
+
+void
+MainWindow::process_fs_async(QList<QFuture<bool>> *futures)
+{
+    if (!futures || futures->isEmpty()) {
+        delete futures;
+        return;
+    }
+
+    auto remaining = new int(futures->size());
+    auto success_count = new int(0);
+
+    (void) QtConcurrent::run([this, futures, remaining, success_count]() {
+        for (auto &f : *futures) {
+            f.waitForFinished();
+            if (f.result()) (*success_count)++;
+            (*remaining)--;
+
+            DEBUG_LOG(std::to_string(*remaining) + " futures remaining.");
+        }
+
+        QMetaObject::invokeMethod(this, [this, remaining, success_count, futures]() {
+            refresh_filesystems();
+            update_button_states();
+            refresh_fs_helpers::update_status_manager(fs_table, statusManager);
+
+            delete remaining;
+            delete success_count;
+            delete futures; // now safe to delete the heap list
+        }, Qt::QueuedConnection);
+    });
 }

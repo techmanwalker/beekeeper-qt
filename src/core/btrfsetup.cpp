@@ -187,56 +187,56 @@ bk_mgmt::btrfstat (std::string uuid)
     return "";
 }
 
-// Create/update config file
+// Create/update config file for a given UUID and database size
 std::string
-bk_mgmt::beessetup (std::string uuid, size_t db_size)
+bk_mgmt::beessetup(std::string uuid, size_t db_size)
 {
-    // Check if config exists
+    // Check if config already exists
     std::string config_path = bk_mgmt::btrfstat(uuid);
     bool config_exists = !config_path.empty();
     std::map<std::string, std::string> new_config;
-    
+
     // Warn about comments being removed
-    // Handle existing config
     if (config_exists) {
         std::cout << "Warning: removing configuration file comments" << std::endl;
         new_config = parse_config(config_path);
     }
-    
+
     // Always set UUID
     new_config["UUID"] = uuid;
-    
-    // Handle DB_SIZE
-    if (db_size > 0)
-    {
-        // Explicit size specified - always set
-        new_config["DB_SIZE"] = std::to_string(db_size);
-    }
-    else if (config_exists)
-    {
-        // Preserve existing DB_SIZE if available
-        if (new_config.find("DB_SIZE") == new_config.end()) {
-            // Missing DB_SIZE - add default with warning
-            std::cout << "Warning: adding missing DB_SIZE to existing config" << std::endl;
-            new_config["DB_SIZE"] = "1073741824";
+
+    // Constants for DB_SIZE
+    const size_t MIN_DB_SIZE = 16 * 1024 * 1024;       // 16 MiB
+    const size_t DEFAULT_DB_SIZE = 1024 * 1024 * 1024; // 1 GiB
+
+    // Handle DB_SIZE logic
+    if (db_size > 0) {
+        // Explicit size specified - apply minimum limit
+        if (db_size < MIN_DB_SIZE) {
+            new_config["DB_SIZE"] = std::to_string(DEFAULT_DB_SIZE);
+        } else {
+            new_config["DB_SIZE"] = std::to_string(db_size);
         }
-        // Otherwise keep existing DB_SIZE
+    } else {
+        // db_size == 0: preserve existing DB_SIZE if present
+        if (!(config_exists && !new_config["DB_SIZE"].empty())) {
+            new_config["DB_SIZE"] = std::to_string(DEFAULT_DB_SIZE);
+        }
+        // else: keep existing DB_SIZE
     }
-    else
-    {
-        // New config with default size
-        new_config["DB_SIZE"] = "1073741824";
+
+    // Safety check to prevent empty DB_SIZE
+    if (new_config["DB_SIZE"].empty()) {
+        new_config["DB_SIZE"] = std::to_string(DEFAULT_DB_SIZE);
     }
 
     // Ensure /etc/bees directory exists
     const fs::path conf_dir = "/etc/bees";
     std::error_code ec;
-    
-    if (!fs::exists(conf_dir, ec))
-    {
-        if (!fs::create_directories(conf_dir, ec) || ec)
-        {
-            std::cerr << "Error: Failed to create directory " << conf_dir << ": " 
+
+    if (!fs::exists(conf_dir, ec)) {
+        if (!fs::create_directories(conf_dir, ec) || ec) {
+            std::cerr << "Error: Failed to create directory " << conf_dir << ": "
                       << ec.message() << std::endl;
             return "";
         }
@@ -250,21 +250,20 @@ bk_mgmt::beessetup (std::string uuid, size_t db_size)
     } else {
         output_path = conf_dir / (uuid + ".conf");
     }
-    
+
     // Write config file
     std::ofstream out(output_path);
-    if (!out.is_open())
-    {
+    if (!out.is_open()) {
         std::cerr << "Error: Failed to open " << output_path << " for writing" << std::endl;
         return "";
     }
-    
+
     // Write UUID first
     out << "UUID=" << new_config["UUID"] << "\n";
-    
+
     // Write DB_SIZE second
     out << "DB_SIZE=" << new_config["DB_SIZE"] << "\n";
-    
+
     // Write other keys in alphabetical order
     std::vector<std::string> other_keys;
     for (const auto& pair : new_config) {
@@ -273,11 +272,11 @@ bk_mgmt::beessetup (std::string uuid, size_t db_size)
         }
     }
     std::sort(other_keys.begin(), other_keys.end());
-    
+
     for (const auto& key : other_keys) {
         out << key << "=" << new_config[key] << "\n";
     }
-    
+
     return output_path.string();
 }
 

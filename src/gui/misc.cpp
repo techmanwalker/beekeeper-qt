@@ -1,5 +1,6 @@
+#include "help/helpdialog.hpp"
+#include "help/texts.hpp"
 #include "mainwindow.hpp"
-#include "help/keyboardnavhelp.hpp"
 
 void
 MainWindow::set_root_thread(root_shell_thread *thread)
@@ -18,6 +19,27 @@ MainWindow::set_root_thread(root_shell_thread *thread)
                 refresh_filesystems();
             });
 }
+
+std::vector<QString>
+MainWindow::get_fs_uuids(bool check_the_whole_table) const
+{
+    std::vector<QString> uuids;
+    QModelIndexList rows_to_check = fs_table->selectionModel()->selectedRows();
+
+    if (check_the_whole_table) {
+        rows_to_check.clear();
+        for (int r = 0; r < fs_table->rowCount(); ++r)
+            rows_to_check.append(fs_table->model()->index(r, 0));
+    }
+
+    for (auto idx : rows_to_check) {
+        QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
+        uuids.push_back(uuid);
+    }
+
+    return uuids;
+}
+
 
 // Return list of explicitly selected UUIDs that actually have a configuration file
 QStringList
@@ -39,14 +61,6 @@ MainWindow::selected_configured_filesystems() const
     return uuids;
 }
 
-// Return the number of rows actually selected in the table
-int
-MainWindow::selected_rows_count() const
-{
-    if (!fs_table) return 0;
-    return fs_table->selectionModel()->selectedRows().size();
-}
-
 void 
 MainWindow::set_hovered_uuid(const QString &uuid)
 {
@@ -56,36 +70,13 @@ MainWindow::set_hovered_uuid(const QString &uuid)
     }
 }
 
-bool
-MainWindow::is_running(const QString &raw_status) const
-{
-    return raw_status.toLower().startsWith("running");
-}
-
-// Return true if at least one explicitly selected filesystem is configured.
-// If invert is true, return true if at least one selected filesystem is unconfigured instead.
-bool
-MainWindow::at_least_one_configured(bool invert) const
-{
-    for (auto idx : fs_table->selectionModel()->selectedRows()) {
-        QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-        std::string config_path = bk_util::trim_config_path_after_colon(
-            komander->btrfstat(uuid.toStdString(), "")
-        );
-        bool configured = !config_path.empty();
-        DEBUG_LOG("UUID " + uuid.toStdString() + " config path: " + config_path);
-        DEBUG_LOG("Is uuid " + uuid.toStdString() + " configured? " + (configured ? "yes" : "no"));
-
-        if (invert ? !configured : configured) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void
 MainWindow::show_keyboard_nav_help()
 {
-    KeyboardNavHelpDialog help(this);
+    help_dialog help(
+        this,
+        tr("Help for keyboard navigation"),
+        helptexts().keyboardnav()
+    );
     help.exec();
 }

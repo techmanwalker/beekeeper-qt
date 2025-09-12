@@ -3,9 +3,13 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/internalaliases.hpp"
 #include "beekeeper/util.hpp"
+#include "beekeeper/commandmachine.hpp"
+#include "commandmachine/parser.hpp"
+#include "commandregistry.hpp"
 #include "handlers.hpp"
 #include <filesystem> // for std::setw
 #include <iostream>
+#include <string>
 
 namespace fs = std::filesystem;
 
@@ -301,45 +305,88 @@ int
 beekeeper::cli::handle_stat(const std::map<std::string, std::string>& options,
                             const std::vector<std::string>& subjects)
 {
+    if (subjects.empty()) {
+        std::cerr << "Error: UUID not specified" << std::endl;
+        return 1;
+    }
+
     std::string uuid = subjects[0];
 
-    // Check if storage option was passed
+    // Extract option values upfront
+    std::string mode;
+    bool json = false;
+
     auto it_storage = options.find("storage");
     if (it_storage != options.end()) {
-        std::string mode = it_storage->second;
+        mode = it_storage->second; // can be empty string
+    }
+
+    auto it_json = options.find("json");
+    if (it_json != options.end() && !it_json->second.empty()) {
+        json = true;
+    }
+
+    // Handle storage reporting
+    if (!mode.empty()) {
+        int64_t free_val = bk_mgmt::get_space::free(uuid);
+        int64_t used_val = bk_mgmt::get_space::used(uuid);
 
         if (mode == "free") {
-            std::cout << bk_mgmt::get_space::free(uuid) << std::endl;
+            std::cout << (json ? std::to_string(free_val) : bk_util::auto_size_suffix(free_val)) << std::endl;
             return 0;
         } else if (mode == "used") {
-            std::cout << bk_mgmt::get_space::used(uuid) << std::endl;
+            std::cout << (json ? std::to_string(used_val) : bk_util::auto_size_suffix(used_val)) << std::endl;
             return 0;
         } else {
             // Any other string (or empty) → print both
-            auto free_val = bk_mgmt::get_space::free(uuid);
-            auto used_val = bk_mgmt::get_space::used(uuid);
-
-            auto it_json = options.find("json");
-            if (it_json != options.end() && !it_json->second.empty()) {
-                // JSON output
+            if (json) {
                 std::cout << "{\"free\": " << free_val
                           << ", \"used\": " << used_val << "}" << std::endl;
             } else {
-                // Plain output
-                std::cout << "Free space: " << free_val << std::endl;
-                std::cout << "Used space: " << used_val << std::endl;
+                std::cout << "Free space: " << bk_util::auto_size_suffix(free_val) << std::endl;
+                std::cout << "Used space: " << bk_util::auto_size_suffix(used_val) << std::endl;
             }
             return 0;
         }
     }
 
-    // Default path: check configuration only
+    // Default path: configuration check
     std::string config_path = bk_mgmt::btrfstat(uuid);
     if (!config_path.empty()) {
-        std::cout << "Configuration exists: " << config_path << std::endl;
+        if (json) {
+            // JSON / machine-readable output: just return the raw path
+            std::cout << config_path << std::endl;
+        } else {
+            // Human-readable output
+            std::cout << "Configuration exists: " << config_path << std::endl;
+        }
         return 0;
     } else {
         std::cout << "No configuration found for " << uuid << std::endl;
         return 1;
     }
+}
+
+
+int
+beekeeper::cli::handle_autostartctl(const std::map<std::string, std::string> &options,
+                                    const std::vector<std::string> &subjects)
+{
+    bool add = options.find("add") != options.end();
+    bool remove = options.find("remove") != options.end();
+
+    if (add && remove) {
+        commandmachine::command_parser_impl parser;
+        parser.print_help(command_registry);
+        return 1;
+    }
+
+    for (const std::string &uuid_str : subjects) {
+        if (add)
+            bk_mgmt::add_uuid_to_autostart(uuid_str);
+        else if (remove)
+            bk_mgmt::remove_uuid_from_autostart(uuid_str);
+    }
+
+    return 0;
 }

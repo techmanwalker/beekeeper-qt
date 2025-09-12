@@ -10,7 +10,7 @@ beekeeper-qt lets you free up disk space by removing redundant block-level data,
 
 ![A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.](docs/ui.png)
 
-*A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.* (More code cleanup, stability improvements, and added autostart on boot functionality.)
+*A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.*
 
 ## Problems it solves
 

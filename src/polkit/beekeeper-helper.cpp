@@ -14,9 +14,12 @@
 #include <QVariantMap>
 #include <iostream>
 #include <map>
-#include <vector>
+#include <pwd.h>
 #include <string>
 #include <sstream>
+#include <sys/types.h>
+#include <unistd.h>
+#include <vector>
 
 HelperObject::HelperObject(QObject *parent)
     : QObject(parent)
@@ -123,20 +126,6 @@ HelperObject::ExecuteCommand(const QString &verb,
         reply_map["stderr"] = err_text;
     }
 
-    return reply_map;
-}
-
-QVariantMap
-HelperObject::whoami()
-{
-    QVariantMap reply_map;
-    reply_map.insert("stdout", QString());
-    reply_map.insert("stderr", QString());
-
-    command_streams res = bk_util::exec_command("whoami");
-
-    reply_map["stdout"] = QString::fromStdString(res.stdout_str);
-    reply_map["stderr"] = QString::fromStdString(res.stderr_str);
     return reply_map;
 }
 

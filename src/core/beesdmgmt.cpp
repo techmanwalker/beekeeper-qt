@@ -298,7 +298,7 @@ bk_mgmt::find_beesd_process (const std::string& uuid, bool find_worker_pid)
     std::string cmd = std::string("ps aux | grep -e ") + (find_worker_pid ? "bees" : "beesd") +
                     " | grep '" + uuid + "' | grep -v beekeeper | grep -v beesstatus | grep -v defunct | grep -v grep";
 
-    std::string output = bk_util::exec_command(cmd.c_str()).stdout_str;
+    std::string output = bk_util::exec_command_shell(cmd.c_str()).stdout_str;
     
     if (output.empty()) {
         DEBUG_LOG("No processes found for UUID: ", uuid);
@@ -399,7 +399,7 @@ bk_mgmt::beesstart(const std::string& uuid, bool enable_logging)
 
     // Check for root privileges
     if (!bk_util::is_root()) {
-        std::cerr << "Error: beesstart requires root privileges. Please run with sudo." << std::endl;
+        std::cerr << "Error: beesstart requires root privileges." << std::endl;
         return false;
     }
 
@@ -499,7 +499,7 @@ bk_mgmt::beesstop(const std::string& uuid)
 {
     // Check for root privileges
     if (!bk_util::is_root()) {
-        std::cerr << "Error: beesstop requires root privileges. Please run with sudo." << std::endl;
+        std::cerr << "Error: beesstop requires root privileges." << std::endl;
         return false;
     }
 
@@ -527,15 +527,27 @@ bk_mgmt::beesstop(const std::string& uuid)
         }
     }
 
+    // Fallback to search and kill by manual PID find
+    // if PID file method failed
+    if (!stopped) {
+        if (!bk_util::is_uuid(uuid)) {
+            std::cerr << "Invalid UUID: " << uuid << std::endl;
+            return false;
+        }
+        pid_t pid = find_beesd_process(uuid, true);
+        if (pid > 0 && kill(pid, 0) == 0) { // double-check still running
+            write_pid_file_for_uuid(uuid, pid);
+            if (check_if_pidfile_process_is_running(pidfile)) {
+                kill_pidfile_process(pidfile);
+                stopped = wait_for_pid_file_process_to_stop(pidfile);
+            }
+        } else {
+            DEBUG_LOG("No beesd process found for UUID ", uuid);
+        }
+    }
+
     // Clean up PID file
     clean_pid_file(uuid);
-
-    // Fallback to pkill if PID file method failed
-    if (!stopped) {
-        std::string cmd = "pkill -f 'beesd .* " + uuid + "'";
-        int status_code = std::system(cmd.c_str());
-        stopped = (WIFEXITED(status_code) && WEXITSTATUS(status_code) == 0);
-    }
 
     // Clean logs
     clear_log_file_for_uuid(uuid);

@@ -7,13 +7,16 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <fcntl.h>
 #include <iomanip>
 #include <iostream>
 #include <regex>
 #include <sstream>
 #include <unistd.h> 
 #include <vector>
+#include <poll.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 
 #ifdef __linux__
@@ -52,13 +55,21 @@ bool
 bk_util::command_exists(const std::string& command)
 {
     // Check if command is in PATH
-    std::string test_cmd = "command -v " + command + " >/dev/null 2>&1";
-    int status = std::system(test_cmd.c_str());
-    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    return !bk_util::which(command).empty();
 }
 
+void
+bk_util::set_cloexec(int fd)
+{
+    if (fd < 0) return;
+    int flags = fcntl(fd, F_GETFD);
+    if (flags == -1) return;
+    (void) fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+}
+
+
 command_streams
-bk_util::exec_command(const char* cmd)
+bk_util::exec_command_shell(const char* cmd)
 {
     command_streams result;
 
@@ -109,6 +120,114 @@ bk_util::exec_command(const char* cmd)
 
     DEBUG_LOG("[beekeeper-helper] stdout len=", result.stdout_str.size(), " text: ", result.stdout_str);
     DEBUG_LOG("[beekeeper-helper] stderr len=", result.stderr_str.size(), " text: ", result.stderr_str);
+
+    int status = 0;
+    waitpid(pid, &status, 0);
+
+    if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+        std::cerr << "Command exited with code: " << WEXITSTATUS(status) << std::endl;
+    }
+
+    return result;
+}
+
+// Execvp-based implementation using vector<string> -> argv
+command_streams
+bk_util::exec_commandv(const std::vector<std::string> &args)
+{
+    command_streams result;
+
+    if (args.empty()) return result;
+
+    int out_pipe[2] = { -1, -1 };
+    int err_pipe[2] = { -1, -1 };
+
+    if (pipe(out_pipe) < 0 || pipe(err_pipe) < 0) {
+        std::cerr << "pipe() failed: " << strerror(errno) << std::endl;
+        return result;
+    }
+
+    set_cloexec(out_pipe[0]);
+    set_cloexec(out_pipe[1]);
+    set_cloexec(err_pipe[0]);
+    set_cloexec(err_pipe[1]);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        std::cerr << "fork() failed: " << strerror(errno) << std::endl;
+        return result;
+    }
+
+    if (pid == 0) { // child
+        // Redirect stdout/stderr
+        dup2(out_pipe[1], STDOUT_FILENO);
+        dup2(err_pipe[1], STDERR_FILENO);
+
+        // Close unused in child
+        close(out_pipe[0]);
+        close(out_pipe[1]);
+        close(err_pipe[0]);
+        close(err_pipe[1]);
+
+        // Build argv
+        std::vector<char*> argv;
+        argv.reserve(args.size() + 1);
+        for (const auto &s : args) {
+            argv.push_back(const_cast<char*>(s.c_str()));
+        }
+        argv.push_back(nullptr);
+
+        // execvp uses PATH
+        execvp(argv[0], argv.data());
+        // If exec fails:
+        _exit(127);
+    }
+
+    // parent
+    close(out_pipe[1]);
+    close(err_pipe[1]);
+
+    // Non-blocking read setup
+    fcntl(out_pipe[0], F_SETFL, O_NONBLOCK);
+    fcntl(err_pipe[0], F_SETFL, O_NONBLOCK);
+
+    struct pollfd fds[2];
+    fds[0].fd = out_pipe[0];
+    fds[0].events = POLLIN;
+    fds[1].fd = err_pipe[0];
+    fds[1].events = POLLIN;
+
+    std::array<char, 4096> buf;
+    int active_fds = 2;
+    while (active_fds > 0) {
+        int rv = poll(fds, 2, 5000);
+        if (rv < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        for (int i = 0; i < 2; ++i) {
+            if (fds[i].revents & (POLLIN | POLLHUP)) {
+                ssize_t n = read(fds[i].fd, buf.data(), buf.size());
+                if (n > 0) {
+                    if (i == 0)
+                        result.stdout_str.append(buf.data(), n);
+                    else
+                        result.stderr_str.append(buf.data(), n);
+                } else if (n == 0) {
+                    close(fds[i].fd);
+                    fds[i].fd = -1;
+                    --active_fds;
+                } else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+                    close(fds[i].fd);
+                    fds[i].fd = -1;
+                    --active_fds;
+                }
+            }
+        }
+    }
+
+    if (out_pipe[0] >= 0) close(out_pipe[0]);
+    if (err_pipe[0] >= 0) close(err_pipe[0]);
 
     int status = 0;
     waitpid(pid, &status, 0);
@@ -318,30 +437,35 @@ bk_util::serialize_vector(const std::vector<std::string> &vec)
 
 // Autostart helpers
 
+bool
+bk_util::is_uuid(const std::string &s)
+{
+    static const std::regex uuid_pattern(
+        R"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+    );
+    return std::regex_match(s, uuid_pattern);
+}
+
 std::vector<std::string>
 bk_util::list_uuids_in_autostart(const std::string &cfg_file)
 {
     std::vector<std::string> uuids;
-
     std::ifstream file(cfg_file);
     if (!file.is_open())
-        return uuids; // archivo no existe
+        return uuids; // file does not exist
 
     std::string line;
-    std::regex uuid_pattern(
-        R"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
-    );
-
     while (std::getline(file, line))
     {
-        // recorta espacios al inicio/final si quieres
+        // trim whitespace front/back
         line.erase(0, line.find_first_not_of(" \t\r\n"));
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        if (!line.empty())
+            line.erase(line.find_last_not_of(" \t\r\n") + 1);
 
         if (line.empty())
             continue;
 
-        if (std::regex_match(line, uuid_pattern))
+        if (is_uuid(line))
             uuids.push_back(line);
     }
 
@@ -374,7 +498,7 @@ bk_util::get_second_token (std::string line)
     // Shove off the first token
     size_t start = line.find_first_of(" \t");
     if (start == std::string::npos) {
-        return 0;  // Empty line
+        return "";  // Empty line
     }
     line = line.substr(start);
 

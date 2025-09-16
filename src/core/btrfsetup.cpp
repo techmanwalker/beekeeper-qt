@@ -75,7 +75,7 @@ std::vector<std::map<std::string, std::string>>
 bk_mgmt::btrfsls ()
 {
     std::vector<std::map<std::string, std::string>> filesystems;
-    std::string output = bk_util::exec_command("btrfs filesystem show -d").stdout_str;
+    std::string output = bk_util::exec_command("btrfs", "filesystem", "show", "-d").stdout_str;
     
     if (output.empty()) {
         return filesystems;

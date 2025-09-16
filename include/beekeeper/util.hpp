@@ -24,9 +24,28 @@ namespace beekeeper {
         // Check if a command exists in the system PATH
         bool command_exists(const std::string& command);
 
-        // Execute a command and capture its output
+        // --- Execute a command and capture its output ---
+
+        // Shell mode: explicit, preserves old behavior when you need it.
+        command_streams exec_command_shell(const char *cmd);
+
+        // Execvp mode: pass argv-style arguments (vector form)
+        command_streams exec_commandv(const std::vector<std::string> &args);
+
+        // Variadic wrapper (template) - places in header
+        template<typename... Args>
         command_streams
-        exec_command (const char* cmd);
+        exec_command(const std::string &file, Args&&... args)
+        {
+            std::vector<std::string> argv;
+            argv.reserve(1 + sizeof...(Args));
+            argv.push_back(file);
+            (argv.push_back(std::forward<Args>(args)), ...);
+            return exec_commandv(argv);
+        }
+
+        // internal helper, only for our util.cpp
+        void set_cloexec(int fd);
 
         // Check if file exists
         bool
@@ -75,6 +94,8 @@ namespace beekeeper {
         std::string
         serialize_vector(const std::vector<std::string> &vec);
 
+        bool is_uuid(const std::string &s);
+        
         // Autostart helpers
         std::vector<std::string> list_uuids_in_autostart(const std::string &cfg_file = "/etc/bees/beekeeper-qt.cfg");
         bool is_uuid_in_autostart(const std::string &uuid);

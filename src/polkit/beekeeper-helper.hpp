@@ -22,7 +22,4 @@ private:
 public slots:
     // ExecuteCommand: (s, a{ss}, as) -> a{ss}
     QVariantMap ExecuteCommand(const QString &verb, const QVariantMap &options, const QStringList &subjects);
-
-    // Actually check for authorization
-    QVariantMap whoami();
 };

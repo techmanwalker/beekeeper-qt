@@ -153,6 +153,7 @@ superlaunch::start_root_shell_unlocked()
         }
     } else { 
         DEBUG_LOG("Helper already running, skipping StartService/StartUnit");
+        launcher->root_alive = true;
         return true;
     }
 
@@ -175,12 +176,21 @@ superlaunch::start_root_shell_unlocked()
     QDBusReply<QVariantMap> auth_reply =
         helper_iface.call(QStringLiteral("whoami"));
     if (!auth_reply.isValid()) {
-        qWarning() << "Polkit authorization call failed:" << auth_reply.error().message();
+        qWarning() << "Polkit authorization call failed:"
+                << auth_reply.error().message();
         launcher->root_alive = false;
+
         return false;
     }
 
     QVariantMap reply_map = auth_reply.value();
+    QString stdout_val = reply_map.value("stdout").toString();
+    QString stderr_val = reply_map.value("stderr").toString();
+
+    // Use your DEBUG_LOG macro (assuming it takes QString or std::string)
+    DEBUG_LOG("whoami stdout: " + stdout_val.toStdString());
+    DEBUG_LOG("whoami stderr: " + stderr_val.toStdString());
+
     if (!reply_map.value("stderr").toString().isEmpty()) {
         qWarning() << "Polkit authorization denied:" << reply_map.value("stderr").toString()
             << "; stdout: " << reply_map.value("stdout").toString();
@@ -190,5 +200,6 @@ superlaunch::start_root_shell_unlocked()
 
     DEBUG_LOG("Polkit authorization granted, helper alive");
 
+    launcher->root_alive = true;
     return true;
 }

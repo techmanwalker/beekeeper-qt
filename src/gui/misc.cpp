@@ -69,14 +69,3 @@ MainWindow::set_hovered_uuid(const QString &uuid)
         update_status_bar();
     }
 }
-
-void
-MainWindow::show_keyboard_nav_help()
-{
-    help_dialog help(
-        this,
-        tr("Help for keyboard navigation"),
-        helptexts().keyboardnav()
-    );
-    help.exec();
-}

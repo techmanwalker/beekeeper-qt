@@ -1,7 +1,6 @@
 #include "beekeeper/btrfsetup.hpp"
-#include "beekeeper/debug.hpp"
-#include "beekeeper/internalaliases.hpp" // required for bk_util
 #include "beekeeper/util.hpp"
+#include "beekeeper/internalaliases.hpp"
 #include <algorithm>
 #include <fstream>
 #include <filesystem>
@@ -178,7 +177,7 @@ bk_mgmt::btrfstat (std::string uuid)
             
             // Extract and check UUID
             std::string found_uuid = extract_uuid(line);
-            if (!found_uuid.empty() && bk_util::string_equal_ignore_case(found_uuid, uuid)) {
+            if (!found_uuid.empty() && bk_util::compare_strings_case_insensitive (found_uuid, uuid)) {
                 return entry.path().string();
             }
         }
@@ -278,78 +277,4 @@ bk_mgmt::beessetup(std::string uuid, size_t db_size)
     }
 
     return output_path.string();
-}
-
-std::string
-bk_mgmt::get_mount_path(const std::string &uuid)
-{
-    std::error_code ec;
-
-    // Step 1: Resolve /dev/disk/by-uuid/<UUID>
-    fs::path uuid_path = "/dev/disk/by-uuid/" + uuid;
-    if (!fs::exists(uuid_path)) return ""; // UUID not present
-
-    fs::path real_device = fs::canonical(uuid_path, ec);
-    if (ec) return "";
-
-    // Step 2: Handle device-mapper (LUKS, LVM) devices
-    if (real_device.filename().string().rfind("dm-", 0) == 0) { // starts with dm-
-        fs::path sys_dm_name = "/sys/block" / real_device.filename() / "dm" / "name";
-        std::ifstream name_file(sys_dm_name);
-        if (name_file.is_open()) {
-            std::string dm_name;
-            std::getline(name_file, dm_name);
-            if (!dm_name.empty()) {
-                real_device = fs::path("/dev/mapper") / dm_name;
-            }
-        }
-    }
-
-    // Step 3: Scan /proc/mounts for a mountpoint with that device
-    std::ifstream mounts("/proc/mounts");
-    if (!mounts.is_open()) return ""; // can't read mounts
-
-    std::string line;
-    while (std::getline(mounts, line)) {
-        std::istringstream iss(line);
-        std::string device, mountpoint;
-        if (!(iss >> device >> mountpoint)) continue;
-
-        // Match exact device path
-        if (device == real_device.string()) {
-            return bk_util::trim_string(mountpoint); // only mountpoint, trimmed
-        }
-    }
-
-    // Step 4: Not found
-    return "";
-}
-
-int64_t
-bk_mgmt::get_space::free(const std::string &uuid)
-{
-    std::string mount_path = bk_mgmt::get_mount_path(uuid);
-    if (mount_path.empty()) return -1;
-
-    try {
-        auto info = std::filesystem::space(mount_path);
-        return static_cast<int64_t>(info.available); // free usable space
-    } catch (const std::filesystem::filesystem_error &) {
-        return -1;
-    }
-}
-
-int64_t
-bk_mgmt::get_space::used(const std::string &uuid)
-{
-    std::string mount_path = bk_mgmt::get_mount_path(uuid);
-    if (mount_path.empty()) return -1;
-
-    try {
-        auto info = std::filesystem::space(mount_path);
-        int64_t used_bytes = static_cast<int64_t>(info.capacity - info.free);
-        return used_bytes;
-    } catch (const std::filesystem::filesystem_error &) {
-        return -1;
-    }
 }

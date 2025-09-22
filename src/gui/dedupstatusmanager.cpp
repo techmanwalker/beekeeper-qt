@@ -53,7 +53,7 @@ MainWindow::set_temporal_status_message(const QString message, qint64 duration_i
 void
 MainWindow::handle_cpu_timer()
 {
-    if (!any_running(true)) {
+    if (!is_any_not(&MainWindow::running)) {
         cpu_label->setVisible(false); // hide if no beesd is running
         return;
     }

@@ -8,4 +8,5 @@ class helptexts : public QObject {
 public:
     QString keyboardnav ();
     QString what_is_beekeeper_qt();
+    QString transparent_compression();
 };

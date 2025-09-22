@@ -1,9 +1,8 @@
 #include "beekeeper/beesdmgmt.hpp"
 #include "beekeeper/btrfsetup.hpp"
 #include "beekeeper/debug.hpp"
-#include "beekeeper/internalaliases.hpp"
+#include "beekeeper/transparentcompressionmgmt.hpp"
 #include "beekeeper/util.hpp"
-#include "beekeeper/commandmachine.hpp"
 #include "commandmachine/parser.hpp"
 #include "commandregistry.hpp"
 #include "handlers.hpp"
@@ -153,14 +152,49 @@ int
 beekeeper::cli::handle_locate(const std::map<std::string, std::string>& options,
                               const std::vector<std::string>& subjects)
 {
-    for (const auto &uuid : subjects) {
-        // Call the privileged mount lookup directly
-        std::string mountpoint = bk_mgmt::get_mount_path(uuid);
+    bool json_output = options.find("json") != options.end();
 
-        if (!mountpoint.empty()) {
-            std::cout << mountpoint << std::endl;
-        } else {
-            std::cerr << uuid << ": not mounted or not found" << std::endl;
+    if (json_output) {
+        // --- JSON output ---
+        std::cout << "{";
+
+        bool first_uuid = true;
+        for (const auto &uuid : subjects) {
+            std::vector<std::string> mountpoints = bk_mgmt::get_mount_paths(uuid);
+
+            if (!first_uuid) {
+                std::cout << ", ";
+            }
+            first_uuid = false;
+
+            std::cout << "\"" << uuid << "\": [";
+
+            bool first_mp = true;
+            for (const auto &mp : mountpoints) {
+                if (!first_mp) {
+                    std::cout << ", ";
+                }
+                first_mp = false;
+                std::cout << "\"" << mp << "\"";
+            }
+
+            std::cout << "]";
+        }
+
+        std::cout << "}" << std::endl;
+    } else {
+        // --- Pretty-printed human output ---
+        for (const auto &uuid : subjects) {
+            std::vector<std::string> mountpoints = bk_mgmt::get_mount_paths(uuid);
+
+            if (!mountpoints.empty()) {
+                std::cout << "Points that " << uuid << " is mounted on:" << std::endl;
+                for (const auto &mp : mountpoints) {
+                    std::cout << "\t" << mp << std::endl;
+                }
+            } else {
+                std::cerr << uuid << ": not mounted or not found" << std::endl;
+            }
         }
     }
 
@@ -383,9 +417,159 @@ beekeeper::cli::handle_autostartctl(const std::map<std::string, std::string> &op
 
     for (const std::string &uuid_str : subjects) {
         if (add)
-            bk_mgmt::add_uuid_to_autostart(uuid_str);
+            bk_mgmt::autostart::add_uuid(uuid_str);
         else if (remove)
-            bk_mgmt::remove_uuid_from_autostart(uuid_str);
+            bk_mgmt::autostart::remove_uuid(uuid_str);
+    }
+
+    return 0;
+}
+
+int
+beekeeper::cli::handle_compressctl(const std::map<std::string, std::string> &options,
+                                   const std::vector<std::string> &subjects)
+{
+    namespace tc = bk_mgmt::transparentcompression;
+
+    bool start  = options.find("start")  != options.end() || options.find("s") != options.end();
+    bool pause  = options.find("pause")  != options.end() || options.find("p") != options.end();
+    bool status = options.find("status") != options.end() || options.find("i") != options.end();
+    bool add    = options.find("add")    != options.end() || options.find("a") != options.end();
+    bool remove = options.find("remove") != options.end() || options.find("r") != options.end();
+
+    bool want_json = (options.find("json") != options.end()) || (options.find("j") != options.end());
+
+    // Prevent conflicting options: only one action allowed at a time
+    int chosen = (start ? 1 : 0) + (pause ? 1 : 0) + (status ? 1 : 0) + (add ? 1 : 0) + (remove ? 1 : 0);
+    if (chosen != 1) {
+        commandmachine::command_parser_impl parser;
+        parser.print_help(command_registry);
+        return 1;
+    }
+
+    std::string algo;
+    int level = 0;
+
+    if (add) {
+        // Preset mapping
+        static const std::unordered_map<std::string, std::pair<std::string, int>> preset_map = {
+            {"feather",     {"lzo", 0}},
+            {"light",       {"zstd", 1}},
+            {"balanced",    {"zstd", 3}},
+            {"high",        {"zstd", 6}},
+            {"harder",      {"zstd", 10}},
+            {"maximum",     {"zstd", 15}}
+        };
+
+        // 1) --compression-level / -c
+        auto it_comp = options.find("compression-level");
+
+        if (it_comp != options.end()) {
+            std::string preset = bk_util::to_lower(it_comp->second);
+            if (preset == "<default>") preset = "";          // normalize <default>
+            auto it = preset_map.find(preset);
+            if (it != preset_map.end()) {
+                algo = it->second.first;
+                level = it->second.second;
+            } else if (!preset.empty()) {                    // unknown preset, warn
+                DEBUG_LOG("[compressctl] unknown compression-level preset: ", preset);
+                algo = "lzo";
+                level = 0;
+            }
+        }
+
+        // 2) Override with --algorithm / --algo
+        auto it_algo = options.find("algorithm");
+        if (it_algo == options.end())
+            it_algo = options.find("algo");
+
+        if (it_algo != options.end()) {
+            algo = bk_util::to_lower(it_algo->second);
+            if (algo == "<default>") algo.clear();           // normalize <default>
+        }
+
+        // 3) Override with --level
+        auto it_level = options.find("level");
+        if (it_level != options.end()) {
+            std::string lvl_str = it_level->second;
+            if (lvl_str == "<default>") {
+                level = 0;                                   // normalize <default>
+            } else {
+                try {
+                    level = std::stoi(lvl_str);
+                } catch (...) {
+                    DEBUG_LOG("[compressctl] invalid level, defaulting to 0");
+                    level = 0;
+                }
+            }
+        }
+
+        // 4) Fallback default
+        if (algo.empty())
+            algo = "lzo";
+    }
+
+    if (status && want_json) {
+        std::cout << "[";
+    }
+
+    bool first_json_item = true;
+
+    for (const std::string &uuid_str : subjects) {
+        if (start) {
+            DEBUG_LOG("[compressctl] start compression for UUID ", uuid_str);
+            tc::start(uuid_str);
+        } else if (pause) {
+            DEBUG_LOG("[compressctl] pause compression for UUID ", uuid_str);
+            tc::pause(uuid_str);
+        } else if (status) {
+            DEBUG_LOG("[compressctl] query status for UUID ", uuid_str);
+
+            bool enabled = tc::is_enabled_for(uuid_str);
+            bool running = tc::is_running(uuid_str);
+
+            // Get algorithm + level currently active
+            auto [algorithm, level_str] = bk_mgmt::transparentcompression::get_current_compression_level(uuid_str);
+
+            if (want_json) {
+                if (!first_json_item) std::cout << ",";
+                first_json_item = false;
+
+                std::cout << "\n  {"
+                          << "\"uuid\":\"" << uuid_str << "\","
+                          << "\"enabled\":" << (enabled ? "true" : "false") << ","
+                          << "\"running\":" << (running ? "true" : "false") << ","
+                          << "\"algorithm\":\"" << algorithm << "\","
+                          << "\"level\":\"" << level_str << "\""
+                          << "}";
+            } else {
+                std::cout << uuid_str << ": "
+                          << (enabled ? "Enabled to automatically compress at boot; "
+                                      : "Disabled to automatically compress at boot; ")
+                          << (running ? "compressing" : "paused, not running");
+
+                if (!algorithm.empty() && algorithm != "none") {
+                    std::cout << " with algorithm " << algorithm;
+                    if (!level_str.empty() && level_str != "0") {
+                        std::cout << " at level " << level_str;
+                    }
+                }
+
+                std::cout << std::endl;
+            }
+        } else if (add) {
+            DEBUG_LOG("[compressctl] add compression config for UUID ", uuid_str,
+                      " algo=", algo, " level=", level);
+            tc::add_uuid(uuid_str, algo, level);
+        } else if (remove) {
+            DEBUG_LOG("[compressctl] remove compression config for UUID ", uuid_str);
+            tc::remove_uuid(uuid_str);
+        }
+    }
+
+    if (status && want_json) {
+        if (!first_json_item) std::cout << "\n";
+        std::cout << "]" << std::endl;
     }
 
     return 0;

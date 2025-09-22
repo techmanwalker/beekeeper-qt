@@ -4,16 +4,20 @@
 //  - Parses the db size from the combo box (default 256 MiB)
 //  - Filters uuids to those that need setup (supercommander->btrfstat(uuid) indicates no config)
 //  - Calls supercommander->beessetup(uuid, db_size) for each
+//  - If compression enabled, configures transparent compression (adds UUID to config)
+//    and remounts active filesystems with compression (management::transparentcompression::start)
 //  - Shows a summary (success / failures)
+//  - Warns the user if compression enabling or remounting fails
 //
-// Modal dialog to configure DB size for selected btrfs filesystems.
-// Only acts on filesystems without an existing configuration.
-// Immediately closes after running setup; GUI refresh handles status updates.
+// Modal dialog to configure DB size and transparent compression
+// for selected btrfs filesystems. Only acts on filesystems without
+// an existing configuration. Immediately closes after running setup;
+// GUI refresh handles status updates.
 
-#include "beekeeper/debug.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp" // launcher + komander
+#include "../polkit/multicommander.hpp"
 #include "setupdialog.hpp"
 
 #include <QLabel>
@@ -23,6 +27,9 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QtConcurrent/QtConcurrent>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QFont>
 #include <string>
 
 using namespace beekeeper::privileged;
@@ -45,7 +52,7 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
     help->setWordWrap(true);
     main_layout->addWidget(help);
 
-    // Label + combo box row
+    // Label + combo box row (database size)
     auto *row = new QHBoxLayout();
     QLabel *lbl = new QLabel(tr("Database size: "), this);
     row->addWidget(lbl);
@@ -66,8 +73,6 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
     options.append(SizeOption{1 * 1024 * 1024 * 1024, tr("1 GiB")});
     options.append(SizeOption{4ULL * 1024 * 1024 * 1024, tr("4 GiB")});
 
-
-
     for (const auto &opt : options)
         m_dbSizeCombo->addItem(opt.display, QVariant::fromValue<qulonglong>(opt.value));
 
@@ -82,6 +87,45 @@ SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
     m_dbSizeCombo->setMaximumWidth(300);
     row->addWidget(m_dbSizeCombo, /*stretch=*/1);
     main_layout->addLayout(row);
+
+    // --- Transparent compression section ---
+    auto *compression_row = new QHBoxLayout();
+
+    // Tickbox
+    m_enableCompression = new QCheckBox(tr("Enable transparent compression"), this);
+    m_enableCompression->setChecked(true);
+    compression_row->addWidget(m_enableCompression, 1);
+
+    // Compression profile combo (values stored but not currently consumed by management API)
+    m_compressionCombo = new QComboBox(this);
+    m_compressionCombo->addItem(tr("Feather"),     QVariant("feather"));
+    m_compressionCombo->addItem(tr("Light"),       QVariant("light"));
+    m_compressionCombo->addItem(tr("Balanced"),    QVariant("balanced"));
+    m_compressionCombo->addItem(tr("High"),        QVariant("high"));
+    m_compressionCombo->addItem(tr("Harder"),      QVariant("harder"));
+    m_compressionCombo->addItem(tr("Maximum"),     QVariant("maximum"));
+
+    // Default = Balanced (index 2)
+    m_compressionCombo->setCurrentIndex(2);
+
+    compression_row->addWidget(m_compressionCombo, 1);
+    main_layout->addLayout(compression_row);
+
+    // Note label
+    QString note_text = tr(
+        "Note: compression only works for new files created while it is running.\n"
+        "To compress your filesystem for the first time, run:\n"
+        "sudo btrfs filesystem defrag -r -czstd mountpoint\n"
+        "Pro tip: you can install beekeeper-qt right after installing your Linux to reduce compression overhead from the start."
+    );
+
+    QLabel *note = new QLabel(note_text, this);
+    QFont f = note->font();
+    f.setItalic(true);
+    f.setPointSizeF(f.pointSizeF() * 0.85); // smaller
+    note->setFont(f);
+    note->setWordWrap(true);
+    main_layout->addWidget(note);
 
     // Buttons row
     auto *btn_row = new QHBoxLayout();
@@ -162,7 +206,36 @@ SetupDialog::accept()
             failed_count++;
     }
 
-    // Emit finished signal
+    // --- Transparent compression section ---
+    // NOTE: For now we just add the UUID to the transparent-compression config
+    // using the management API and attempt to remount if the filesystem is mounted.
+    // We do not attempt to compute a human-readable label here (no fs_table access).
+    if (m_enableCompression->isChecked()) {
+        // Keep the chosen token for future use; will parse algo:level internally
+        QString compress_token = m_compressionCombo->currentData().toString();
+
+        for (const QString &q : uuids_to_setup) {
+            std::string uuid = q.toStdString();
+
+            // Add UUID to transparent compression configuration
+            komander->add_uuid_to_transparentcompression(uuid, compress_token.toStdString());
+
+            // If filesystem is mounted, try to start compression (remount)
+
+            std::string mountpoint = komander->beeslocate(uuid);
+            if (!mountpoint.empty()) {
+                bool ok = komander->start_transparentcompression_for_uuid(uuid);
+                if (!ok) {
+                    QMessageBox::warning(this, tr("Remount for transparent compression failed"),
+                                        tr("Filesystem %1 could not be remounted to enable transparent compression.")
+                                        .arg(QString::fromStdString(uuid)));
+                }
+            }
+
+        }
+    }
+
+    // Emit finished signal (same behavior as before)
     MainWindow *mw = qobject_cast<MainWindow*>(parentWidget());
     if (mw && mw->rootThread) {
         QMetaObject::invokeMethod(mw->rootThread,

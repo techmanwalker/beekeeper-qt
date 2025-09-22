@@ -1,10 +1,12 @@
+#include "beekeeper/beesdmgmt.hpp"
 #include "mainwindow.hpp"
+#include "../polkit/multicommander.hpp"
 
 /**
  * @brief Adds the selected configured filesystems to the autostart list.
  *
  * This function reads the currently selected rows in fs_table and adds
- * the corresponding UUIDs to /etc/bees/beekeeper-qt.cfg if they are
+ * the corresponding UUIDs to /etc/bees/autostartsettings.cfg if they are
  * not already present. Only configured filesystems are considered.
  *
  * The autostart file is read by the systemd-activated beekeeper-helper
@@ -20,11 +22,11 @@ MainWindow::handle_add_to_autostart()
     auto futures = new QList<QFuture<bool>>; // heap allocation
 
     for (const QModelIndex &idx : selected) {
-        if (!is_configured(idx))
+        if (!configured(idx))
             continue;
 
         QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-        if (bk_util::is_uuid_in_autostart(uuid.toStdString()))
+        if (bk_mgmt::autostart::is_enabled_for(uuid.toStdString()))
             continue;
 
         futures->append(komander->async->add_uuid_to_autostart(uuid));
@@ -36,7 +38,7 @@ MainWindow::handle_add_to_autostart()
 /**
  * @brief Removes the selected configured filesystems from the autostart list.
  *
- * This function reads /etc/bees/beekeeper-qt.cfg, removes the UUIDs
+ * This function reads /etc/bees/autostartsettings.cfg, removes the UUIDs
  * corresponding to the selected configured rows in fs_table, and
  * rewrites the file without empty lines.
  *
@@ -52,11 +54,11 @@ MainWindow::handle_remove_from_autostart()
     auto futures = new QList<QFuture<bool>>; // heap allocation
 
     for (const QModelIndex &idx : selected) {
-        if (!is_configured(idx))
+        if (!configured(idx))
             continue;
 
         QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-        if (!bk_util::is_uuid_in_autostart(uuid.toStdString()))
+        if (!bk_mgmt::autostart::is_enabled_for(uuid.toStdString()))
             continue;
 
         futures->append(komander->async->remove_uuid_from_autostart(uuid));

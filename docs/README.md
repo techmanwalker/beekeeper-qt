@@ -33,6 +33,8 @@ The last are the two ways in which the program is presented to the user.
 
 The project follows a **"inside-out" execution flow** (or top-to-bottom if you think of it as a call tree starting from the main() functions), without going back to previous points in the flow of the same thread that shouldn't be reused. It relies heavily on division, refactorization, and reuse to minimize logic errors and allow focus solely on functionality.
 
+**From now on, we're going to dive more on the programming philosophy of the project.**
+
 ## Key Design Decisions
 
 The architecture emphasizes:
@@ -44,3 +46,28 @@ The architecture emphasizes:
 - **Deterministic execution flow** - Simple, direct order from start to finish
 
 This design ensures the program maintains clean, maintainable code while providing multiple access methods for different user preferences and use cases.
+
+## Error Handling Philosophy
+
+One thing you’ll notice in **beekeeper-qt** is that we don’t wrap every little operation in try/catch blocks. We follow what I like to call **“best-effort execution”**, which basically means:
+
+* **Do the job, but only complain when necessary.**
+  If a file doesn’t exist or a minor operation fails, a safe default value (like an empty vector or `false`) is returned. That’s why functions like `bk_util::read_lines_from_file()` never throw — they simply return an empty vector if the file can’t be read. No exceptions, no cluttered logs (as long as you don't build with `-DCMAKE_BUILD_TYPE=Debug`. That is intended only for development purposes)
+
+* **Explicit checks for critical operations.**
+  Whenever something could break the program or require root privileges (writing to `/etc`, controlling a systemd service, etc.), the program itself does explicit checks first with helpers like `file_readable()`, `is_root()`, `is_uuid()`, or `quote_if_needed()`. Only then do we “complain” or refuse to continue.
+
+* **Separation of concerns.**
+  GUI operations, DBus calls, and high-level commands don’t get bogged down in low-level error handling. They rely on the core utilities to fail gracefully. These are my best effort to make the code predictable, easy to follow, and reduce unexpected crashes (file an issue if you find one)
+
+* **Predictable defaults.**
+  Users (or other parts of the program) always get a meaningful result, even when something goes wrong behind the scenes. For example:
+
+  ```cpp
+  std::vector<std::string> lines = bk_util::read_lines_from_file("/some/config");
+  // lines might be empty if the file doesn't exist — program continues safely
+  ```
+
+This approach lets developers focus on **what the program does**, not every little failure that *might* happen along the way. It’s inspired by the philosophy of classic Linux system utilities: fail quietly when it’s harmless, but fail loudly when it matters.
+
+> TL;DR: If a file is missing, we skip it. If a critical action can’t be performed safely, we stop and report it. Everything in between is “best-effort execution.”

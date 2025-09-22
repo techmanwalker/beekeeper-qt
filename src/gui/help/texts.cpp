@@ -52,3 +52,106 @@ helptexts::what_is_beekeeper_qt()
         + tr("Press the **+** button to have beekeeper-qt start deduplicating your filesystems on system boot.") + "\n\n"
         + tr("__\"Storage is cheap in the big 2025, they say... Pfft.\"__");
 }
+
+QString
+helptexts::transparent_compression()
+{
+    return tr("# Transparent compression and deduplication") + "\n\n"
+        + tr("You may have seen this note when setting up a filesystem:") + "\n\n"
+        + tr("> *Note: compression only works for new files when they are created. "
+              "Run this command to compress your filesystem for the first time.*") + "\n\n"
+
+        + tr("At first this can sound confusing, because **deduplication** and "
+              "**transparent compression** work under very different logic. "
+              "Although they work together to reduce the used disk space, "
+              "they are two separate mechanisms, unrelated to one another, "
+              "and not handled by the same utilities.") + "\n\n"
+
+        + tr("In **beekeeper-qt**, as in the filesystem layer itself, they are "
+              "completely independent.") + "\n\n"
+
+        + tr("## Deduplication") + "\n\n"
+        + tr("This is *beesd*’s job. No matter when you enable or configure "
+              "deduplication for a filesystem, *beesd* will **always deduplicate files "
+              "that already exist**. It works by:") + "\n\n"
+        + "- " + tr("Scanning your disk") + "\n"
+        + "- " + tr("Building a hash table of your btrfs filesystem") + "\n"
+        + "- " + tr("Finding matching data") + "\n"
+        + "- " + tr("Deduplicating identical extents at the block level") + "\n\n"
+
+        + tr("This means deduplication always starts with the data already present "
+              "on disk. Even if you delete and recreate the *beesd* configuration, "
+              "your existing data remains deduplicated. When you restart the *beesd* "
+              "service with the **Start** button, it rebuilds the hash table and looks "
+              "for new matching patterns.") + "\n\n"
+
+        + tr("It’s a recursive and additive process, where every run adds more "
+              "deduplication opportunities over time as new files are written.") + "\n\n"
+
+        + tr("🢒 You can check if **deduplication** is active by looking at the "
+              "**Status** column of the table in beekeeper-qt.") + "\n\n"
+
+        + tr("## Transparent compression") + "\n\n"
+        + tr("By contrast, **transparent compression** works in the opposite way: "
+              "it compresses **only new files written** to the disk. That means:") + "\n\n"
+        + "- " + tr("Existing files remain uncompressed if they were written while "
+                   "transparent compression was disabled.") + "\n"
+        + "- " + tr("When enabled, the *btrfs* driver uses its own heuristics to "
+                   "decide whether new data is compressible.") + "\n"
+        + "- " + tr("If compressible, the data is written using the selected compression algorithm "
+                   "and level, which you configure at **Setup** time in beekeeper-qt.") + "\n\n"
+
+        + tr("Because of this, transparent compression only makes sense if it’s "
+              "**enabled all the time your system is running**. That’s why it is "
+              "enabled by default in beekeeper-qt to ensure maximum savings "
+              "from the moment files are created.") + "\n\n"
+
+        + tr("🢒 You can check whether **transparent compression** is active for a "
+              "filesystem by selecting it with the mouse or keyboard (see **Keyboard "
+              "navigation**) and hovering the **zip button**. Its tooltip shows whether "
+              "compression is currently running.") + "\n\n"
+
+        + tr("## Gotchas") + "\n\n"
+        + tr("- You can start transparent compression manually by pressing the "
+              "**zip button**.") + "\n\n"
+        + "  - " + tr("This uses the lowest compression level (*feather*) if you didn't setup it.") + "\n"
+        + "  - " + tr("However, this setting does **not** persist across reboots, "
+                     "so compression will not be active after restarting unless "
+                     "enabled in **Setup**.") + "\n\n"
+
+        + tr("### If you only want deduplication at boot:") + "\n\n"
+        + "1. " + tr("Remove the setup for your **filesystem(s)**, if not already done.") + "\n"
+        + "2. " + tr("Click **Setup**.") + "\n"
+        + "3. " + tr("Untick **Enable transparent compression** and press **Enter**.") + "\n\n"
+        + tr("This disables automatic compression at boot.") + "\n"
+        + tr("*Note: using only **deduplication** is rarely useful on its own because "
+              "it will not reduce disk space significantly unless combined with "
+              "compression.*") + "\n\n"
+
+        + tr("### If you only want transparent compression:") + "\n\n"
+        + "1. " + tr("Remove the setup for your **filesystem(s)**.") + "\n"
+        + "2. " + tr("Click **Setup**.") + "\n"
+        + "3. " + tr("Set your preferred compression level and press **Enter**.") + "\n"
+        + "4. " + tr("If **deduplication** is enabled to start on boot, disable it by pressing the "
+                   "**✕** button in the toolbar.") + "\n\n"
+        + tr("Compression alone is often more beneficial than deduplication, "
+              "but you lose the advantages of combining both.") + "\n\n"
+
+        + tr("### If you want both transparent compression and deduplication:") + "\n\n"
+        + "1. " + tr("Remove the setup for your **filesystem(s)**.") + "\n"
+        + "2. " + tr("Click **Setup**.") + "\n"
+        + "3. " + tr("Set your preferred compression level and press **Enter**.") + "\n"
+        + "4. " + tr("Enable deduplication on boot by pressing the **+** button in the toolbar.") + "\n\n"
+
+        + tr("🢒 Using both together can reduce disk usage by up to **50%**, depending "
+              "on the type of data you store. Highly repetitive data like logs or "
+              "virtual machine images benefits greatly from deduplication, while "
+              "general-purpose data (documents, media, source code) sees savings "
+              "from compression.") + "\n\n"
+
+        + tr("In summary, transparent compression and deduplication are "
+              "complementary features. Deduplication cleans up redundancy in already-"
+              "existing data, while compression ensures every new file is written "
+              "in the most space-efficient way. Together they maximize space savings "
+              "and prolong the life of your storage.") + "\n";
+}

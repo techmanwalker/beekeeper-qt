@@ -90,6 +90,13 @@ public:
     bool add_uuid_to_autostart(const std::string &uuid);
     bool remove_uuid_from_autostart(const std::string &uuid);
 
+    // Transparent compression control
+    bool add_uuid_to_transparentcompression(const std::string &uuid, const std::string &compression_token = "compress=lzo");
+    bool remove_uuid_from_transparentcompression(const std::string &uuid);
+
+    bool start_transparentcompression_for_uuid(const std::string &uuid);
+    bool pause_transparentcompression_for_uuid(const std::string &uuid);
+
     // Async wrapper submethods
     std::unique_ptr<multicommander> async;
 

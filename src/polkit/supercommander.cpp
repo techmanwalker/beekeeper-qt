@@ -2,10 +2,8 @@
 #include "beekeeper/qt-debug.hpp"
 #include "beekeeper/supercommander.hpp"
 #include "beekeeper/superlaunch.hpp"
-#include <algorithm>
 #include <beekeeper/util.hpp>
-#include <csignal>
-#include <filesystem>
+#include <QDateTime>
 #include <QDBusArgument>
 #include <QDBusInterface>
 #include <QJsonDocument>
@@ -14,11 +12,8 @@
 #include <QtConcurrent/QtConcurrent>
 #include <unistd.h>
 #include <sys/poll.h>
-#include <sstream>
 
 #include "globals.hpp"
-
-namespace fs = std::filesystem;
 
 namespace beekeeper { namespace privileged {
 
@@ -67,12 +62,16 @@ supercommander::call_bk(const QString &verb,
         return result;
     }
 
+    // DEBUG_LOG("[supercommander] call_bk: before DBus call for verb ", verb.toStdString(), " :" , QDateTime::currentDateTime().toString().toStdString());
+
     QDBusMessage reply_msg = helper_iface.call(QDBus::Block, "ExecuteCommand", verb, options, subjects);
     if (reply_msg.type() == QDBusMessage::ErrorMessage) {
-        DEBUG_LOG("[supercommander] DBus call returned error:", reply_msg.errorMessage());
+        DEBUG_LOG("[supercommander] DBus call returned error: ", reply_msg.errorMessage());
         result.stderr_str = reply_msg.errorMessage().toStdString();
         return result;
     }
+
+    // DEBUG_LOG("[supercommander] call_bk: after DBus call for verb ", verb.toStdString(), " :" , QDateTime::currentDateTime().toString().toStdString());
 
     if (reply_msg.arguments().isEmpty()) {
         DEBUG_LOG("[supercommander] helper reply had no arguments");
@@ -292,6 +291,58 @@ supercommander::remove_uuid_from_autostart(const std::string &uuid)
     command_streams res = call_bk("autostartctl", opts, QStringList(QString::fromStdString(uuid)));
     return true;
 }
+
+bool
+supercommander::add_uuid_to_transparentcompression(const std::string &uuid,
+                                                   const std::string &compression_level)
+{
+    QVariantMap opts;
+    opts.insert("add", "<default>");
+    opts.insert("compression-level", QString::fromStdString(bk_util::to_lower(compression_level)));
+
+    command_streams res =
+        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
+
+    return true;
+}
+
+
+bool
+supercommander::remove_uuid_from_transparentcompression(const std::string &uuid)
+{
+    QVariantMap opts;
+    opts.insert("remove", "<default>");
+
+    command_streams res =
+        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
+
+    return true;
+}
+
+bool
+supercommander::start_transparentcompression_for_uuid(const std::string &uuid)
+{
+    QVariantMap opts;
+    opts.insert("start", "<default>");
+
+    command_streams res =
+        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
+
+    return true;
+}
+
+bool
+supercommander::pause_transparentcompression_for_uuid(const std::string &uuid)
+{
+    QVariantMap opts;
+    opts.insert("pause", "<default>");
+
+    command_streams res =
+        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
+
+    return true;
+}
+
 
 } // namespace privileged
 } // namespace beekeeper

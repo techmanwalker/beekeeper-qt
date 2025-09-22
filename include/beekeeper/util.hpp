@@ -1,7 +1,11 @@
 #pragma once
-#include <fstream>
+#include "beekeeper/internalaliases.hpp"
+
+#include <cstddef>
 #include <string>
 #include <vector>
+
+using _internalaliases_dummy_anchor = beekeeper::_internalaliases_dummy::anchor;
 
 // Struct to hold command output streams
 struct command_streams
@@ -12,14 +16,9 @@ struct command_streams
 
 namespace beekeeper {
     namespace __util__ {
-        // Helper: Case-insensitive string comparison
-        // Simple case-insensitive character comparison
-        bool
-        char_equal_ignore_case (char a, char b);
-
         // Case-insensitive string comparison
         bool
-        string_equal_ignore_case (const std::string& a, const std::string& b);
+        compare_strings_case_insensitive (const std::string& a, const std::string& b);
 
         // Check if a command exists in the system PATH
         bool command_exists(const std::string& command);
@@ -32,15 +31,18 @@ namespace beekeeper {
         // Execvp mode: pass argv-style arguments (vector form)
         command_streams exec_commandv(const std::vector<std::string> &args);
 
-        // Variadic wrapper (template) - places in header
+        // Variadic wrapper (template)
         template<typename... Args>
         command_streams
-        exec_command(const std::string &file, Args&&... args)
+        exec_command(std::string_view file, Args&&... args)
         {
+            static_assert((std::is_constructible<std::string, Args>::value && ...),
+                        "All exec_command() arguments must be convertible to std::string");
+
             std::vector<std::string> argv;
             argv.reserve(1 + sizeof...(Args));
-            argv.push_back(file);
-            (argv.push_back(std::forward<Args>(args)), ...);
+            argv.emplace_back(file);
+            (argv.emplace_back(std::forward<Args>(args)), ...);
             return exec_commandv(argv);
         }
 
@@ -95,10 +97,6 @@ namespace beekeeper {
         serialize_vector(const std::vector<std::string> &vec);
 
         bool is_uuid(const std::string &s);
-        
-        // Autostart helpers
-        std::vector<std::string> list_uuids_in_autostart(const std::string &cfg_file = "/etc/bees/beekeeper-qt.cfg");
-        bool is_uuid_in_autostart(const std::string &uuid);
 
         // For ps aux based process finding
         std::string
@@ -106,5 +104,50 @@ namespace beekeeper {
 
         // Measure cpu usage
         double current_cpu_usage(int decimals = 1);
+
+        // For reading config files
+        std::vector<std::string> read_lines_from_file(const std::string &path);
+        void make_file_world_readable(const std::string &path);
+
+        // Accepts multiple strings
+        std::vector<std::string>
+        find_lines_matching_substring_in_vector(
+            const std::vector<std::string> &lines,
+            const std::vector<std::string> &substrs_to_find,
+            bool case_insensitive = false,
+            size_t max_coincidence_lines_count = 0
+        );
+
+        // Single-string convenience overload: forwards to the vector variant.
+        std::vector<std::string>
+        find_lines_matching_substring_in_vector(
+            const std::vector<std::string> &lines,
+            const std::string &substr_to_find,
+            bool case_insensitive = false,
+            size_t max_coincidence_lines_count = 0
+        );
+
+        std::string current_timestamp();
+
+        // Accepts multiple strings
+        std::vector<std::string>
+        find_lines_matching_substring_in_file(const std::string &path,
+                                            const std::vector<std::string> &substrs_to_match,
+                                            bool case_insensitive = false,
+                                            size_t max_coincidence_lines_count = 0);
+
+        // Accepts a single string
+        std::vector<std::string>
+        find_lines_matching_substring_in_file(const std::string &path,
+                                            const std::string &substr_to_match,
+                                            bool case_insensitive = false,
+                                            size_t max_coincidence_lines_count = 0);
+
+        // For bk_mgmt::transparentcompression::start
+        std::string
+        unescape_proc_mount_field(const std::string &s);
+
+        std::vector<std::string>
+        tokenize(const std::string &line, char split_char = ' ');
     }
 }

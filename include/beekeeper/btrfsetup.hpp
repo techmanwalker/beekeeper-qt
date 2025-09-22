@@ -20,8 +20,15 @@ namespace beekeeper {
         std::string
         beessetup (std::string uuid, size_t db_size = 0);
 
+        // Get block device/mapper device for uuid
+        std::string
+        get_real_device(const std::string &uuid);
+
         // Return mount point by uuid
-        std::string get_mount_path(const std::string &uuid);
+        std::vector<std::string> get_mount_paths(const std::string &uuid);
+
+        // Return uuid by mount point
+        std::string get_mount_uuid(const std::string &mountpoint);
 
         namespace get_space {
 

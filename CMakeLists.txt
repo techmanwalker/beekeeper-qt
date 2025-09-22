@@ -34,6 +34,12 @@ endif()
 set(BEEKEEPER_HELPER_PATH "${CMAKE_INSTALL_FULL_LIBDIR}/beekeeper/bin/beekeeper-helper")
 
 # ------------------------------
+# Udev
+# ------------------------------
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBUDEV REQUIRED libudev)
+
+# ------------------------------
 # Debug logging
 # ------------------------------
 if(NOT CMAKE_BUILD_TYPE)
@@ -80,10 +86,15 @@ add_compile_definitions(BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
 # ------------------------------
 # Core library
 # ------------------------------
+file(GLOB MGMT_SRCS
+    src/core/management/*
+)
+file(GLOB UTIL_SRCS
+    src/core/utils/*
+)
 add_library(beekeeper SHARED
-    src/core/beesdmgmt.cpp
-    src/core/btrfsetup.cpp
-    src/core/util.cpp
+    ${MGMT_SRCS}
+    ${UTIL_SRCS}
 )
 set_target_properties(beekeeper PROPERTIES
     VERSION ${PROJECT_VERSION}
@@ -101,7 +112,7 @@ add_executable(beekeeperman
     src/cli/commandmachine/parser.cpp
     src/cli/commandregistry.cpp
     src/cli/handlers.cpp
-    src/core/util.cpp
+    ${UTIL_SRCS}
 )
 set_target_properties(beekeeperman PROPERTIES
     BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
@@ -113,12 +124,19 @@ target_link_libraries(beekeeperman PRIVATE beekeeper)
 # GUI sources
 # ------------------------------
 # --- Polkit sources (exclude beekeeper-helper.cpp)
-file(GLOB POLKIT_SRCS src/polkit/*.cpp include/beekeeper/supercommander.hpp)
-list(REMOVE_ITEM GUI_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/gui/main.cpp)
+file(GLOB POLKIT_SRCS
+    include/beekeeper/supercommander.hpp
+    src/polkit/globals.*           # matches globals.cpp / globals.hpp if needed
+    src/polkit/multicommander.*   # matches multicommander.cpp / .hpp
+    src/polkit/super*             # matches super*.cpp / .hpp
+)
 
 # --- GUI sources (exclude main.cpp)
 file(GLOB_RECURSE GUI_SRCS src/gui/*.cpp)
-list(REMOVE_ITEM POLKIT_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/beekeeper-helper.cpp)
+list(REMOVE_ITEM POLKIT_SRCS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/diskwait.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/masterservice.cpp"
+)
 
 # ------------------------------
 # GUI executable
@@ -147,18 +165,23 @@ target_link_libraries(beekeeper-qt PRIVATE
 # ------------------------------
 add_executable(beekeeper-helper
     ${POLKIT_SRCS}
-    src/polkit/beekeeper-helper.cpp
-    src/cli/handlers.cpp
+    src/polkit/diskwait.cpp
+    src/polkit/masterservice.cpp
     src/cli/commandregistry.cpp
     src/cli/commandmachine/parser.cpp
+    src/cli/handlers.cpp
 )
+
 target_include_directories(beekeeper-helper PRIVATE
     ${BUILD_INCLUDE_DIR}
     ${POLKIT_INCLUDES}
+    ${LIBUDEV_INCLUDE_DIRS}
 )
+
 target_link_libraries(beekeeper-helper PRIVATE
     Qt6::Core Qt6::Widgets Qt6::DBus Qt6::Concurrent
     beekeeper ${POLKIT_LIBS}
+    ${LIBUDEV_LIBRARIES}
 )
 
 # For executables/libraries that include helperpath.hpp

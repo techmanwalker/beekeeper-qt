@@ -56,7 +56,12 @@ handle_locate(const std::map<std::string, std::string>& options,
 
 int
 handle_autostartctl(const std::map<std::string, std::string> &options,
-            const std::vector<std::string> &subjects);
+                    const std::vector<std::string> &subjects);
+
+int
+handle_compressctl(const std::map<std::string, std::string> &options,
+                   const std::vector<std::string> &subjects);
+
 
 } // namespace cli
 } // namespace beekeeper

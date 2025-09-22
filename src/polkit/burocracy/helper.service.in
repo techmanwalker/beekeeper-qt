@@ -1,6 +1,9 @@
+# helper.service.in
+
 [Unit]
 Description=BeeKeeper privileged helper (DBus-activated)
-After=dbus.service
+After=dbus.service local-fs.target
+Wants=local-fs.target
 
 [Service]
 Type=dbus

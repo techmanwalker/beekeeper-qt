@@ -178,57 +178,70 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../mainwindow.cpp" line="48"/>
+        <location filename="../mainwindow.cpp" line="51"/>
         <source>Refresh</source>
         <translation>Actualizar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="49"/>
+        <location filename="../mainwindow.cpp" line="52"/>
         <source>Start</source>
         <translation>Iniciar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="50"/>
+        <location filename="../mainwindow.cpp" line="53"/>
         <source>Stop</source>
         <translation>Detener</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="51"/>
+        <location filename="../mainwindow.cpp" line="54"/>
         <source>Setup</source>
         <translation>Configurar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="52"/>
         <source>Add selected filesystems to autostart</source>
-        <translation>Agregar al autoarranque</translation>
+        <translation type="vanished">Agregar al autoarranque</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="53"/>
         <source>Remove selected filesystems from autostart</source>
-        <translation>Eliminar del autoarranque</translation>
+        <translation type="vanished">Eliminar del autoarranque</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="108"/>
+        <location filename="../mainwindow.cpp" line="40"/>
+        <source>Select a filesystem to view its transparent compression status</source>
+        <translation>Para verificar si la compresión transparente está funcionando, selecciona un sistema de archivos</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="55"/>
+        <source>Automatically start deduplicating filesystems at boot</source>
+        <translation>Iniciar deduplicación de archivos al arrancar el sistema</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="56"/>
+        <source>Do not start deduplicating filesystems at boot</source>
+        <translation>No comenzar a deduplicar archivos al arrancar el sistema</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="118"/>
         <source>Start with logging enabled</source>
         <translation>Iniciar con el registro activado</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="111"/>
+        <location filename="../mainwindow.cpp" line="121"/>
         <source>Logging the Beesd deduplication is very resource intensive and takes a lot of disk space because Beesd logs are massive and only intended for debugging purposes.</source>
         <translation>Activar el registro de la deduplicación de datos Beesd consume demasiados recursos y ocupa demasiado espacio en disco porque los registros de Beesd son muy grandes y solo se debe realizar con fines de depuración.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="112"/>
+        <location filename="../mainwindow.cpp" line="122"/>
         <source>It is discouraged to enable it by the normal user, hence that&apos;s why this is only visible in the Debug release of beekeeper-qt.</source>
         <translation>No se recomienda para nada al usuario común activarlo. Esta es la razón por la que esta opción solo es visible en el modo de depuración de beekeeper-qt.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="113"/>
+        <location filename="../mainwindow.cpp" line="123"/>
         <source>If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much free space you had before and how much you have free now.</source>
         <translation>Si solamente quieres saber cuánto espacio en disco has liberado desde que iniciaste el servicio, solo pasa el cursor sobre un sistema de archivos o selecciónalo, lo que te mostrará cuánto espacio libre tenías antes de comenzar y cuánto tienes ahora.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="115"/>
+        <location filename="../mainwindow.cpp" line="125"/>
         <source>Are you sure you want to continue?</source>
         <translation>¿Estás seguro de que quieres continuar?</translation>
     </message>
@@ -237,7 +250,7 @@
         <translation type="vanished">Si solamente quieres saber cuánto espacio en disco has liberado desde que iniciaste el servicio, solo pasa el cursor sobre un sistema de archivos o selecciónalo, lo que te mostrará cuánto espacio libre tenías antes de comenzar y cuánto tienes ahora.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="114"/>
+        <location filename="../mainwindow.cpp" line="124"/>
         <source>Again, this is purely for debugging purposes and otherwise discouraged to enable.</source>
         <translation>Repito, esto es puramente para propósitos de depuración y se desaconseja habilitarlo para el uso cotidiano.</translation>
     </message>
@@ -246,22 +259,22 @@
         <translation type="vanished">¿Estás seguro de que quieres continuar?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="119"/>
+        <location filename="../mainwindow.cpp" line="129"/>
         <source>Warning</source>
         <translation>Advertencia</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="135"/>
+        <location filename="../mainwindow.cpp" line="145"/>
         <source>UUID</source>
         <translation>UUID</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="135"/>
+        <location filename="../mainwindow.cpp" line="145"/>
         <source>Name</source>
         <translation>Nombre</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="135"/>
+        <location filename="../mainwindow.cpp" line="145"/>
         <source>Dedup status</source>
         <translation>Estado de deduplicación</translation>
     </message>
@@ -271,28 +284,38 @@
         <translation>Múltiples sistemas de archivos seleccionados. Para mostrar el espacio libre de alguno, selecciona solo uno.</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="208"/>
-        <location filename="../mainwindow.cpp" line="55"/>
+        <location filename="../buttonhandlers.cpp" line="121"/>
+        <source>Transparent compression stopped for selected filesystems</source>
+        <translation>Compresión transparente detenida para los sistemas de archivos seleccionados</translation>
+    </message>
+    <message>
+        <location filename="../buttonhandlers.cpp" line="124"/>
+        <source>Transparent compression running for selected filesystems</source>
+        <translation>Compresión transparente ejecutándose para los sistemas de archivos seleccionados</translation>
+    </message>
+    <message>
+        <location filename="../buttonhandlers.cpp" line="249"/>
+        <location filename="../mainwindow.cpp" line="58"/>
         <source>Show logs</source>
         <translation>Mostrar el registro</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="209"/>
+        <location filename="../buttonhandlers.cpp" line="250"/>
         <source>Please select only one filesystem to show its deduplication logs.</source>
         <translation>Por favor selecciona solamente un sistema de archivos para mostrar su historial de deduplicación.</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="220"/>
+        <location filename="../buttonhandlers.cpp" line="261"/>
         <source>Filesystem logs for: </source>
         <translation>Registros del sistema de archivos: </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="237"/>
+        <location filename="../buttonhandlers.cpp" line="343"/>
         <source>No selection</source>
         <translation>Ninguno fue seleccionado</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="238"/>
+        <location filename="../buttonhandlers.cpp" line="344"/>
         <source>Please select at least one filesystem to remove its Beesd configuration.</source>
         <translation>Por favor selecciona al menos un sistema de archivos para eliminar su configuración de Beesd.</translation>
     </message>
@@ -301,7 +324,7 @@
         <translation type="vanished">Por favor, selecciona el sistema de archivos el cual deseas eliminar su configuración.</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="261"/>
+        <location filename="../buttonhandlers.cpp" line="367"/>
         <source>This does not provoke data loss but you won&apos;t have file deduplication functionality unless you set up Beesd again by selecting the filesystem and clicking the Setup button.
 
 </source>
@@ -316,12 +339,12 @@
 </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="267"/>
+        <location filename="../buttonhandlers.cpp" line="373"/>
         <source>Confirm removal</source>
         <translation>Confirmar la eliminación</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="260"/>
+        <location filename="../buttonhandlers.cpp" line="366"/>
         <source>You&apos;re about to remove the file deduplication engine configuration.
 </source>
         <translation>Estás a punto de eliminar la configuración del servicio de deduplicación de archivos para este sistema de archivos.
@@ -346,7 +369,7 @@
 </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="262"/>
+        <location filename="../buttonhandlers.cpp" line="368"/>
         <source>Are you sure?</source>
         <translation>¿Estás seguro?</translation>
     </message>
@@ -355,7 +378,7 @@
         <translation type="vanished">Estado de deduplicación</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="173"/>
+        <location filename="../mainwindow.cpp" line="183"/>
         <source>&amp;File</source>
         <translation>&amp;Archivo</translation>
     </message>
@@ -364,28 +387,35 @@
         <translation type="vanished">Abrir registro de depuración</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="177"/>
+        <location filename="../mainwindow.cpp" line="187"/>
         <source>Quit</source>
         <translation>Cerrar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="182"/>
+        <location filename="../mainwindow.cpp" line="192"/>
         <source>&amp;Help</source>
         <translation>&amp;Ayuda</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="188"/>
+        <location filename="../mainwindow.cpp" line="198"/>
         <source>Keyboard navigation</source>
         <translation>Navegación por teclado</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="195"/>
-        <location filename="../mainwindow.cpp" line="201"/>
+        <location filename="../mainwindow.cpp" line="204"/>
+        <location filename="../mainwindow.cpp" line="227"/>
+        <location filename="../mainwindow.cpp" line="233"/>
         <source>About beekeeper-qt</source>
         <translation>Acerca de beekeeper-qt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="209"/>
+        <location filename="../mainwindow.cpp" line="213"/>
+        <location filename="../mainwindow.cpp" line="218"/>
+        <source>Transparent compression and deduplication</source>
+        <translation>Compresión transparente y deduplicación</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="241"/>
         <source>Remove configuration file</source>
         <translation>Eliminar archivo de configuración</translation>
     </message>
@@ -400,15 +430,14 @@
         <translation>No se pudo abrir el archivo de registro en </translation>
     </message>
     <message>
-        <location filename="../misc.cpp" line="78"/>
         <source>Help for keyboard navigation</source>
-        <translation>Ayuda para la navegación por teclado</translation>
+        <translation type="vanished">Ayuda para la navegación por teclado</translation>
     </message>
 </context>
 <context>
     <name>SetupDialog</name>
     <message>
-        <location filename="../setupdialog.cpp" line="34"/>
+        <location filename="../setupdialog.cpp" line="41"/>
         <source>Setting up selected filesystems</source>
         <translation>Configurar los sistemas de archivos seleccionados</translation>
     </message>
@@ -417,52 +446,122 @@
         <translation type="vanished">Tamaño de la base de datos, en bytes: </translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="43"/>
+        <location filename="../setupdialog.cpp" line="50"/>
         <source>Select the database size. This value covers most of the use cases.</source>
         <translation>Elige el tamaño de la base de datos. Este valor funciona bien para la mayoría de los casos.</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="50"/>
+        <location filename="../setupdialog.cpp" line="57"/>
         <source>Database size: </source>
         <translation>Tamaño de la base de datos: </translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="63"/>
+        <location filename="../setupdialog.cpp" line="70"/>
         <source>16 MiB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="64"/>
+        <location filename="../setupdialog.cpp" line="71"/>
         <source>128 MiB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="65"/>
+        <location filename="../setupdialog.cpp" line="72"/>
         <source>256 MiB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="66"/>
+        <location filename="../setupdialog.cpp" line="73"/>
         <source>1 GiB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="67"/>
+        <location filename="../setupdialog.cpp" line="74"/>
         <source>4 GiB</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="90"/>
+        <location filename="../setupdialog.cpp" line="95"/>
+        <source>Enable transparent compression</source>
+        <translation>Activar la compresión transparente</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="101"/>
+        <source>Feather</source>
+        <translation>Peso Pluma</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="102"/>
+        <source>Light</source>
+        <translation>Ligero</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="103"/>
+        <source>Balanced</source>
+        <translation>Balanceado</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="104"/>
+        <source>High</source>
+        <translation>Alto</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="105"/>
+        <source>Harder</source>
+        <translation>Muy alto</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="106"/>
+        <source>Maximum</source>
+        <translation>Máximo</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="115"/>
+        <source>Note: compression only works for new files created while it is running.
+To compress your filesystem for the first time, run:
+sudo btrfs filesystem defrag -r -czstd mountpoint
+Pro tip: you can install beekeeper-qt right after installing your Linux to reduce compression overhead from the start.</source>
+        <translation>Nota: la compresión solo funciona para archivos nuevos creados mientras está funcionando.
+Para comprimir tus archivos por primera vez, ejecuta:
+sudo btrfs filesystem defrag -r -czstd mountpoint
+Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para mejorar los niveles de compresión desde el principio.</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="230"/>
+        <source>Filesystem %1 could not be remounted to enable transparent compression.</source>
+        <translation>El sistema de archivos %1 no pudo ser remontado para habilitar la compresión transparente.</translation>
+    </message>
+    <message>
+        <source>Note: compression only works for new files created while it is running.
+To compress your filesystem for the first time, run:
+sudo btrfs filesystem defrag -r -calgo mountpoint
+Pro tip: you can install beekeeper-qt right after installing your Linux to reduce compression overhead.</source>
+        <translation type="vanished">Nota: la compresión solo funciona para archivos nuevos creados mientras está funcionando.
+Para comprimir tus archivos por primera vez, ejecuta:
+sudo btrfs filesystem defrag -r -czstd mountpoint
+Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para mejorar los niveles de compresión desde el principio.</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="229"/>
+        <source>Remount for transparent compression failed</source>
+        <translation>Error al remontar para compresión transparente</translation>
+    </message>
+    <message>
+        <source>Filesystem %1 could not be remounted with compression.</source>
+        <translation type="vanished">El sistema de archivos %1 no pudo ser remontado para habilitar la compresión transparente.</translation>
+    </message>
+    <message>
+        <location filename="../setupdialog.cpp" line="134"/>
         <source>Accept</source>
         <translation>Aceptar</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="95"/>
+        <location filename="../setupdialog.cpp" line="139"/>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="42"/>
+        <location filename="../setupdialog.cpp" line="49"/>
         <source>Only filesystems without an existing configuration will be modified.
 </source>
         <translation>Solo los sistemas de archivos sin un archivo de configuración serán modificados.
@@ -477,12 +576,12 @@
         <translation type="vanished">Deja el campo en blanco para usar el valor por defecto: (1 GiB).</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="114"/>
+        <location filename="../setupdialog.cpp" line="158"/>
         <source>Error</source>
         <translation>Error</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="115"/>
+        <location filename="../setupdialog.cpp" line="159"/>
         <source>Cannot start root shell. Exiting setup.</source>
         <translation>No se pudieron obtener privilegios. Saliendo.</translation>
     </message>
@@ -681,7 +780,255 @@
     <message>
         <location filename="../help/texts.cpp" line="53"/>
         <source>__&quot;Storage is cheap in the big 2025, they say... Pfft.&quot;__</source>
-        <translation type="unfinished">__&quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&quot;__</translation>
+        <translation>__&quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&quot;__</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="59"/>
+        <source># Transparent compression and deduplication</source>
+        <translation># Compresión transparente y deduplicación</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="64"/>
+        <source>At first this can sound confusing, because **deduplication** and **transparent compression** work under very different logic. Although they work together to reduce the used disk space, they are two separate mechanisms, unrelated to one another, and not handled by the same utilities.</source>
+        <translation>A primera instancia puede sonar algo confuso porque la **deduplicación** y la **compresión transparente** funcionan bajo lógica muy diferente. Aunque ambas trabajan en conjunto para reducir el espacio usado en disco, no están relacionadas entre sí y no son hechas por las mismas herramientas.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="94"/>
+        <source>## Transparent compression</source>
+        <translation>## Compresión transparente</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="101"/>
+        <source>If compressible, the data is written using the selected compression algorithm and level, which you configure at **Setup** time in beekeeper-qt.</source>
+        <translation>Si se pueden comprimir, los datos nuevos se escriben usando el algoritmo de compresión y nivel seleccion, que configuras al momento de **Configurar** en beekeeper-qt.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="117"/>
+        <source>This uses the lowest compression level (*feather*) if you didn&apos;t setup it.</source>
+        <translation>Este usa la compresión más baja (*peso pluma*) si no lo configuraste.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="122"/>
+        <source>### If you only want deduplication at boot:</source>
+        <translation>### Si solo quieres activar la deduplicación al arrancar el sistema:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="131"/>
+        <source>### If you only want transparent compression:</source>
+        <translation>## Si solo quieres usar la compresión transparente:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="135"/>
+        <source>If **deduplication** is enabled to start on boot, disable it by pressing the **✕** button in the toolbar.</source>
+        <translation>Si la **deduplicación** está activada para iniciar al arrancar el sistema , desactívala presionando el botón **✕** en la barra de herramientras.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="140"/>
+        <source>### If you want both transparent compression and deduplication:</source>
+        <translation>## Si quieres tanto la compresión transparente como la deduplicación:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="144"/>
+        <source>Enable deduplication on boot by pressing the **+** button in the toolbar.</source>
+        <translation>Activa la deduplicación al arrancar presionando el botón **+** en la barra de herramientas.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="152"/>
+        <source>In summary, transparent compression and deduplication are complementary features. Deduplication cleans up redundancy in already-existing data, while compression ensures every new file is written in the most space-efficient way. Together they maximize space savings and prolong the life of your storage.</source>
+        <translation>En resumen, la compresión transparente y la deduplicación son características que se complementan. La deduplicación limpia patrones redundantes en datos ya existentes, mientras que la compresión se asegura de que cada archivo nuevo que se escriba ocupe el menor espacio en disco posible. Juntos, maximizan el ahorro de espacio y prolongan la vida de tu almacenamiento.</translation>
+    </message>
+    <message>
+        <source># Transparent compression and Deduplication</source>
+        <translation type="vanished"># Compresión transparente y deduplicación</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="60"/>
+        <source>You may have seen this note when setting up a filesystem:</source>
+        <translation>Tal vez leíste esta leyenda al configurar un sistema de archivos:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="61"/>
+        <source>&gt; *Note: compression only works for new files when they are created. Run this command to compress your filesystem for the first time.*</source>
+        <translation>&gt; *Nota: la compresión solo funciona para archivos nuevos creados mientras está funcionando. Ejecuta este comando para comprimir tus archivos por primera vez.*</translation>
+    </message>
+    <message>
+        <source>At first this can sound confusing, because **deduplication** and **transparent compression** work under very different logic. They are two separate mechanisms, unrelated to one another, and not handled by the same utilities.</source>
+        <translation type="vanished">A primera instancia puede sonar algo confuso porque la **deduplicación** y la **compresión transparente** funcionan bajo lógica muy diferentes. Aunque ambas trabajan en conjunto para reducir el espacio usado en disco, no están relacionadas entre sí y no son hechas por las mismas herramientas.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="70"/>
+        <source>In **beekeeper-qt**, as in the filesystem layer itself, they are completely independent.</source>
+        <translation>En **beekeeper-qt**, así como en la capa del sistema de archivos, son completamente independientes.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="73"/>
+        <source>## Deduplication</source>
+        <translation>## Deduplicación</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="74"/>
+        <source>This is *beesd*’s job. No matter when you enable or configure deduplication for a filesystem, *beesd* will **always deduplicate files that already exist**. It works by:</source>
+        <translation>Este es el trabajo de *beesd*. No importa en qué momento habilities o configures la duplicación para un sistema de archivos, *beesd* **siempre** deduplicará los archivos ya existentes. Funciona:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="77"/>
+        <source>Scanning your disk</source>
+        <translation>Escaneando tu disco o sistema de archivos</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="78"/>
+        <source>Building a hash table of your btrfs filesystem</source>
+        <translation>Creando una tabla de muestras para cada sistema de archivos btrfs</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="79"/>
+        <source>Finding matching data</source>
+        <translation>Encuentra patrones de datos que coinciden</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="80"/>
+        <source>Deduplicating identical extents at the block level</source>
+        <translation>Deduplicando extensiones de datos idénticas a nivel de bloque</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="82"/>
+        <source>This means deduplication always starts with the data already present on disk. Even if you delete and recreate the *beesd* configuration, your existing data remains deduplicated. When you restart the *beesd* service with the **Start** button, it rebuilds the hash table and looks for new matching patterns.</source>
+        <translation>Esto significa que la deduplicación siempre comienza tomando en cuenta los datos ya existentes en el disco. Incluso si eliminas la configuración de *beesd* y la vuelves a crear, tus datos existentes aún permanecen duplicados. Cuando reinicias el servicio *beesd* con el botón **Iniciar**, reconstruye la tabla de muestras y busca más patrones de archivos coincidentes.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="88"/>
+        <source>It’s a recursive and additive process, where every run adds more deduplication opportunities over time as new files are written.</source>
+        <translation>Es un proceso recursivo y aditivo, donde cada ejecución incrementa las probabilidades de que más datos sean deduplicados a medida de que nuevos archivos son escritos en disco.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="91"/>
+        <source>🢒 You can check if **deduplication** is active by looking at the **Status** column of the table in beekeeper-qt.</source>
+        <translation>🢒 Puedes verificar si la **deduplicación** está activada observando la columna **Estado de deduplicación** en la columna derecha de la tabla en beekeeper-qt.</translation>
+    </message>
+    <message>
+        <source>## Transparent Compression</source>
+        <translation type="vanished">## Compresión transparente</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="95"/>
+        <source>By contrast, **transparent compression** works in the opposite way: it compresses **only new files written** to the disk. That means:</source>
+        <translation>En contraste, la **compresión transparente** funciona de manera contraria: comprime **solamente los archivos nuevos que se escriben** al disco. Esto significa que:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="97"/>
+        <source>Existing files remain uncompressed if they were written while transparent compression was disabled.</source>
+        <translation>Los archivos ya existentes se mantienen sin comprimir si se escribieron mientras la compresión estaba desactivada.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="99"/>
+        <source>When enabled, the *btrfs* driver uses its own heuristics to decide whether new data is compressible.</source>
+        <translation>Cuando se activa, el controlador de *btrfs* usa sus propias normas para determinar si los nuevos datos escritos se pueden comprimir.</translation>
+    </message>
+    <message>
+        <source>If compressible, the data is written using the selected algorithm and level, which you configure at **Setup** time in beekeeper-qt.</source>
+        <translation type="vanished">Si se pueden comprimir, los datos nuevos se escriben usando el algoritmo de compresión y nivel seleccion, que configuras al momento de **Configurar** en beekeeper-qt.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="104"/>
+        <source>Because of this, transparent compression only makes sense if it’s **enabled all the time your system is running**. That’s why it is enabled by default in beekeeper-qt to ensure maximum savings from the moment files are created.</source>
+        <translation>Por esta razón, la compresión transparente solo tiene sentido se **mantiene ejecutándose todo el tiempo que tu sistema esté corriendo**. Por esta razón está habilitado por defecto en beekeeper-qt: para asegurar el máximo ahorro de espacio al momento de crear nuevos archivos.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="109"/>
+        <source>🢒 You can check whether **transparent compression** is active for a filesystem by selecting it with the mouse or keyboard (see **Keyboard navigation**) and hovering the **zip button**. Its tooltip shows whether compression is currently running.</source>
+        <translation>🢒 Puedes verificar si la **compresión transparente** está activada al seleccionarlo con el ratón o teclado (ver **Navegación por teclado**) y enfocando el botón de **compresión**. Su texto flotante muestra si la compresión se está ejecutando o está detenida.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="114"/>
+        <source>## Gotchas</source>
+        <translation>## No olvides tomar en cuenta</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="115"/>
+        <source>- You can start transparent compression manually by pressing the **zip button**.</source>
+        <translation>- Puedes habilitar la compresión transparente manualmente presionando el **botón de compresión**.</translation>
+    </message>
+    <message>
+        <source>This uses the lowest compression level (*feather*).</source>
+        <translation type="vanished">Este usa la compresión más baja (*peso pluma*) si no lo configuraste.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="118"/>
+        <source>However, this setting does **not** persist across reboots, so compression will not be active after restarting unless enabled in **Setup**.</source>
+        <translation>Nótese que, esta configuración **no** se recuerda para los siguientes arranques del sistema, así que la compresión no será activada automáticamente a menos de que la habilites en **Configurar**.</translation>
+    </message>
+    <message>
+        <source>### If you only want **deduplication** at boot:</source>
+        <translation type="vanished">### Si solo quieres activar la **deduplicación** al arrancar el sistema:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="123"/>
+        <source>Remove the setup for your **filesystem(s)**, if not already done.</source>
+        <translation>Elimina la configuración de tu(s) **sistema(s) de archivos**, si no lo has hecho aún.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="124"/>
+        <location filename="../help/texts.cpp" line="133"/>
+        <location filename="../help/texts.cpp" line="142"/>
+        <source>Click **Setup**.</source>
+        <translation>Pulsa **Configurar**.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="125"/>
+        <source>Untick **Enable transparent compression** and press **Enter**.</source>
+        <translation>Deselecciona **Activar la compresión transparente** y pulsa **Intro**.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="126"/>
+        <source>This disables automatic compression at boot.</source>
+        <translation>Esto desactiva la compresión automática al arrancar.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="127"/>
+        <source>*Note: using only **deduplication** is rarely useful on its own because it will not reduce disk space significantly unless combined with compression.*</source>
+        <translation>*Nota: usar solamente la **deduplicación** es raramente útil por sí misma porque no reducirá el espacio utilizado en disco de forma significativa a menos de que la combines con compresión.*</translation>
+    </message>
+    <message>
+        <source>### If you only want **transparent compression**:</source>
+        <translation type="vanished">## Si solo quieres usar la **compresión transparente**:</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="132"/>
+        <location filename="../help/texts.cpp" line="141"/>
+        <source>Remove the setup for your **filesystem(s)**.</source>
+        <translation>Elimina la configuración de tu(s) **sistema(s) de archivos**.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="134"/>
+        <location filename="../help/texts.cpp" line="143"/>
+        <source>Set your preferred compression level and press **Enter**.</source>
+        <translation>Elige tu nivel de compresión y presiona **Intro**.</translation>
+    </message>
+    <message>
+        <source>If **deduplication** is enabled, disable it by pressing the **✕ button** in the toolbar.</source>
+        <translation type="vanished">Si la **deduplicación** está activada para iniciar al arrancar el sistema , desactívala presionando el botón **✕** en la barra de herramientras.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="137"/>
+        <source>Compression alone is often more beneficial than deduplication, but you lose the advantages of combining both.</source>
+        <translation>La compresión por sí sola es más útil que la deduplicación, pero pierdes las ventajas de combinar las dos.</translation>
+    </message>
+    <message>
+        <source>### If you want both **transparent compression** and **deduplication**:</source>
+        <translation type="vanished">## Si quieres tanto la **compresión transparente** como la **deduplicación**:</translation>
+    </message>
+    <message>
+        <source>Enable **deduplication** by pressing the **+ button** in the toolbar.</source>
+        <translation type="vanished">Activa la deduplicación al arrancar presionando el botón **+** en la barra de herramientas.</translation>
+    </message>
+    <message>
+        <location filename="../help/texts.cpp" line="146"/>
+        <source>🢒 Using both together can reduce disk usage by up to **50%**, depending on the type of data you store. Highly repetitive data like logs or virtual machine images benefits greatly from deduplication, while general-purpose data (documents, media, source code) sees savings from compression.</source>
+        <translation>🢒 Usando ambas se puede reducir el espacio en uso del disco hasta un **50%**, depende del tipo de datos que almacenes. Archivos con patrones muy comunes como registros o máquinas virtuales se pueden beneficiar bastante de la deduplicación, mientras que el resto de archivos (documentos, medios, código fuente) ahorra más espacio con la compresión.</translation>
+    </message>
+    <message>
+        <source>In summary, **transparent compression** and **deduplication** are complementary features. Deduplication cleans up redundancy in already-existing data, while compression ensures every new file is written in the most space-efficient way. Together they maximize space savings and prolong the life of your storage.</source>
+        <translation type="vanished">En resumen, la compresión transparente y la deduplicación son características que se complementan. La deduplicación limpia patrones redundantes en datos ya existentes, mientras que la compresión se asegura de que cada archivo nuevo que se escriba ocupe el menor espacio en disco posible. Juntos, maximizan el ahorro de espacio y prolongan la vida de tu almacenamiento.</translation>
     </message>
     <message>
         <source>__&quot;Storage is cheap, they say... except when you have a Chromebook.&quot;__</source>
@@ -691,32 +1038,32 @@
 <context>
     <name>refresh_fs_helpers::status_text_mapper</name>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="32"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="31"/>
         <source>Deduplicating files</source>
         <translation>Deduplicando archivos</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="33"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="32"/>
         <source>Not running</source>
         <translation>Parado</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="34"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="33"/>
         <source>Failed to run</source>
         <translation>Fallido al iniciar</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="35"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="34"/>
         <source>Not configured</source>
         <translation>No configurado</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="45"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="44"/>
         <source>Deduplicating files. Started with %1 free, now you have %2 free.</source>
         <translation>Deduplicando archivos. Comenzaste con %1 libre, ahora tienes %2 libre.</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="49"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="48"/>
         <source>Deduplicating files. You have %1 free right now.</source>
         <translation>Deduplicando archivos. En este momento tienes %1 libre.</translation>
     </message>

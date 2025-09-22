@@ -13,8 +13,6 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QTimer>
 #include <vector>
-#include <map>
-#include <string>
 
 // Forward declarations
 class StatusDotDelegate;
@@ -50,6 +48,7 @@ private:
     void handle_stop();
     void handle_setup();
     void handle_showlog();
+    void handle_transparentcompression_switch(bool pause);
     void handle_remove_button();
     void handle_cpu_timer();
     void update_statuses();
@@ -85,42 +84,51 @@ private:
     * Check if any filesystem is in a certain state.
     *
     * By default, these functions only check the status of selected rows.
+    * See in the block right below this one what the possible states are
+    * (spoiler: running, stopped, configured, being_compressed, etc.0)
     * If `check_the_whole_table` is true, they will check the status of
     * all rows in the table instead of just the selection.
     *
     * @param check_the_whole_table If true, include all rows in the table; otherwise, only selected rows are checked.
     * @return true if at least one filesystem matches the condition, false otherwise.
     */
-    bool any_running(bool check_the_whole_table = false) const;
-    bool any_running_with_logging(bool check_the_whole_table = false) const;
-    bool any_stopped(bool check_the_whole_table = false) const;
+    // Generic row-testing helpers (operate on selected rows by default,
+    // otherwise whole table if check_the_whole_table is true).
+    bool is_any(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
+    bool is_any_not(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
+    bool is_none(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
+    bool are_all(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
 
-        /**
-    * Check if at least one of the selected filesystems is configured.
-    * 
-    * @param invert If true, check if at least one selected filesystem is unconfigured instead (opposite check).
-    * @param check_the_whole_table If true, check all filesystems in the table, not just the selected ones.
-    * @return true if at least one filesystem matches the condition, false otherwise.
-    */
-    bool at_least_one_configured(bool invert = false, bool check_the_whole_table = false) const;
+    // Overloads that accept pointer-to-member (so you can call is_any(running))
+    bool is_any(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
+    bool is_any_not(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
+    bool is_none(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
+    bool are_all(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
 
-    bool any_selected_in_autostart(bool reverse = false);
+    // Gets the selected table items and gets all the table items if check_the_whole_table is true.
+    static QModelIndexList build_rows_to_check(const QTableWidget *fs_table, bool check_the_whole_table);
 
 
 
     // ----- Table-checkers - per row checks -----
 
     // Returns true if the filesystem in this row is running
-    bool is_running(const QModelIndex &idx) const;
+    bool running(const QModelIndex &idx) const;
 
     // Returns true if the filesystem in this row is running AND has logging enabled
-    bool is_running_with_logging(const QModelIndex &idx) const;
+    bool running_with_logging(const QModelIndex &idx) const;
 
     // Returns true if the filesystem in this row is stopped
-    bool is_stopped(const QModelIndex &idx) const;
+    bool stopped(const QModelIndex &idx) const;
 
     // Returns true if the filesystem in this row is configured (not "unconfigured")
-    bool is_configured(const QModelIndex &idx) const;
+    bool configured(const QModelIndex &idx) const;
+
+    // Returns true if the filesystem in this row has a compress= mount option
+    bool being_compressed(const QModelIndex &idx) const;
+
+    // Returns true if the filesystem is in the beekeeper autostart file
+    bool in_the_autostart_file(const QModelIndex &idx) const;
 
     
     // ----- Add or remove your filesystems from autostart -----
@@ -146,6 +154,7 @@ private:
     QPushButton *start_btn = nullptr;
     QPushButton *stop_btn = nullptr;
     QPushButton *setup_btn = nullptr;
+    QPushButton *compression_switch_btn = nullptr;
     QPushButton *add_autostart_btn = nullptr;
     QPushButton *remove_autostart_btn = nullptr;
     #ifdef BEEKEEPER_DEBUG_LOGGING
@@ -170,7 +179,6 @@ private:
 
 public slots:
     void on_root_shell_ready();
-    void show_keyboard_nav_help();
 
 private slots:
     void handle_status_updated(const QString &message);
@@ -179,6 +187,7 @@ private slots:
     void update_button_states();
 
 signals:
+    void command_finished();
     void root_shell_ready_signal();
     void status_updated(const QString &uuid, const QString &message);
 };

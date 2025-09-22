@@ -11,10 +11,10 @@
 //   SetupDialog dlg(selectedUuids, this);
 //   if (dlg.exec() == QDialog::Accepted) { /* setup completed */ }
 //
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QStringList>
-#include "../polkit/multicommander.hpp"
 
 class QLineEdit;
 class QPushButton;
@@ -39,4 +39,6 @@ private:
     QComboBox *m_dbSizeCombo = nullptr;
     QPushButton *m_acceptBtn = nullptr;
     QPushButton *m_cancelBtn = nullptr;
+    QCheckBox *m_enableCompression = nullptr;
+    QComboBox *m_compressionCombo = nullptr;
 };

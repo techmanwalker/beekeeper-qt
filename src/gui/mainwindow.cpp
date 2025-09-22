@@ -27,7 +27,6 @@
 #include <QVBoxLayout>
 
 using namespace beekeeper::privileged;
-namespace fs = std::filesystem;
 
 MainWindow
 ::MainWindow(QWidget* parent)
@@ -37,6 +36,10 @@ MainWindow
     start_btn   = new QPushButton(QIcon::fromTheme("media-playback-start"), "");
     stop_btn    = new QPushButton(QIcon::fromTheme("media-playback-stop"), "");
     setup_btn   = new QPushButton(QIcon::fromTheme("system-run"), "");
+    compression_switch_btn = new QPushButton(QIcon::fromTheme("package-x-generic"), "");
+    compression_switch_btn->setToolTip(tr("Select a filesystem to view its transparent compression status"));
+    compression_switch_btn->setCheckable(true);
+    compression_switch_btn->setAutoRepeat(false);    // ensure no autorepeat
     add_autostart_btn = new QPushButton(QIcon::fromTheme("list-add"), "");
     remove_autostart_btn = new QPushButton(QIcon::fromTheme("list-remove"), "");
     #ifdef BEEKEEPER_DEBUG_LOGGING
@@ -49,8 +52,8 @@ MainWindow
     start_btn->setToolTip(tr("Start"));
     stop_btn->setToolTip(tr("Stop"));
     setup_btn->setToolTip(tr("Setup"));
-    add_autostart_btn->setToolTip(tr("Add selected filesystems to autostart"));
-    remove_autostart_btn->setToolTip(tr("Remove selected filesystems from autostart"));
+    add_autostart_btn->setToolTip(tr("Automatically start deduplicating filesystems at boot"));
+    remove_autostart_btn->setToolTip(tr("Do not start deduplicating filesystems at boot"));
     #ifdef BEEKEEPER_DEBUG_LOGGING
     showlog_btn->setToolTip(tr("Show logs"));
     #endif
@@ -68,6 +71,12 @@ MainWindow
     connect(start_btn,   &QPushButton::clicked, this, &MainWindow::handle_start);
     connect(stop_btn,    &QPushButton::clicked, this, &MainWindow::handle_stop);
     connect(setup_btn,   &QPushButton::clicked, this, &MainWindow::handle_setup);
+    connect(compression_switch_btn, &QPushButton::toggled,
+    this, [this](bool checked) {
+        // checked == pause (button pressed => pause)
+        handle_transparentcompression_switch(checked);
+    });
+
     connect(add_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_add_to_autostart);
     connect(remove_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_remove_from_autostart);
     #ifdef BEEKEEPER_DEBUG_LOGGING
@@ -91,6 +100,7 @@ MainWindow::setup_ui()
     toolbar->addSpacing(half_btn_width);
 
     toolbar->addWidget(setup_btn);
+    toolbar->addWidget(compression_switch_btn);
     toolbar->addWidget(add_autostart_btn);
     toolbar->addWidget(remove_autostart_btn);
     #ifdef BEEKEEPER_DEBUG_LOGGING
@@ -187,7 +197,29 @@ MainWindow::setup_ui()
         QIcon::fromTheme("input-keyboard"),   // themed keyboard icon
         tr("Keyboard navigation")
     );
-    connect(keyboard_nav_act, &QAction::triggered, this, &MainWindow::show_keyboard_nav_help);
+      connect(keyboard_nav_act, &QAction::triggered, this, [this]() {
+        // Creamos el dialogo con título y mensaje (Markdown)
+        help_dialog *dlg = new help_dialog(
+            this,
+            tr("About beekeeper-qt"),
+            helptexts().keyboardnav()
+        );
+        dlg->exec();
+    });
+
+    // Transparent compression and deduplication action
+    QAction *tc_help_act = help_menu->addAction(
+        QIcon::fromTheme("package-x-generic"),   // archive-like icon
+        tr("Transparent compression and deduplication")
+    );
+    connect(tc_help_act, &QAction::triggered, this, [this]() {
+        help_dialog *dlg = new help_dialog(
+            this,
+            tr("Transparent compression and deduplication"),
+            helptexts().transparent_compression()
+        );
+        dlg->exec();
+    });
 
     // About beekeeper-qt action
     QAction *about_act = help_menu->addAction(
@@ -240,6 +272,16 @@ MainWindow::setup_ui()
     connect(this, &MainWindow::root_shell_ready_signal, this, [this]() {
         DEBUG_LOG("[MainWindow] Root shell ready signal received!");
         refresh_filesystems();  // now safe to enable root-only controls
+        update_button_states();
+        refresh_fs_helpers::update_status_manager(fs_table, statusManager);
+    });
+
+    // When a command issued by the buttons already finished, inmediately refresh
+    connect(this, &MainWindow::command_finished, this, [this]() {
+        DEBUG_LOG("[MainWindow] Root shell ready signal received!");
+        refresh_filesystems();  // now safe to enable root-only controls
+        update_button_states();
+        refresh_fs_helpers::update_status_manager(fs_table, statusManager);
     });
 
     // connect menu action if used

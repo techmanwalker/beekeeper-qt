@@ -2,7 +2,6 @@
 #include "refreshfilesystems_helpers.hpp"
 #include "beekeeper/util.hpp"
 #include "../polkit/globals.hpp"
-#include "mainwindow.hpp"
 #include <filesystem>
 #include <fstream>
 #include <QList>

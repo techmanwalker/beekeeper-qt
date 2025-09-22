@@ -65,7 +65,9 @@ std::vector<cm::command> command_registry = {
     {
         "locate",
         beekeeper::cli::handle_locate,
-        {},
+        {
+            {"json", "j", false} // for machine readability
+        },
         "UUID",
         "Show the mountpoint of a btrfs filesystem by UUID",
         1, -1
@@ -92,6 +94,25 @@ std::vector<cm::command> command_registry = {
         { {"add", "a", false}, {"remove", "r", false} }, // support --add / --remove
         "",
         "Add or remove filesystems from the autostart file",
+        1, -1 // min 1 subject, max infinite
+    },
+{
+        "compressctl",
+        beekeeper::cli::handle_compressctl,
+        {
+            {"start", "s", false},
+            {"pause", "p", false},
+            {"status", "i", false},
+            {"add", "a", false},
+            {"remove", "r", false},
+            {"compression-level", "c", false},
+            {"algorithm", "", true},
+            {"level", "", false},
+            {"json", "j", false}
+        },
+        "",
+        "Control transparent compression (start, pause, status, add, or remove) on filesystems.\n"
+        "Options --algorithm / --algo and --level override presets given by --compression-level.",
         1, -1 // min 1 subject, max infinite
     },
     {

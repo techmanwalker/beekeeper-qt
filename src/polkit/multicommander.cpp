@@ -134,3 +134,46 @@ multicommander::remove_uuid_from_autostart(const QString &uuid)
         return result;
     });
 }
+
+QFuture<bool>
+multicommander::add_uuid_to_transparentcompression(const QString &uuid, const QString &compression_level)
+{
+    return QtConcurrent::run([this, uuid, compression_level]{
+        bool result = komander->add_uuid_to_transparentcompression(
+            uuid.toStdString(),
+            compression_level.toStdString()
+        );
+        emit command_finished("compressctl:add", "success", "");
+        return result;
+    });
+}
+
+QFuture<bool>
+multicommander::remove_uuid_from_transparentcompression(const QString &uuid)
+{
+    return QtConcurrent::run([this, uuid]{
+        bool result = komander->remove_uuid_from_transparentcompression(uuid.toStdString());
+        emit command_finished("compressctl:remove", "success", "");
+        return result;
+    });
+}
+
+QFuture<bool>
+multicommander::start_transparentcompression_for_uuid(const QString &uuid)
+{
+    return QtConcurrent::run([this, uuid]{
+        bool result = komander->start_transparentcompression_for_uuid(uuid.toStdString());
+        emit command_finished("compressctl:start", "success", "");
+        return result;
+    });
+}
+
+QFuture<bool>
+multicommander::pause_transparentcompression_for_uuid(const QString &uuid)
+{
+    return QtConcurrent::run([this, uuid]{
+        bool result = komander->pause_transparentcompression_for_uuid(uuid.toStdString());
+        emit command_finished("compressctl:pause", "success", "");
+        return result;
+    });
+}

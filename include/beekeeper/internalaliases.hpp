@@ -1,4 +1,7 @@
 #pragma once
+#include <map>
+#include <vector>
+#include <string>
 
 // forward declarations
 namespace beekeeper {
@@ -22,3 +25,7 @@ namespace beekeeper {
         constexpr bool dummy_ = bk_util::__dummy__;
     }
 }
+
+// Type aliases
+using fs_map = std::map<std::string, std::string>;
+using fs_vec = std::vector<fs_map>;

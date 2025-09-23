@@ -1,4 +1,5 @@
 #include "mainwindow.hpp"
+#include "beekeeper/debug.hpp"
 
 void
 MainWindow::on_root_shell_ready() {

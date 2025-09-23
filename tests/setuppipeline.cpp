@@ -1,6 +1,4 @@
-#include "../include/beekeeper/beesdmgmt.hpp"
 #include "../include/beekeeper/btrfsetup.hpp"
-#include "../include/beekeeper/internalaliases.hpp"
 #include <iostream>
 
 int main (int argc, char **argv) {

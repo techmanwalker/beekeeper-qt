@@ -1,15 +1,17 @@
 #pragma once
-#include <map>
+#include "beekeeper/internalaliases.hpp"
+
 #include <string>
 #include <vector>
+
+using _internalaliases_dummy_anchor = beekeeper::_internalaliases_dummy::anchor;
 
 // Trunk beekeeper program
 namespace beekeeper {
     // Management subsystem
     namespace management {
         // List btrfs filesystems
-        std::vector<std::map<std::string, std::string>>
-        btrfsls ();
+        fs_vec btrfsls();
 
         // Check if a btrfs filesystem has a corresponding configuration file
         std::string

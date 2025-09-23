@@ -4,6 +4,7 @@
 #include "beekeeper/util.hpp"
 #include "beekeeper/debug.hpp"
 
+#include <iostream>
 #include <string>
 #include <vector>
 

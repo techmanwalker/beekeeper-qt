@@ -23,7 +23,7 @@ supercommander::call_bk(const QString &verb,
                         const QVariantMap &options,
                         const QStringList &subjects)
 {
-    /*
+    // *
     // For debugging
     #ifdef BEEKEEPER_DEBUG_LOGGING
     // Serialize options into "key=value" pairs
@@ -40,7 +40,7 @@ supercommander::call_bk(const QString &verb,
     DEBUG_LOG("options: ", opts_serialized.join(", ").toStdString());
     DEBUG_LOG("subjects: ", subjects_serialized.toStdString());
     #endif
-    */
+    //*/
 
     command_streams result;
 
@@ -146,7 +146,7 @@ supercommander::btrfsls()
             std::map<std::string,std::string> entry;
             entry["uuid"]   = obj.value("uuid").toString("").toStdString();
             entry["label"]  = obj.value("label").toString("").toStdString();
-            entry["status"] = obj.value("status").toString("stopped").toStdString();
+            entry["status"] = obj.value("status").toString("unknown").trimmed().toStdString();
             result.push_back(std::move(entry));
         }
     }
@@ -214,16 +214,33 @@ supercommander::beesclean(const std::string &uuid)
 }
 
 std::string
-supercommander::beessetup(const std::string &uuid, size_t db_size)
+supercommander::beessetup(const std::string &uuid,
+                          size_t db_size,
+                          bool return_success_bool_instead)
 {
     QVariantMap opts;
     if (db_size) opts.insert("db_size", static_cast<qulonglong>(db_size));
+    opts.insert("json", "<default>");
 
     command_streams res = call_bk("setup", opts, QStringList{QString::fromStdString(uuid)});
 
-    if (!res.stdout_str.empty())
-        return res.stdout_str;
-    return "";
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(
+        QByteArray::fromStdString(res.stdout_str), &err);
+
+    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+        return return_success_bool_instead ? "0" : "Failed to parse JSON";
+    }
+
+    QJsonObject obj = doc.object();
+    int success = obj.value("success").toInt();
+    QString message = obj.value("message").toString();
+
+    if (return_success_bool_instead) {
+        return success ? "1" : "0";
+    } else {
+        return message.toStdString();
+    }
 }
 
 std::string
@@ -255,20 +272,35 @@ supercommander::beesremoveconfig(const std::string &uuid)
 
 std::string
 supercommander::btrfstat(const std::string &uuid,
-                         const std::string &mode /* = "free" */)
+                         const std::string &mode)
 {
     QVariantMap opts;
-
     if (!mode.empty()) {
         opts.insert("storage", QString::fromStdString(mode));
     }
-
-    opts.insert("json", QString("1"));  // enforce JSON always
+    opts.insert("json", "<default>");
 
     command_streams res = call_bk("stat", opts, QStringList{QString::fromStdString(uuid)});
 
-    if (!res.stdout_str.empty())
-        return res.stdout_str;
+    if (res.stdout_str.empty()) {
+        return "";
+    }
+
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(
+        QByteArray::fromStdString(res.stdout_str), &err);
+
+    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+        return "";
+    }
+
+    QJsonObject obj = doc.object();
+    int success = obj.value("success").toInt();
+    QString config_path = obj.value("config_path").toString();
+
+    if (success == 1 && !config_path.isEmpty()) {
+        return config_path.toStdString();
+    }
     return "";
 }
 

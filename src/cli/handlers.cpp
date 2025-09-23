@@ -103,36 +103,50 @@ int
 beekeeper::cli::handle_setup(const std::map<std::string, std::string>& options, 
                              const std::vector<std::string>& subjects) 
 {
-    std::string uuid = subjects[0];
+    bool json_mode = options.count("json") > 0;
+
+    auto emit_json = [&](int success, const std::string &message) {
+        std::cout 
+            << "{\n"
+            << "  \"success\": " << success << ",\n"
+            << "  \"message\": \"" << message << "\"\n"
+            << "}\n";
+    };
+
+    std::string uuid = subjects.empty() ? "" : subjects[0];
     size_t db_size = 0;
 
-    // Parse db-size option if provided
     auto it = options.find("db-size");
     if (it != options.end()) {
         try {
             db_size = std::stoull(it->second);
             if (db_size == 0) {
-                std::cerr << "Error: db-size must be a positive integer.\n";
+                if (json_mode) emit_json(0, "Error: db-size must be a positive integer.");
+                else std::cerr << "Error: db-size must be a positive integer.\n";
                 return 1;
             }
         } catch (...) {
-            std::cerr << "Error: Invalid db-size value. Must be a positive integer.\n";
+            if (json_mode) emit_json(0, "Error: Invalid db-size value. Must be a positive integer.");
+            else std::cerr << "Error: Invalid db-size value. Must be a positive integer.\n";
             return 1;
         }
     }
 
-    // Check if "remove" option is set and has a non-empty value
+    // Remove path
     auto iu = options.find("remove");
     if (iu != options.end() && !iu->second.empty()) {
         std::string path = bk_mgmt::btrfstat(uuid);
-        DEBUG_LOG("Removing config file: ", path);
-
         std::error_code ec;
         bool removed = fs::remove(path, ec);
         if (ec) {
-            std::cerr << "Failed to remove " << path << ": " << ec.message() << "\n";
+            if (json_mode) emit_json(0, "Failed to remove " + path + ": " + ec.message());
+            else std::cerr << "Failed to remove " << path << ": " << ec.message() << "\n";
         } else if (!removed) {
-            std::cerr << "Nothing removed (file did not exist): " << path << "\n";
+            if (json_mode) emit_json(0, "Nothing removed (file did not exist): " + path);
+            else std::cerr << "Nothing removed (file did not exist): " << path << "\n";
+        } else {
+            if (json_mode) emit_json(1, "Removed config: " + path);
+            else std::cout << "Removed config: " << path << "\n";
         }
         return 0;
     }
@@ -140,10 +154,12 @@ beekeeper::cli::handle_setup(const std::map<std::string, std::string>& options,
     // Normal setup
     std::string config_path = bk_mgmt::beessetup(uuid, db_size);
     if (!config_path.empty()) {
-        std::cout << "Configuration created/updated: " << config_path << std::endl;
+        if (json_mode) emit_json(1, "Configuration created/updated: " + config_path);
+        else std::cout << "Configuration created/updated: " << config_path << "\n";
         return 0;
     } else {
-        std::cerr << "Error: Failed to create/update configuration\n";
+        if (json_mode) emit_json(0, "Error: Failed to create/update configuration");
+        else std::cerr << "Error: Failed to create/update configuration\n";
         return 1;
     }
 }
@@ -202,32 +218,35 @@ beekeeper::cli::handle_locate(const std::map<std::string, std::string>& options,
 }
 
 int
-beekeeper::cli::handle_list (const std::map<std::string, std::string>& options,
-                             const std::vector<std::string>& subjects)
+beekeeper::cli::handle_list(const std::map<std::string, std::string>& options,
+                            const std::vector<std::string>& subjects)
 {
     auto filesystems = bk_mgmt::btrfsls();
 
     bool want_json = (options.find("json") != options.end());
 
     if (want_json) {
-        // Emit compact JSON array (single-line) for machine consumption
+        // Emit compact JSON array for machine consumption
         std::ostringstream out;
         out << '[';
 
         for (size_t i = 0; i < filesystems.size(); ++i) {
             const auto &fs = filesystems[i];
 
-            // Safe access, 'uuid' is mandatory in btrfsls
-            std::string uuid = (fs.find("uuid") != fs.end()) ? fs.at("uuid") : "";
-            std::string label = (fs.find("label") != fs.end()) ? fs.at("label") : "";
+            std::string uuid    = (fs.find("uuid")    != fs.end()) ? fs.at("uuid")    : "";
+            std::string label   = (fs.find("label")   != fs.end()) ? fs.at("label")   : "";
+            std::string status  = (fs.find("status")  != fs.end()) ? fs.at("status")  : "";
+            std::string devname = (fs.find("devname") != fs.end()) ? fs.at("devname") : "";
 
-            // Provide config path if any
+            // Provide config path (always included in JSON)
             std::string config_path = bk_mgmt::btrfstat(uuid);
 
             out << '{';
-            out << "\"uuid\":\""   << bk_util::json_escape(uuid) << "\",";
-            out << "\"label\":\""  << bk_util::json_escape(label) << "\",";
-            out << "\"config\":\"" << bk_util::json_escape(config_path) << "\"";
+            out << "\"uuid\":\""    << bk_util::json_escape(uuid)    << "\",";
+            out << "\"label\":\""   << bk_util::json_escape(label)   << "\",";
+            out << "\"status\":\""  << bk_util::json_escape(status)  << "\",";
+            out << "\"devname\":\"" << bk_util::json_escape(devname) << "\",";
+            out << "\"config\":\""  << bk_util::json_escape(config_path) << "\"";
             out << '}';
 
             if (i + 1 < filesystems.size()) out << ',';
@@ -239,95 +258,82 @@ beekeeper::cli::handle_list (const std::map<std::string, std::string>& options,
     }
 
     // -------------------------
-    // Existing pretty-table path
+    // Pretty-table (human readable)
     // -------------------------
     if (filesystems.empty()) {
         std::cout << "No btrfs filesystems found.\n";
         return 0;
     }
 
-    // Precompute all status strings to determine max length
+    // Precompute all status strings
     std::vector<std::string> status_lines;
-    size_t max_status_len = 15;  // "CONFIG STATUS" length
+    size_t max_status_len = 6; // "STATUS" header length
 
-    for (const auto& fs : filesystems) {
-        std::string config_path = bk_mgmt::btrfstat(fs.at("uuid"));
-        std::string status = config_path.empty() ?
-            "Not configured" :
-            "Configured (" + config_path + ")";
-
+    for (const auto &fs : filesystems) {
+        std::string status = (fs.find("status") != fs.end()) ? fs.at("status") : "unknown";
         status_lines.push_back(status);
         max_status_len = std::max(max_status_len, status.length());
     }
 
-    // Set column constraints
-    const size_t MIN_UUID_LEN = 36;
-    const size_t MAX_UUID_LEN = 60;
-    const size_t MIN_LABEL_LEN = 5;
-    const size_t MAX_LABEL_LEN = 40;
-    const size_t MIN_STATUS_LEN = 15;
-    const size_t MAX_STATUS_LEN = 80;
+    // Column constraints
+    constexpr size_t MIN_UUID_LEN   = 9;
+    constexpr size_t MAX_UUID_LEN   = 36;
+    constexpr size_t MIN_LABEL_LEN  = 5;
+    constexpr size_t MAX_LABEL_LEN  = 40;
+    constexpr size_t MIN_STATUS_LEN = 6;
+    constexpr size_t MAX_STATUS_LEN = 30;
 
     // Calculate column widths
-    size_t uuid_width = MIN_UUID_LEN;
+    size_t uuid_width  = MIN_UUID_LEN;
     size_t label_width = MIN_LABEL_LEN;
 
-    for (const auto& fs : filesystems) {
-        uuid_width = std::max(uuid_width, fs.at("uuid").length());
+    for (const auto &fs : filesystems) {
+        uuid_width  = std::max(uuid_width,  fs.at("uuid").length());
         label_width = std::max(label_width, fs.at("label").length());
     }
 
     // Apply constraints
-    uuid_width = std::min(std::max(uuid_width, MIN_UUID_LEN), MAX_UUID_LEN);
+    uuid_width  = std::min(std::max(uuid_width,  MIN_UUID_LEN),  MAX_UUID_LEN);
     label_width = std::min(std::max(label_width, MIN_LABEL_LEN), MAX_LABEL_LEN);
     max_status_len = std::min(std::max(max_status_len, MIN_STATUS_LEN), MAX_STATUS_LEN);
 
-    // Table header with proper spacing
+    // Table header
     std::cout << std::left
-              << std::setw(uuid_width) << "UUID"
-              << " "  // Space between columns
-              << std::setw(label_width) << "LABEL"
-              << " "  // Space between columns
-              << "CONFIG STATUS"
+              << std::setw(uuid_width)  << "UUID"   << " "
+              << std::setw(label_width) << "LABEL"  << " "
+              << std::setw(max_status_len) << "STATUS"
               << "\n";
 
-    // Separator line with proper spacing
-    std::cout << std::string(uuid_width, '-')
-              << " "  // Space between columns
-              << std::string(label_width, '-')
-              << " "  // Space between columns
-              << std::string(max_status_len, '-')
-              << "\n";
+    // Separator line
+    std::cout << std::string(uuid_width, '-')  << " "
+              << std::string(label_width, '-') << " "
+              << std::string(max_status_len, '-') << "\n";
 
-    // Print filesystems
+    // Print rows
     for (size_t i = 0; i < filesystems.size(); i++) {
         const auto& fs = filesystems[i];
-        std::string uuid = fs.at("uuid");
-        std::string label = fs.at("label");
+        std::string uuid   = fs.at("uuid");
+        std::string label  = fs.at("label");
         std::string status = status_lines[i];
 
-        // Truncate with ellipsis if needed
         if (uuid.length() > uuid_width) {
             uuid = uuid.substr(0, uuid_width - 3) + "...";
         } else {
-            uuid = uuid + std::string(uuid_width - uuid.length(), ' ');
+            uuid += std::string(uuid_width - uuid.length(), ' ');
         }
 
         if (label.length() > label_width) {
             label = label.substr(0, label_width - 3) + "...";
         } else {
-            label = label + std::string(label_width - label.length(), ' ');
+            label += std::string(label_width - label.length(), ' ');
         }
 
         if (status.length() > max_status_len) {
             status = status.substr(0, max_status_len - 3) + "...";
         }
 
-        // Print with proper spacing between columns
-        std::cout << uuid
-                  << " "  // Space between columns
-                  << label
-                  << " "  // Space between columns
+        std::cout << uuid << " "
+                  << label << " "
                   << status
                   << "\n";
     }
@@ -344,38 +350,44 @@ beekeeper::cli::handle_stat(const std::map<std::string, std::string>& options,
         return 1;
     }
 
-    std::string uuid = subjects[0];
+    auto emit_json = [&](bool success, const std::string &key, const std::string &val) {
+        std::cout << "{\n"
+                  << "  \"success\": " << (success ? 1 : 0) << ",\n"
+                  << "  \"" << key << "\": \"" << val << "\"\n"
+                  << "}\n";
+    };
 
-    // Extract option values upfront
+    std::string uuid = subjects[0];
     std::string mode;
     bool json = false;
 
-    auto it_storage = options.find("storage");
-    if (it_storage != options.end()) {
-        mode = it_storage->second; // can be empty string
+    if (auto it = options.find("storage"); it != options.end()) {
+        mode = it->second;
     }
-
-    auto it_json = options.find("json");
-    if (it_json != options.end() && !it_json->second.empty()) {
+    if (auto it = options.find("json"); it != options.end()) {
         json = true;
     }
 
-    // Handle storage reporting
+    // Storage reporting
     if (!mode.empty()) {
         int64_t free_val = bk_mgmt::get_space::free(uuid);
         int64_t used_val = bk_mgmt::get_space::used(uuid);
 
         if (mode == "free") {
-            std::cout << (json ? std::to_string(free_val) : bk_util::auto_size_suffix(free_val)) << std::endl;
+            if (json) emit_json(true, "free", std::to_string(free_val));
+            else std::cout << bk_util::auto_size_suffix(free_val) << std::endl;
             return 0;
         } else if (mode == "used") {
-            std::cout << (json ? std::to_string(used_val) : bk_util::auto_size_suffix(used_val)) << std::endl;
+            if (json) emit_json(true, "used", std::to_string(used_val));
+            else std::cout << bk_util::auto_size_suffix(used_val) << std::endl;
             return 0;
         } else {
-            // Any other string (or empty) → print both
             if (json) {
-                std::cout << "{\"free\": " << free_val
-                          << ", \"used\": " << used_val << "}" << std::endl;
+                std::cout << "{\n"
+                          << "  \"success\": 1,\n"
+                          << "  \"free\": " << free_val << ",\n"
+                          << "  \"used\": " << used_val << "\n"
+                          << "}\n";
             } else {
                 std::cout << "Free space: " << bk_util::auto_size_suffix(free_val) << std::endl;
                 std::cout << "Used space: " << bk_util::auto_size_suffix(used_val) << std::endl;
@@ -384,23 +396,18 @@ beekeeper::cli::handle_stat(const std::map<std::string, std::string>& options,
         }
     }
 
-    // Default path: configuration check
+    // Config check
     std::string config_path = bk_mgmt::btrfstat(uuid);
     if (!config_path.empty()) {
-        if (json) {
-            // JSON / machine-readable output: just return the raw path
-            std::cout << config_path << std::endl;
-        } else {
-            // Human-readable output
-            std::cout << "Configuration exists: " << config_path << std::endl;
-        }
+        if (json) emit_json(true, "config_path", config_path);
+        else std::cout << "Configuration exists: " << config_path << std::endl;
         return 0;
     } else {
-        std::cout << "No configuration found for " << uuid << std::endl;
+        if (json) emit_json(false, "config_path", "");
+        else std::cout << "No configuration found for " << uuid << std::endl;
         return 1;
     }
 }
-
 
 int
 beekeeper::cli::handle_autostartctl(const std::map<std::string, std::string> &options,

@@ -1,7 +1,6 @@
 // src/cli/commandmachine/parser.cpp
 #include "beekeeper/commandmachine.hpp"
 #include "parser.hpp"
-#include <cctype>
 #include <iostream>
 #include <sstream>
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(beekeeper VERSION 0.0.1 LANGUAGES CXX)
+project(beekeeper VERSION 0.9 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,13 +56,6 @@ endif()
 include(GNUInstallDirs)
 set(BUILD_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 file(MAKE_DIRECTORY ${BUILD_INCLUDE_DIR})
-
-# Configure helperpath.hpp
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/beekeeper/cmakedependentvariables/helperpath.hpp.in"
-    "${BUILD_INCLUDE_DIR}/beekeeper/cmakedependentvariables/helperpath.hpp"
-    @ONLY
-)
 
 # Configure systemd & DBus services
 configure_file(
@@ -184,12 +177,6 @@ target_link_libraries(beekeeper-helper PRIVATE
     ${LIBUDEV_LIBRARIES}
 )
 
-# For executables/libraries that include helperpath.hpp
-target_compile_definitions(beekeeper-qt PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
-target_compile_definitions(beekeeper-helper PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
-target_compile_definitions(beekeeperman PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
-target_compile_definitions(beekeeper PRIVATE BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
-
 # Absolute RPATH
 set_target_properties(beekeeper-helper PROPERTIES
     INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/beekeeper"
@@ -197,6 +184,34 @@ set_target_properties(beekeeper-helper PROPERTIES
     BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
     SKIP_BUILD_RPATH FALSE
 )
+
+# ------------------------------
+# Optional libblkid support
+# ------------------------------
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(LIBBLKID QUIET blkid)
+    if(LIBBLKID_FOUND)
+        message(STATUS "Found libblkid: ${LIBBLKID_VERSION}")
+
+        # Define HAVE_LIBBLKID for all relevant targets
+        add_compile_definitions(HAVE_LIBBLKID=1)
+
+        # Include dirs & libraries for beekeeper (core library)
+        target_include_directories(beekeeper PRIVATE ${LIBBLKID_INCLUDE_DIRS})
+        target_link_libraries(beekeeper PRIVATE ${LIBBLKID_LIBRARIES})
+
+        # Include dirs & libraries for CLI executable
+        target_include_directories(beekeeperman PRIVATE ${LIBBLKID_INCLUDE_DIRS})
+        target_link_libraries(beekeeperman PRIVATE ${LIBBLKID_LIBRARIES})
+
+        # Include dirs & libraries for helper executable
+        target_include_directories(beekeeper-helper PRIVATE ${LIBBLKID_INCLUDE_DIRS})
+        target_link_libraries(beekeeper-helper PRIVATE ${LIBBLKID_LIBRARIES})
+    else()
+        message(WARNING "libblkid not found: falling back to blkid CLI parsing")
+    endif()
+endif()
 
 # ------------------------------
 # Translations
@@ -304,6 +319,14 @@ install(FILES
 install(FILES src/gui/entry.desktop
         DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/applications
         RENAME beekeeper-qt.desktop)
+
+set(INSTALL_MANIFEST "${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt")
+
+add_custom_target(write-install-manifest ALL
+    COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_MANIFEST=${INSTALL_MANIFEST}
+                            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake_write_install_manifest.cmake"
+    COMMENT "Writing install manifest to ${INSTALL_MANIFEST}"
+)
 
 # ------------------------------
 # Tests

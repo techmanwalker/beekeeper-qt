@@ -74,13 +74,16 @@ multicommander::beesclean(const QString &uuid)
     });
 }
 
-QFuture<std::string>
+QFuture<bool>
 multicommander::beessetup(const QString &uuid, size_t db_size)
 {
-    return QtConcurrent::run([this, uuid, db_size]{
-        auto result = komander->beessetup(uuid.toStdString(), db_size);
-        emit command_finished("beessetup", QString::fromStdString(result), "");
-        return result;
+    return QtConcurrent::run([this, uuid, db_size] {
+        std::string result = komander->beessetup(uuid.toStdString(), db_size, true);
+        bool success = (result == "1");
+        emit command_finished("beessetup",
+                              QString::fromStdString(result),
+                              "");
+        return success;
     });
 }
 
@@ -104,14 +107,17 @@ multicommander::beesremoveconfig(const QString &uuid)
     });
 }
 
-QFuture<std::string>
-multicommander::btrfstat(const QString &uuid, const QString &mode /* = "free" */)
+QFuture<bool>
+multicommander::btrfstat(const QString &uuid, const QString &mode)
 {
-    return QtConcurrent::run([this, uuid, mode]{
+    return QtConcurrent::run([this, uuid, mode] {
         auto result = komander->btrfstat(uuid.toStdString(),
-                                                     mode.toStdString());
-        emit command_finished("btrfstat", QString::fromStdString(result), "");
-        return result;
+                                         mode.toStdString());
+        bool success = !result.empty();
+        emit command_finished("btrfstat",
+                              QString::fromStdString(result),
+                              "");
+        return success;
     });
 }
 

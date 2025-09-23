@@ -332,11 +332,12 @@ MainWindow::handle_transparentcompression_switch(bool pause)
 void
 MainWindow::handle_remove_button()
 {
-    if (!komander->do_i_have_root_permissions())
+    if (!komander->do_i_have_root_permissions()) {
         return;
+    }
 
-    // Get selected filesystems
-    auto selected_rows = fs_table->selectionModel()->selectedRows();
+    // Gather selected rows; only allow configured + stopped ones
+    QModelIndexList selected_rows = fs_table->selectionModel()->selectedRows();
     if (selected_rows.isEmpty()) {
         QMessageBox::information(
             this,
@@ -347,67 +348,89 @@ MainWindow::handle_remove_button()
     }
 
     QList<QModelIndex> rows_to_process;
-
-    // Progressive discard: skip running or unconfigured filesystems
-    for (auto idx : selected_rows) {
-        if (running(idx))
-            continue;
-        if (!configured(idx))
-            continue;
+    for (const QModelIndex &idx : selected_rows) {
+        if (running(idx)) {
+            continue; // Skip running instances
+        }
+        if (!configured(idx)) {
+            continue; // Skip unconfigured filesystems
+        }
         rows_to_process.append(idx);
     }
 
     if (rows_to_process.isEmpty()) {
-        // Nothing to remove
+        // Nothing valid to remove
         return;
     }
 
-    // Confirm deletion dialog
-    QString line1 = tr("You're about to remove the file deduplication engine configuration.\n");
-    QString line2 = tr("This does not provoke data loss but you won't have file deduplication functionality unless you set up Beesd again by selecting the filesystem and clicking the Setup button.\n\n");
-    QString line3 = tr("Are you sure?");
+    // Confirmation dialog with detailed explanation
+    QString line1 = tr("You are about to remove the file deduplication engine configuration for the selected filesystem(s).\n");
+    QString line2 = tr("This does not cause any data loss, but you will lose deduplication functionality until you set up Beesd again.\n\n");
+    QString line3 = tr("Do you want to continue?");
     QString message = line1 + line2 + line3;
 
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
-        tr("Confirm removal"),
+        tr("Confirm configuration removal"),
         message,
         QMessageBox::Yes | QMessageBox::No
     );
 
-    if (reply != QMessageBox::Yes)
-        return;
+    if (reply != QMessageBox::Yes) {
+        return; // User canceled
+    }
 
-    // Remove configs for surviving filesystems
-    // Remove configs for surviving filesystems
-    for (auto idx : rows_to_process) {
-        std::string uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString().toStdString();
+    // Build async futures
+    auto *futures = new QList<QFuture<bool>>();
+
+    for (const QModelIndex &idx : rows_to_process) {
+        QString uuid_q = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
+        if (uuid_q.isEmpty()) {
+            continue;
+        }
+
+        std::string uuid = uuid_q.toStdString();
+
+        // Verify if there is a configuration file; skip if not
         std::string configfilepath = bk_util::trim_config_path_after_colon(
             komander->btrfstat(uuid, "")
         );
-        if (!configfilepath.empty()) {
-            // Remove Beesd configuration
-            komander->beesremoveconfig(uuid);
+        if (configfilepath.empty()) {
+            continue;
+        }
 
-            // Also remove it from autostart
-            if (bk_mgmt::autostart::is_enabled_for(uuid)) {
-                komander->remove_uuid_from_autostart(uuid);
-            }
+        // Queue removal of Beesd configuration
+        futures->append(
+            komander->async->beesremoveconfig(uuid_q)
+        );
 
-            // Also remove from transparent compression if enabled
-            if (bk_mgmt::transparentcompression::is_enabled_for(uuid)) {
-                komander->remove_uuid_from_transparentcompression(uuid);
-            }
+        // Queue removal from autostart if present
+        if (bk_mgmt::autostart::is_enabled_for(uuid)) {
+            futures->append(
+                komander->async->remove_uuid_from_autostart(uuid_q)
+            );
+        }
+
+        // Queue removal from transparent compression if present
+        if (bk_mgmt::transparentcompression::is_enabled_for(uuid)) {
+            futures->append(
+                komander->async->remove_uuid_from_transparentcompression(uuid_q)
+            );
         }
     }
 
-    // Refresh UI at the end
-    refresh_filesystems();
-    update_button_states();
+    if (futures->isEmpty()) {
+        delete futures;
+        return;
+    }
+
+    // Hand over to async processor, which handles timeouts, logging, and cleanup
+    process_fs_async(futures);
 }
 
+template <typename T>
 void
-MainWindow::process_fs_async(QList<QFuture<bool>> *futures)
+MainWindow::process_fs_async(QList<QFuture<T>> *futures)
 {
     if (!futures || futures->isEmpty()) {
         delete futures;
@@ -431,7 +454,16 @@ MainWindow::process_fs_async(QList<QFuture<bool>> *futures)
             }
 
             if (f.isFinished()) {
-                if (f.result()) (*success_count)++;
+                if constexpr (std::is_same_v<T, bool>) {
+                    if (f.result()) {
+                        (*success_count)++;
+                    }
+                } else {
+                    // For non-bool futures, just count successful completions
+                    (*success_count)++;
+                    // You could log/store f.result() here if you want the actual values
+                    // DEBUG_LOG("Future result: " + QString::fromStdString(f.result()));
+                }
             } else {
                 DEBUG_LOG("Future timed out!");
             }
@@ -450,4 +482,5 @@ MainWindow::process_fs_async(QList<QFuture<bool>> *futures)
         }, Qt::QueuedConnection);
     });
 }
+
 

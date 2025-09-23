@@ -1,4 +1,0 @@
-#pragma once
-
-// -------------------- privileged helper path --------------------.
-#define BEEKEEPER_HELPER_PATH "@BEEKEEPER_HELPER_PATH@"

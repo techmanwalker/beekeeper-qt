@@ -31,13 +31,10 @@
 class superlaunch;   // <--- forward declare so we can friend it later
 
 #include "beekeeper/util.hpp"
-#include "debug.hpp"
 #include <string>
 #include <vector>
 #include <map>
 #include <memory>
-#include <mutex>
-#include <QObject>
 #include <QtConcurrent/QtConcurrent>
 
 namespace beekeeper {
@@ -81,10 +78,12 @@ public:
     bool beesrestart(const std::string &uuid);
     std::string beeslog(const std::string &uuid);
     bool beesclean(const std::string &uuid);
-    std::string beessetup(const std::string &uuid, size_t db_size = 0);
+    std::string beessetup(const std::string &uuid,
+                          size_t db_size = 0,
+                          bool return_success_bool_instead = false);
     std::string beeslocate(const std::string &uuid);
     bool beesremoveconfig(const std::string &uuid);
-    std::string btrfstat(const std::string &uuid, const std::string &mode);
+    std::string btrfstat(const std::string &uuid, const std::string &mode = "");
 
     // Autostart control
     bool add_uuid_to_autostart(const std::string &uuid);

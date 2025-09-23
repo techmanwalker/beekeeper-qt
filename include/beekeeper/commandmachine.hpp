@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <utility> // for std::pair
 
 namespace commandmachine {
 

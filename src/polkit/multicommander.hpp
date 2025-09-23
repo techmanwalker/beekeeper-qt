@@ -23,10 +23,10 @@ public:
     QFuture<bool> beesrestart(const QString &uuid);
     QFuture<std::string> beeslog(const QString &uuid);
     QFuture<bool> beesclean(const QString &uuid);
-    QFuture<std::string> beessetup(const QString &uuid, size_t db_size);
+    QFuture<bool> beessetup(const QString &uuid, size_t db_size = 0);
     QFuture<std::string> beeslocate(const QString &uuid);
     QFuture<bool> beesremoveconfig(const QString &uuid);
-    QFuture<std::string> btrfstat(const QString &uuid, const QString &mode /* = "free" */);
+    QFuture<bool> btrfstat(const QString &uuid, const QString &mode = "");
     QFuture<bool> add_uuid_to_transparentcompression(const QString &uuid, const QString &compression_level);
     QFuture<bool> remove_uuid_from_transparentcompression(const QString &uuid);
     QFuture<bool> start_transparentcompression_for_uuid(const QString &uuid);

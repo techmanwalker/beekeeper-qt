@@ -3,6 +3,8 @@
 #include "beekeeper/debug.hpp"
 
 #include <filesystem>
+#include <iostream>
+#include <limits.h>
 #include <unordered_set>
 #include <vector>
 #include <sys/stat.h>
@@ -348,7 +350,7 @@ bk_mgmt::get_mount_paths(const std::string &uuid_or_device)
         real_device = uuid_or_device;
     }
 
-    DEBUG_LOG("Real device for uuid ", uuid_or_device, " is: ", real_device);
+    // DEBUG_LOG("Real device for uuid ", uuid_or_device, " is: ", real_device);
 
     // Find all /proc/mounts lines that contain the real device string (case-insensitive)
     // The helper returns each matching line as a full string.
@@ -384,6 +386,99 @@ bk_mgmt::get_mount_paths(const std::string &uuid_or_device)
     }
 
     return mountpoints;
+}
+
+/**
+ * @brief Return the filesystem label for the given mountpoint or UUID.
+ *
+ * If @p mountpoint_or_uuid is not a UUID, the function checks whether the
+ * path exists and then attempts to obtain the UUID via
+ * bk_mgmt::get_mount_uuid(). If a UUID is obtained (or the argument was a
+ * UUID to begin with), the function tries to resolve the real device for that
+ * UUID and then query the filesystem label using system utilities.
+ *
+ * Order of attempts:
+ *  1. Resolve /dev/disk/by-uuid/<UUID> with realpath() and use that device.
+ *  2. If above failed, call bk_mgmt::get_real_device(UUID) to obtain device.
+ *  3. If device found, run:
+ *       - blkid -s LABEL -o value <device>
+ *       - (fallback) lsblk -no LABEL <device>
+ *
+ * Returns empty string on any failure or if no label is present.
+ *
+ * @param mountpoint_or_uuid Mountpoint path or a filesystem UUID.
+ * @return Filesystem label or empty string when unknown.
+ */
+std::string
+get_filesystem_label(const std::string &mountpoint_or_uuid)
+{
+    if (mountpoint_or_uuid.empty()) return "";
+
+    // helper: trim whitespace/newlines
+    auto trim = [](const std::string &s) -> std::string {
+        const char *ws = " \t\r\n";
+        size_t b = s.find_first_not_of(ws);
+        if (b == std::string::npos) return "";
+        size_t e = s.find_last_not_of(ws);
+        return s.substr(b, e - b + 1);
+    };
+
+    std::string uuid = mountpoint_or_uuid;
+
+    // If not a uuid, treat argument as path: check it exists and get uuid from it.
+    if (!bk_util::is_uuid(uuid)) {
+        struct stat st;
+        if (stat(mountpoint_or_uuid.c_str(), &st) != 0) {
+            // path does not exist or inaccessible
+            return "";
+        }
+
+        uuid = bk_mgmt::get_mount_uuid(mountpoint_or_uuid);
+        if (uuid.empty()) return "";
+    }
+
+    // Try resolving /dev/disk/by-uuid/<uuid> with realpath()
+    std::string syspath = "/dev/disk/by-uuid/" + uuid;
+    char resolved[PATH_MAX + 1];
+    std::string device_path;
+    if (realpath(syspath.c_str(), resolved) != nullptr) {
+        device_path = resolved; // absolute device path
+    }
+
+    // If realpath failed, try user-provided helper to obtain device path
+    if (device_path.empty()) {
+        device_path = bk_mgmt::get_real_device(uuid);
+    }
+
+    // If we have a device path, try blkid to obtain LABEL
+    if (!device_path.empty()) {
+        command_streams res = bk_util::exec_command("blkid", "-s", "LABEL", "-o", "value", device_path);
+        auto lines = bk_util::split_command_streams_by_lines(res).first;
+        if (!lines.empty()) {
+            std::string label = trim(lines.front());
+            if (!label.empty()) return label;
+        }
+
+        // Fallback to lsblk if blkid returned nothing
+        command_streams res2 = bk_util::exec_command("lsblk", "-no", "LABEL", device_path);
+        auto lines2 = bk_util::split_command_streams_by_lines(res2).first;
+        if (!lines2.empty()) {
+            std::string label = trim(lines2.front());
+            if (!label.empty()) return label;
+        }
+    }
+
+    // As a last resort, try running blkid on the by-uuid symlink path itself
+    // (some systems allow passing the symlink)
+    command_streams res3 = bk_util::exec_command("blkid", "-s", "LABEL", "-o", "value", syspath);
+    auto lines3 = bk_util::split_command_streams_by_lines(res3).first;
+    if (!lines3.empty()) {
+        std::string label = trim(lines3.front());
+        if (!label.empty()) return label;
+    }
+
+    // Not found
+    return "";
 }
 
 int64_t

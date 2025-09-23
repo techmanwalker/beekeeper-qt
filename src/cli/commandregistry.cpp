@@ -56,7 +56,8 @@ std::vector<cm::command> command_registry = {
         beekeeper::cli::handle_setup,
         {
             {"db-size", "d", true},  // Requires value (size in bytes)
-            {"remove", "r", false}
+            {"remove", "r", false},
+            {"json", "j", false}
         },
         "UUID",
         "Create/update configuration for a btrfs filesystem",

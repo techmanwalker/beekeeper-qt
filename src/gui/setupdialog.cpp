@@ -155,7 +155,8 @@ void
 SetupDialog::accept()
 {
     if (!launcher->root_alive && !launcher->start_root_shell()) {
-        QMessageBox::critical(this, tr("Error"),
+        QMessageBox::critical(this,
+                              tr("Error"),
                               tr("Cannot start root shell. Exiting setup."));
         return;
     }
@@ -166,12 +167,13 @@ SetupDialog::accept()
         db_size = static_cast<size_t>(m_dbSizeCombo->currentData().toULongLong());
     }
 
-    // Filter uuids to only unconfigured filesystems
+    // Filter only unconfigured filesystems
     QStringList uuids_to_setup;
     for (const QString &q : m_uuids) {
         std::string uuid = q.toStdString();
-        if (komander->btrfstat(uuid, "").find("No configuration found for") != std::string::npos)
+        if (komander->btrfstat(uuid, "").find("No configuration found for") != std::string::npos) {
             uuids_to_setup.append(q);
+        }
     }
 
     if (uuids_to_setup.isEmpty()) {
@@ -179,67 +181,39 @@ SetupDialog::accept()
         return;
     }
 
-    // Launch all setups asynchronously
-    QList<QFuture<std::string>> futures;
-    QFutureSynchronizer<std::string> sync;
+    // Collect async futures on heap so they can outlive this dialog
+    auto *futures = new QList<QFuture<bool>>();
 
+    // --- Beesd setup ---
     for (const QString &q : uuids_to_setup) {
-        auto f = komander->async->beessetup(q, db_size);
-        futures.append(f);
-        sync.addFuture(f);
+        futures->append(komander->async->beessetup(q, db_size));
     }
 
-    // Close dialog immediately
-    QDialog::accept();
-
-    // Wait for all futures to finish
-    sync.waitForFinished();
-
-    // Count successes and failures
-    int success_count = 0;
-    int failed_count = 0;
-    for (auto &f : futures) {
-        std::string result = f.result();
-        if (!result.empty() && result.find("No configuration found for") == std::string::npos)
-            success_count++;
-        else
-            failed_count++;
-    }
-
-    // --- Transparent compression section ---
-    // NOTE: For now we just add the UUID to the transparent-compression config
-    // using the management API and attempt to remount if the filesystem is mounted.
-    // We do not attempt to compute a human-readable label here (no fs_table access).
+    // --- Transparent compression ---
     if (m_enableCompression->isChecked()) {
-        // Keep the chosen token for future use; will parse algo:level internally
         QString compress_token = m_compressionCombo->currentData().toString();
 
         for (const QString &q : uuids_to_setup) {
-            std::string uuid = q.toStdString();
+            // Add to transparent compression config
+            futures->append(
+                komander->async->add_uuid_to_transparentcompression(q, compress_token)
+            );
 
-            // Add UUID to transparent compression configuration
-            komander->add_uuid_to_transparentcompression(uuid, compress_token.toStdString());
-
-            // If filesystem is mounted, try to start compression (remount)
-
-            std::string mountpoint = komander->beeslocate(uuid);
-            if (!mountpoint.empty()) {
-                bool ok = komander->start_transparentcompression_for_uuid(uuid);
-                if (!ok) {
-                    QMessageBox::warning(this, tr("Remount for transparent compression failed"),
-                                        tr("Filesystem %1 could not be remounted to enable transparent compression.")
-                                        .arg(QString::fromStdString(uuid)));
-                }
-            }
-
+            // Attempt remount/start compression if mounted
+            futures->append(
+                komander->async->start_transparentcompression_for_uuid(q)
+            );
         }
     }
 
-    // Emit finished signal (same behavior as before)
-    MainWindow *mw = qobject_cast<MainWindow*>(parentWidget());
-    if (mw && mw->rootThread) {
-        QMetaObject::invokeMethod(mw->rootThread,
-                                [mw]() { emit mw->rootThread->command_finished("setup", "success", ""); },
-                                Qt::QueuedConnection);
+    // Close dialog immediately (UI will update once process_fs_async finishes)
+    QDialog::accept();
+
+    // Hand over futures to the main window’s async processor
+    if (MainWindow *mw = qobject_cast<MainWindow*>(parentWidget())) {
+        mw->process_fs_async(futures);
+    } else {
+        // Fallback cleanup if no main window found
+        delete futures;
     }
 }

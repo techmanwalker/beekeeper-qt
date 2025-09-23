@@ -1,11 +1,20 @@
+#include "beekeeper/beesdmgmt.hpp"
+#include "beekeeper/debug.hpp"
 #include "beekeeper/btrfsetup.hpp"
+#include "beekeeper/debug.hpp"
 #include "beekeeper/util.hpp"
-#include "beekeeper/internalaliases.hpp"
 #include <algorithm>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <map>
+
+#ifdef HAVE_LIBBLKID
+  #include <cstring>
+  extern "C" {
+    #include <blkid/blkid.h>
+  }
+#endif
 
 namespace fs = std::filesystem;
 
@@ -70,88 +79,116 @@ parse_config (const fs::path& config_path)
 }
 
 // List btrfs filesystems
-std::vector<std::map<std::string, std::string>>
-bk_mgmt::btrfsls ()
+/**
+ * @brief List available Btrfs filesystems.
+ *
+ * This function asks blkid for UUID, LABEL and TYPE for all block devices,
+ * then filters lines that contain TYPE="btrfs" (case-insensitive).
+ *
+ * For every matching line it extracts:
+ *  - uuid -> from token "UUID=\"...\"" (or "" if missing)
+ *  - label -> from token "LABEL=\"...\"" (or "" if missing)
+ *  - status -> result of bk_mgmt::beesstatus(uuid) (or "" if uuid empty)
+ *
+ * Tokenization of each blkid line is performed with bk_util::tokenize(..., ' ')
+ * so quoted fields are preserved. Quotes are removed using bk_util::trip_quotes().
+ *
+ * @return Vector of maps; each map contains keys "uuid", "label" and "status".
+ */
+fs_vec
+bk_mgmt::btrfsls()
 {
-    std::vector<std::map<std::string, std::string>> filesystems;
-    std::string output = bk_util::exec_command("btrfs", "filesystem", "show", "-d").stdout_str;
-    
-    if (output.empty()) {
-        return filesystems;
+    fs_vec available_filesystems;
+
+#ifdef HAVE_LIBBLKID
+    DEBUG_LOG("If you can see this, libblkid was compiled into beekeeper-qt.");
+
+    blkid_cache cache = nullptr;
+    if (blkid_get_cache(&cache, nullptr) < 0) {
+        DEBUG_LOG("blkid_get_cache() failed.");
+        return available_filesystems;
     }
-    
-    // Split output into lines
-    std::istringstream stream(output);
-    std::string line;
-    
-    while (std::getline(stream, line)) {
-        // Look for UUID in the line (must be present)
-        if (line.find("uuid:") == std::string::npos) {
-            continue;
-        }
-        
-        std::map<std::string, std::string> fs_info;
-        std::string label_str = "";
-        std::string uuid_str = "";
-        
-        // Extract UUID first (always required)
-        size_t uuid_pos = line.find("uuid:") + 5;
-        if (uuid_pos != std::string::npos) {
-            // Skip any whitespace after uuid:
-            while (uuid_pos < line.size() && std::isspace(line[uuid_pos])) {
-                uuid_pos++;
-            }
-            
-            // Find end of UUID (either space or end of line)
-            size_t uuid_end = uuid_pos;
-            while (uuid_end < line.size() && !std::isspace(line[uuid_end])) {
-                uuid_end++;
-            }
-            
-            uuid_str = line.substr(uuid_pos, uuid_end - uuid_pos);
-            fs_info["uuid"] = uuid_str;
-        }
-        
-        // Extract label if present
-        if (line.find("Label:") != std::string::npos) {
-            size_t label_start = line.find('\'');
-            size_t label_end = line.find('\'', label_start + 1);
-            
-            if (label_start != std::string::npos && label_end != std::string::npos) {
-                label_str = line.substr(label_start + 1, label_end - label_start - 1);
+
+    blkid_probe_all(cache);
+
+    blkid_dev dev;
+    blkid_dev_iterate iter = blkid_dev_iterate_begin(cache);
+
+    while (blkid_dev_next(iter, &dev) == 0) {
+        const char *devname = blkid_dev_devname(dev);
+
+        char *type  = blkid_get_tag_value(cache, "TYPE", devname);
+        char *uuid  = blkid_get_tag_value(cache, "UUID", devname);
+        char *label = blkid_get_tag_value(cache, "LABEL", devname);
+
+        if (type && std::strcmp(type, "btrfs") == 0) {
+            std::map<std::string, std::string> entry;
+
+            if (devname) entry["devname"] = devname;
+            if (uuid)    entry["uuid"]    = uuid;
+            if (label)   entry["label"]   = label;
+
+            // also fetch .status using beesstatus(uuid)
+            if (uuid) {
+                entry["status"] = bk_mgmt::beesstatus(uuid);
             } else {
-                // Fallback for unquoted labels
-                size_t label_pos = line.find("Label:") + 6;
-                if (label_pos != std::string::npos) {
-                    // Extract until "uuid:" or end of line
-                    size_t label_end = line.find("uuid:");
-                    if (label_end == std::string::npos) label_end = line.size();
-                    
-                    label_str = line.substr(label_pos, label_end - label_pos);
-                    
-                    // Trim trailing whitespace
-                    size_t last_char = label_str.find_last_not_of(" \t");
-                    if (last_char != std::string::npos) {
-                        label_str = label_str.substr(0, last_char + 1);
-                    }
+                entry["status"] = "unknown";
+            }
+
+            available_filesystems.push_back(std::move(entry));
+        }
+
+        if (type)  free(type);
+        if (uuid)  free(uuid);
+        if (label) free(label);
+    }
+
+    blkid_dev_iterate_end(iter);
+    blkid_put_cache(cache);
+
+#else
+    // Fallback: shell out to blkid and parse lines
+    {
+        command_streams res = bk_util::exec_command("blkid", "-s", "UUID", "-s", "LABEL", "-s", "TYPE");
+        // DEBUG_LOG("blkid response: ", res.stdout_str);
+        std::vector<std::string> filesystem_lines = bk_util::split_command_streams_by_lines(res).first;
+        std::vector<std::string> btrfs_lines =
+            bk_util::find_lines_matching_substring_in_vector(filesystem_lines, "TYPE=\"btrfs\"", true);
+        DEBUG_LOG("blkid lines: ", bk_util::serialize_vector(btrfs_lines));
+
+        for (const auto &line : btrfs_lines) {
+            fs_map this_filesystem;
+            this_filesystem["uuid"]   = "";
+            this_filesystem["label"]  = "";
+            this_filesystem["status"] = "";
+            this_filesystem["devname"] = "";
+
+            std::vector<std::string> fs_tokens = bk_util::tokenize(line, ' ');
+            DEBUG_LOG("tokenized line: ", bk_util::serialize_vector(fs_tokens));
+            std::string peeled_uuid;
+            std::string peeled_label;
+
+            for (const auto &tok : fs_tokens) {
+                if (tok.rfind("UUID=", 0) == 0) {
+                    peeled_uuid = bk_util::trip_quotes(tok.substr(5));
+                } else if (tok.rfind("LABEL=", 0) == 0) {
+                    peeled_label = bk_util::trip_quotes(tok.substr(6));
                 }
             }
-        }
-        
-        // Use UUID as label if no label was found
-        if (label_str.empty()) {
-            label_str = uuid_str;
-        }
-        
-        fs_info["label"] = label_str;
-        
-        // Only add if we have a UUID
-        if (!uuid_str.empty()) {
-            filesystems.push_back(fs_info);
+
+            this_filesystem["uuid"]  = peeled_uuid;
+            this_filesystem["label"] = peeled_label;
+
+            if (!peeled_uuid.empty()) {
+                this_filesystem["status"]  = bk_mgmt::beesstatus(peeled_uuid);
+                this_filesystem["devname"] = bk_mgmt::get_real_device(peeled_uuid);
+            }
+
+            available_filesystems.push_back(std::move(this_filesystem));
         }
     }
-    
-    return filesystems;
+#endif
+    return available_filesystems;
 }
 
 // Check if config exists for btrfs UUID

@@ -8,7 +8,7 @@
 #include "beekeeper/qt-debug.hpp"
 
 #include "mainwindow.hpp"
-#include "refreshfilesystems_helpers.hpp"
+#include "../polkit/multicommander.hpp"
 #include "statusdotdelegate.hpp"
 #include "uuidcolumndelegate.hpp"
 
@@ -272,16 +272,12 @@ MainWindow::setup_ui()
     connect(this, &MainWindow::root_shell_ready_signal, this, [this]() {
         DEBUG_LOG("[MainWindow] Root shell ready signal received!");
         refresh_filesystems();  // now safe to enable root-only controls
-        update_button_states();
-        refresh_fs_helpers::update_status_manager(fs_table, statusManager);
     });
 
     // When a command issued by the buttons already finished, inmediately refresh
     connect(this, &MainWindow::command_finished, this, [this]() {
         DEBUG_LOG("[MainWindow] Root shell ready signal received!");
         refresh_filesystems();  // now safe to enable root-only controls
-        update_button_states();
-        refresh_fs_helpers::update_status_manager(fs_table, statusManager);
     });
 
     // connect menu action if used
@@ -292,41 +288,12 @@ MainWindow::setup_ui()
         this, &MainWindow::update_button_states);
 }
 
-void
-MainWindow::refresh_filesystems()
+void MainWindow::refresh_filesystems()
 {
-    if (!komander->do_i_have_root_permissions()) {
-        fs_table->setRowCount(0);
-        start_btn->setEnabled(false);
-        stop_btn->setEnabled(false);
-        setup_btn->setEnabled(false);
-        #ifdef BEEKEEPER_DEBUG_LOGGING
-        showlog_btn->setEnabled(false);
-        #endif
-        remove_btn->setEnabled(false);
-        return;
-    }
+    // disable some buttons early if no root (optional)
+    update_button_states(); // quick check (must be safe on GUI thread)
 
-    auto filesystems = komander->btrfsls();
-    QSet<QString> incoming_uuids;
-    auto current_uuid_map = refresh_fs_helpers::build_current_uuid_map(fs_table);
-
-    // --- build a map uuid -> status using Komander
-    QMap<QString, QString> uuid_status_map;
-    for (const auto &fs : filesystems) {
-        QString uuid = QString::fromStdString(fs.at("uuid"));
-        std::string cfg_raw = komander->btrfstat(uuid.toStdString(), "");
-        std::string cfg_trimmed = bk_util::trim_config_path_after_colon(cfg_raw);
-        QString status;
-        if (cfg_trimmed.empty() || cfg_trimmed.find("No configuration found") == 0)
-            status = "unconfigured";
-        else
-            status = QString::fromStdString(bk_util::trim_string(komander->beesstatus(uuid.toStdString())));
-        uuid_status_map[uuid] = status;
-    }
-
-    // --- update table
-    refresh_fs_helpers::update_or_insert_rows(fs_table, filesystems, current_uuid_map, incoming_uuids, uuid_status_map);
-    refresh_fs_helpers::remove_vanished_rows(fs_table, incoming_uuids);
-    update_button_states();
+    // Ask async btrfsls and hand its future to the builder. Returns immediately.
+    auto future_fs = komander->async->btrfsls(); // QFuture<fs_vec>
+    build_filesystem_table(future_fs);
 }

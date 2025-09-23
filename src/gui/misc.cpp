@@ -1,5 +1,4 @@
-#include "help/helpdialog.hpp"
-#include "help/texts.hpp"
+#include "beekeeper/debug.hpp"
 #include "mainwindow.hpp"
 
 void

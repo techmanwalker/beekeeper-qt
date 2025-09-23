@@ -18,6 +18,10 @@
 class StatusDotDelegate;
 class UUIDColumnDelegate;
 
+// Type aliases
+using fs_map = std::map<std::string, std::string>;
+using fs_vec = std::vector<fs_map>;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -54,6 +58,11 @@ private:
     void update_statuses();
     void update_status_bar();
 
+    // ----- Add or remove your filesystems from autostart -----
+
+    void handle_add_to_autostart();
+    void handle_remove_from_autostart();
+
     /** The star function - handles all the button handlers
     * @brief Processes a batch of asynchronous filesystem commands.
     *
@@ -75,7 +84,7 @@ private:
     * @param futures A list of QFuture<bool> tasks representing pending asynchronous operations.
     *                This list may be empty; in that case, the function returns immediately.
     */
-    void process_fs_async(QList<QFuture<bool>> *futures);
+    template <typename T> void process_fs_async(QList<QFuture<T>> *futures);
 
 
     // ----- Table checkers - per entire selection -----
@@ -130,12 +139,6 @@ private:
     // Returns true if the filesystem is in the beekeeper autostart file
     bool in_the_autostart_file(const QModelIndex &idx) const;
 
-    
-    // ----- Add or remove your filesystems from autostart -----
-
-    void handle_add_to_autostart();
-    void handle_remove_from_autostart();
-
 
     /**
     * @brief Return the UUIDs of selected filesystems, or all filesystems if requested.
@@ -144,6 +147,20 @@ private:
     * @return std::vector<QString> List of UUIDs.
     */
     std::vector<QString> get_fs_uuids(bool check_the_whole_table = false) const;
+
+    // --- Refresh filesystem table ---
+
+    std::atomic_bool is_being_refreshed{false}; // guard multiple refreshes
+
+    // Optionally store last build future so you can cancel/wait if desired
+    QFuture<void> last_build_future;
+
+   void build_filesystem_table(QFuture<fs_vec> filesystem_list_future); // fetch filesystem data with btrfsls()
+    QFuture<void> add_new_rows_task(fs_vec *new_filesystems); // If there are new btrfs filesystems available, add them to the table
+    QFuture<void> remove_old_rows_task(fs_vec *removed_filesystems); // Remove now-unavailable btrfs filesystems
+    QFuture<void> update_existing_rows_task(fs_vec *existing_filesystems); // Update the status data for the filesystems that stayed existing
+
+    // ---
 
     // root operations
     root_shell_thread* rootThread = nullptr;

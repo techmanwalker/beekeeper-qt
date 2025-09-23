@@ -255,8 +255,9 @@
         <translation>Repito, esto es puramente para propósitos de depuración y se desaconseja habilitarlo para el uso cotidiano.</translation>
     </message>
     <message>
+        <location filename="../buttonhandlers.cpp" line="369"/>
         <source>Do you want to continue?</source>
-        <translation type="vanished">¿Estás seguro de que quieres continuar?</translation>
+        <translation>¿Estás seguro de que quieres continuar?</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="129"/>
@@ -310,25 +311,45 @@
         <translation>Registros del sistema de archivos: </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="343"/>
+        <location filename="../buttonhandlers.cpp" line="344"/>
         <source>No selection</source>
         <translation>Ninguno fue seleccionado</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="344"/>
+        <location filename="../buttonhandlers.cpp" line="345"/>
         <source>Please select at least one filesystem to remove its Beesd configuration.</source>
         <translation>Por favor selecciona al menos un sistema de archivos para eliminar su configuración de Beesd.</translation>
+    </message>
+    <message>
+        <location filename="../buttonhandlers.cpp" line="367"/>
+        <source>You are about to remove the file deduplication engine configuration for the selected filesystem(s).
+</source>
+        <translation>Estás a punto de eliminar la configuración del servicio de deduplicación de archivos para este sistema de archivos.
+</translation>
+    </message>
+    <message>
+        <location filename="../buttonhandlers.cpp" line="368"/>
+        <source>This does not cause any data loss, but you will lose deduplication functionality until you set up Beesd again.
+
+</source>
+        <translation>Esto no provoca pérdida de datos, pero no podrás deduplicar tus archivos hasta que vuelvas a configurar Beesd.
+
+</translation>
+    </message>
+    <message>
+        <location filename="../buttonhandlers.cpp" line="374"/>
+        <source>Confirm configuration removal</source>
+        <translation>Confirmar la eliminación de la configuración</translation>
     </message>
     <message>
         <source>Please select at least one filesystem to remove its configuration.</source>
         <translation type="vanished">Por favor, selecciona el sistema de archivos el cual deseas eliminar su configuración.</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="367"/>
         <source>This does not provoke data loss but you won&apos;t have file deduplication functionality unless you set up Beesd again by selecting the filesystem and clicking the Setup button.
 
 </source>
-        <translation>Esto no provoca pérdida de datos, pero de ahora en adelante no podrás deduplicar archivos a menos de que vuelvas a configurar Beesd de nuevo al seleccionar el sistema de archivos y presionar el botón Configurar.
+        <translation type="vanished">Esto no provoca pérdida de datos, pero de ahora en adelante no podrás deduplicar archivos a menos de que vuelvas a configurar Beesd de nuevo al seleccionar el sistema de archivos y presionar el botón Configurar.
 
 </translation>
     </message>
@@ -339,15 +360,13 @@
 </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="373"/>
         <source>Confirm removal</source>
-        <translation>Confirmar la eliminación</translation>
+        <translation type="vanished">Confirmar la eliminación</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="366"/>
         <source>You&apos;re about to remove the file deduplication engine configuration.
 </source>
-        <translation>Estás a punto de eliminar la configuración del servicio de deduplicación de archivos para este sistema de archivos.
+        <translation type="vanished">Estás a punto de eliminar la configuración del servicio de deduplicación de archivos para este sistema de archivos.
 </translation>
     </message>
     <message>
@@ -369,9 +388,8 @@
 </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="368"/>
         <source>Are you sure?</source>
-        <translation>¿Estás seguro?</translation>
+        <translation type="vanished">¿Estás seguro?</translation>
     </message>
     <message>
         <source>Bees status</source>
@@ -527,9 +545,8 @@ sudo btrfs filesystem defrag -r -czstd mountpoint
 Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para mejorar los niveles de compresión desde el principio.</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="230"/>
         <source>Filesystem %1 could not be remounted to enable transparent compression.</source>
-        <translation>El sistema de archivos %1 no pudo ser remontado para habilitar la compresión transparente.</translation>
+        <translation type="vanished">El sistema de archivos %1 no pudo ser remontado para habilitar la compresión transparente.</translation>
     </message>
     <message>
         <source>Note: compression only works for new files created while it is running.
@@ -542,9 +559,8 @@ sudo btrfs filesystem defrag -r -czstd mountpoint
 Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para mejorar los niveles de compresión desde el principio.</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="229"/>
         <source>Remount for transparent compression failed</source>
-        <translation>Error al remontar para compresión transparente</translation>
+        <translation type="vanished">Error al remontar para compresión transparente</translation>
     </message>
     <message>
         <source>Filesystem %1 could not be remounted with compression.</source>
@@ -576,12 +592,12 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
         <translation type="vanished">Deja el campo en blanco para usar el valor por defecto: (1 GiB).</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="158"/>
+        <location filename="../setupdialog.cpp" line="159"/>
         <source>Error</source>
         <translation>Error</translation>
     </message>
     <message>
-        <location filename="../setupdialog.cpp" line="159"/>
+        <location filename="../setupdialog.cpp" line="160"/>
         <source>Cannot start root shell. Exiting setup.</source>
         <translation>No se pudieron obtener privilegios. Saliendo.</translation>
     </message>

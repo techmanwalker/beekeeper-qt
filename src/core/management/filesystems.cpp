@@ -484,13 +484,19 @@ get_filesystem_label(const std::string &mountpoint_or_uuid)
 int64_t
 bk_mgmt::get_space::free(const std::string &uuid)
 {
-    std::string mount_path = bk_mgmt::get_mount_paths(uuid)[0];
-    if (mount_path.empty()) return -1;
-
+    auto mount_paths = bk_mgmt::get_mount_paths(uuid);
+    if (mount_paths.empty()) {
+        DEBUG_LOG("[get_space::free] No mount paths found for UUID: ", uuid);
+        return -1;
+    }
+    
+    std::string mount_path = mount_paths[0];
+    
     try {
         auto info = std::filesystem::space(mount_path);
-        return static_cast<int64_t>(info.available); // free usable space
-    } catch (const std::filesystem::filesystem_error &) {
+        return static_cast<int64_t>(info.available);
+    } catch (const std::filesystem::filesystem_error &e) {
+        DEBUG_LOG("[get_space::free] Failed to get space info: ", e.what());
         return -1;
     }
 }
@@ -498,14 +504,20 @@ bk_mgmt::get_space::free(const std::string &uuid)
 int64_t
 bk_mgmt::get_space::used(const std::string &uuid)
 {
+    auto mount_paths = bk_mgmt::get_mount_paths(uuid);
+    if (mount_paths.empty()) {
+        DEBUG_LOG("[get_space::free] No mount paths found for UUID: ", uuid);
+        return -1;
+    }
+
     std::string mount_path = bk_mgmt::get_mount_paths(uuid)[0];
     if (mount_path.empty()) return -1;
 
     try {
         auto info = std::filesystem::space(mount_path);
-        int64_t used_bytes = static_cast<int64_t>(info.capacity - info.free);
-        return used_bytes;
-    } catch (const std::filesystem::filesystem_error &) {
+        return static_cast<int64_t>(info.capacity - info.free);
+    } catch (const std::filesystem::filesystem_error &e) {
+        DEBUG_LOG("[get_space::used] Failed to get space info: ", e.what());
         return -1;
     }
 }

@@ -132,6 +132,8 @@ MainWindow::handle_start(bool enable_logging)
     if (!komander->do_i_have_root_permissions())
         return;
 
+    set_temporal_status_message(tr("Starting") + "...", 3000);
+
     auto *futures = new QList<QFuture<bool>>;
 
     // Decide which rows to process
@@ -154,14 +156,16 @@ MainWindow::handle_start(bool enable_logging)
         if (!fs::exists(start_file)) {
             fs::create_directories(start_file.parent_path());
 
-            qint64 free_bytes = QString::fromStdString(
-                komander->btrfstat(uuid.toStdString(), "free")
-            ).toLongLong();
+            std::string free_str = komander->btrfstat(uuid.toStdString(), "free");
+            qint64 free_bytes = refresh_fs_helpers::parse_free_bytes_from_btrfstat(free_str);
 
-            std::ofstream ofs(start_file);
-            if (ofs.is_open()) {
-                ofs << free_bytes;
-                ofs.close();
+            if (free_bytes > 0) {
+                std::ofstream ofs(start_file);
+                if (ofs.is_open()) {
+                    ofs << free_bytes;
+                }
+            } else {
+                qWarning() << "handle_start: free_bytes is zero for UUID" << uuid;
             }
         }
 
@@ -178,6 +182,8 @@ MainWindow::handle_stop()
 {
     if (!komander->do_i_have_root_permissions())
         return;
+
+    set_temporal_status_message(tr("Stopping") + "...", 3000);
 
     // Decide which rows to process
     QList<QModelIndex> rows_to_process = fs_table->selectionModel()->selectedRows();

@@ -23,7 +23,7 @@ supercommander::call_bk(const QString &verb,
                         const QVariantMap &options,
                         const QStringList &subjects)
 {
-    // *
+    //*
     // For debugging
     #ifdef BEEKEEPER_DEBUG_LOGGING
     // Serialize options into "key=value" pairs
@@ -296,13 +296,45 @@ supercommander::btrfstat(const std::string &uuid,
 
     QJsonObject obj = doc.object();
     int success = obj.value("success").toInt();
-    QString config_path = obj.value("config_path").toString();
 
+    // Helper to safely convert a QJsonValue (string or number) to std::string
+    auto qjsonvalue_to_string = [](const QJsonValue &v) -> std::string {
+        if (v.isString()) {
+            return v.toString().toStdString();
+        } else if (v.isDouble()) {
+            // JSON numbers are double; cast to int64_t for byte counts
+            qint64 n = static_cast<qint64>(v.toDouble());
+            return std::to_string(n);
+        }
+        return "";
+    };
+
+    // If caller requested storage info, return "free" or "used" field (as string)
+    if (!mode.empty()) {
+        if (success != 1) {
+            return "";
+        }
+        if (mode == "free") {
+            QJsonValue val = obj.value("free");
+            return qjsonvalue_to_string(val);
+        } else if (mode == "used") {
+            QJsonValue val = obj.value("used");
+            return qjsonvalue_to_string(val);
+        } else {
+            // mode unspecified/unknown: try to return a composite or empty
+            // (existing CLI outputs both free and used; keep behavior simple here)
+            return "";
+        }
+    }
+
+    // Old behaviour: config path check
+    QString config_path = obj.value("config_path").toString();
     if (success == 1 && !config_path.isEmpty()) {
         return config_path.toStdString();
     }
     return "";
 }
+
 
 bool
 supercommander::add_uuid_to_autostart(const std::string &uuid)

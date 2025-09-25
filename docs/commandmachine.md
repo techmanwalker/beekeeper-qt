@@ -242,4 +242,4 @@ This follows Unix conventions where `-v` and `-V` often mean different things (e
 
 ## License
 
-This project is licensed under the [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.txt).
+This project is licensed under the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)

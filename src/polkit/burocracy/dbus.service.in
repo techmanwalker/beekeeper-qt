@@ -1,4 +1,4 @@
 [D-BUS Service]
 Name=org.beekeeper.Helper
-Exec=@CMAKE_INSTALL_PREFIX@/lib/beekeeper/bin/beekeeper-helper
+Exec=@BEEKEEPER_INSTALL_LIBDIR@/bin/beekeeper-helper
 SystemdService=org.beekeeper.helper.service

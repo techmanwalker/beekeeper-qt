@@ -171,7 +171,8 @@ SetupDialog::accept()
     QStringList uuids_to_setup;
     for (const QString &q : m_uuids) {
         std::string uuid = q.toStdString();
-        if (komander->btrfstat(uuid, "").find("No configuration found for") != std::string::npos) {
+        std::string stat = komander->btrfstat(uuid, "");
+        if (stat.empty()) {   // significa que no hay configuración
             uuids_to_setup.append(q);
         }
     }

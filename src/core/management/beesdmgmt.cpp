@@ -13,6 +13,78 @@
 #include <unistd.h>
 
 /**
+ * @brief Find system processes whose command line matches given substrings.
+ *
+ * This function searches for processes whose command line contains any of
+ * the provided substrings. It tries to use libprocps (readproc) if available;
+ * if not, it falls back to invoking `ps aux` and filtering the output.
+ *
+ * @param match_these_substrings A vector of substrings to match against each process's command line.
+ * @return A vector of process IDs (pid_t) for all matching processes. If no matches are found, returns an empty vector.
+ *
+ * @note The search is case-sensitive and matches substrings anywhere in the command line.
+ * @note When using the fallback (ps aux), some edge cases with unusual characters in command lines may not be matched correctly.
+ */
+std::vector<pid_t>
+bk_mgmt::find_processes(const std::vector<std::string> &match_these_substrings)
+{
+    std::vector<pid_t> matching_processes;
+
+    // --- Fallback: ps aux + grep ---
+    std::string cmd = "ps aux";
+    for (const auto &needle : match_these_substrings)
+    {
+        cmd += " | grep -e " + needle;
+    }
+    cmd += " | grep -v defunct | grep -v grep";
+
+    command_streams res = bk_util::exec_command_shell(cmd.c_str());
+    if (!res.stderr_str.empty())
+    {
+        std::cerr << "Failed to run process search for ["
+                  << bk_util::serialize_vector(match_these_substrings)
+                  << "]. Message: " << res.stderr_str << std::endl;
+        return {};
+    }
+
+    if (res.stdout_str.empty())
+    {
+        DEBUG_LOG("No processes found for: ",
+                  bk_util::serialize_vector(match_these_substrings));
+        return {};
+    }
+
+    DEBUG_LOG("Process search output: ", res.stdout_str);
+
+    // Split into lines
+    auto vectorized_command_output =
+        bk_util::split_command_streams_by_lines(res).first;
+
+    // Apply filtering again for safety
+    auto beesd_processes_lines =
+        bk_util::find_lines_matching_substring_in_vector(vectorized_command_output,
+                                                         match_these_substrings);
+
+    for (const auto &beesd_proc_line : beesd_processes_lines)
+    {
+        auto tokens = bk_util::tokenize(beesd_proc_line);
+        if (tokens.size() > 1)
+        {
+            try
+            {
+                matching_processes.emplace_back(static_cast<pid_t>(std::stoi(tokens[1])));
+            }
+            catch (const std::exception &)
+            {
+                // Skip malformed line
+            }
+        }
+    }
+
+    return matching_processes;
+}
+
+/**
  * @brief Find the PID of the bees daemon or its worker process for a given UUID.
  *
  * This function searches for the process corresponding to the given UUID.
@@ -24,44 +96,23 @@
  * @param find_worker_pid If true, search for the child worker bees process; otherwise, search for the main beesd daemon.
  * @return The PID of the matching process, or 0 if not found.
  */
-pid_t
-bk_mgmt::find_beesd_process (const std::string& uuid, bool find_worker_pid)
+std::vector<pid_t>
+bk_mgmt::find_beesd_processes(const std::string &mountpoint_or_uuid, bool find_worker_pid)
 {
-    std::string cmd = std::string("ps aux | grep -e ") + (find_worker_pid ? "bees" : "beesd") +
-                    " | grep '" + uuid + "' | grep -v beekeeper | grep -v beesstatus | grep -v defunct | grep -v grep";
+    if (find_worker_pid)
+    {
+        auto mount_paths = get_mount_paths(mountpoint_or_uuid);
+        if (mount_paths.empty())
+            return {};
 
-    std::string output = bk_util::exec_command_shell(cmd.c_str()).stdout_str;
-    
-    if (output.empty()) {
-        DEBUG_LOG("No processes found for UUID: ", uuid);
-        return 0;
+        return find_processes({"bees", mount_paths[0]});
     }
-
-    DEBUG_LOG("Process search output: ", output);
-    
-    // Process the output to find the first PID
-    std::istringstream iss(output);
-    std::string line;
-    
-    // Only process the first line of output
-    if (std::getline(iss, line)) {
-        std::string pid_str = bk_util::get_second_token(line);
-        
-        // Extract PID substring
-        DEBUG_LOG("Found candidate PID: ", pid_str);
-        
-        try {
-            pid_t pid = std::stoi(pid_str);
-            DEBUG_LOG("Parsed PID: ", pid);
-            return pid;
-        } catch (...) {
-            DEBUG_LOG("Failed to parse PID from: '", pid_str, "'");
-            return 0;
-        }
+    else
+    {
+        return find_processes({"beesd", mountpoint_or_uuid});
     }
-    
-    return 0;
 }
+
 
 // Helper: verify that PID is actually a beesd process
 bool
@@ -203,7 +254,7 @@ bk_mgmt::beesstart(const std::string& uuid, bool enable_logging)
     }
 
     // If PID file not updated by beesstatus, make sure we write it
-    pid_t gpid = bk_mgmt::find_beesd_process(uuid, false);
+    pid_t gpid = bk_mgmt::grab_one_beesd_process_and_kill_the_rest(uuid, false);
     if (gpid > 0) {
         write_pid_file_for_uuid(uuid, gpid);
         DEBUG_LOG("Grandchild PID ", gpid, " written to pidfile");
@@ -213,10 +264,10 @@ bk_mgmt::beesstart(const std::string& uuid, bool enable_logging)
 
     // Wait up to ~5s for PID file to appear
     DEBUG_LOG("[beesstart] before wait_for_pid_file... ", bk_util::current_timestamp());
-    wait_for_pid_file_process_to_start(get_pid_path(uuid), 10, 300000);
+    wait_for_pid_process_to_start(get_pid_path(uuid), 10, 300000);
     DEBUG_LOG("[beesstart] after wait_for_pid_file... ", bk_util::current_timestamp());
 
-    // Check status via beesstatus (will internally fallback to find_beesd_process if needed)
+    // Check status via beesstatus (will internally fallback to grab_one_beesd_process_and_kill_the_rest if needed)
     std::string status = beesstatus(uuid);
 
     if (status != "running" && status != "running (with logging)") {
@@ -250,11 +301,11 @@ bk_mgmt::beesstop(const std::string& uuid)
     // First method: PID file approach
     if (check_if_pidfile_process_is_running(pidfile)) {
         kill_pidfile_process(pidfile);
-        if (wait_for_pid_file_process_to_stop(pidfile)) {
+        if (wait_for_pid_process_to_stop(pidfile)) {
             stopped = true;
         } else {
             kill_pidfile_process(pidfile);
-            stopped = wait_for_pid_file_process_to_stop(pidfile);
+            stopped = wait_for_pid_process_to_stop(pidfile);
             if (!stopped) {
                 std::cerr << "Beesd process for UUID " << uuid << " failed to stop." << std::endl;
             }
@@ -268,12 +319,12 @@ bk_mgmt::beesstop(const std::string& uuid)
             std::cerr << "Invalid UUID: " << uuid << std::endl;
             return false;
         }
-        pid_t pid = find_beesd_process(uuid, true);
+        pid_t pid = grab_one_beesd_process_and_kill_the_rest(uuid, true);
         if (pid > 0 && kill(pid, 0) == 0) { // double-check still running
             write_pid_file_for_uuid(uuid, pid);
             if (check_if_pidfile_process_is_running(pidfile)) {
                 kill_pidfile_process(pidfile);
-                stopped = wait_for_pid_file_process_to_stop(pidfile);
+                stopped = wait_for_pid_process_to_stop(pidfile);
             }
         } else {
             DEBUG_LOG("No beesd process found for UUID ", uuid);
@@ -324,7 +375,7 @@ bk_mgmt::beesstatus(const std::string& uuid)
     }
 
     // 3. Fallback to system process check
-    pid_t worker_pid = find_beesd_process(uuid, true);
+    pid_t worker_pid = grab_one_beesd_process_and_kill_the_rest(uuid, true);
     if (worker_pid > 0 && verify_beesd_process(worker_pid)) {
         // Update PID file
         std::ofstream out(pidfile);

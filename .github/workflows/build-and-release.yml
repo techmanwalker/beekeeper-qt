@@ -1,0 +1,171 @@
+name: Build and Release beekeeper-qt
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  # Job 0: Check if anything changed since last build/tag
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      skip_build: ${{ steps.check.outputs.skip_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed to see all history
+      - id: check
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LAST_TAG" ]; then
+              echo "No tags found, build is required"
+              echo "skip_build=false" >> $GITHUB_OUTPUT
+          else
+              LAST_TAG_COMMIT=$(git rev-list -n 1 "$LAST_TAG")
+              CURRENT_COMMIT=$(git rev-parse HEAD)
+
+              if [ "$LAST_TAG_COMMIT" = "$CURRENT_COMMIT" ]; then
+                  echo "No new commits since last tag, skipping build"
+                  echo "skip_build=true" >> $GITHUB_OUTPUT
+              else
+                  echo "New commits detected, build required"
+                  echo "skip_build=false" >> $GITHUB_OUTPUT
+              fi
+          fi
+
+  # Job 1a: Build RPM on Fedora container
+  cpack-build-fedora:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Fedora build dependencies
+        run: |
+          # update metadata and install required packages (no sudo needed inside container)
+          dnf -y update
+          dnf -y install \
+            qt6-qtbase-devel qt6-qttools-devel \
+            polkit-qt6-1-devel \
+            libblkid-devel systemd-devel \
+            gcc-c++ cmake ninja-build pkgconfig \
+            rpm-build rpmdevtools make git
+
+      - name: Configure (install prefix = /usr)
+        run: cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package with CPack (RPM only)
+        run: |
+          cd build
+          # produce only RPM package
+          cpack -G RPM
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-fedora
+          path: build/*.rpm
+
+  # Job 1b: Build DEB on Ubuntu/Plucky container
+  cpack-build-ubuntu:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:25.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ubuntu build dependencies
+        run: |
+          # update metadata and install required packages
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            qt6-base-dev qt6-tools-dev libpolkit-qt6-1-dev \
+            libblkid-dev libudev-dev build-essential cmake ninja-build fakeroot dpkg-dev git pkgconf
+
+      - name: Configure (install prefix = /usr)
+        run: cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package with CPack (DEB only)
+        run: |
+          cd build
+          # produce only DEB package
+          cpack -G DEB
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-ubuntu
+          path: build/*.deb
+
+  # Job 2: Build Arch package (.pkg.tar.zst) — left unchanged
+  arch-build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Arch dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel git cmake ninja qt6-base qt6-tools \
+            polkit-qt6 systemd btrfs-progs util-linux doxygen bees
+
+      - name: Build Arch package
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+          su builder -c "makepkg -sf --noconfirm"
+
+      - name: Upload Arch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: "*.pkg.tar.zst"
+
+  # Job 3: Publish release on GitHub (only if a tag)
+  release:
+    needs: [cpack-build-fedora, cpack-build-ubuntu, arch-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Fedora RPM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rpm-fedora
+          path: dist
+
+      - name: Download Ubuntu DEB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-ubuntu
+          path: dist
+
+      - name: Download Arch artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: arch-package
+          path: dist
+
+      - name: List dist/ (debug)
+        run: ls -la dist || true
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')  # <-- only run on tag
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist/*

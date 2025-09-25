@@ -67,7 +67,7 @@ public:
     call_bk_async(const QString &verb,
                 const QVariantMap &options,
                 const QStringList &subjects);
-
+                
     bool do_i_have_root_permissions();
 
     // High-level wrappers...

@@ -12,6 +12,7 @@
 #include <QTableWidget>
 #include <QtConcurrent/QtConcurrent>
 #include <QTimer>
+#include <QVBoxLayout>
 #include <vector>
 
 // Forward declarations
@@ -43,7 +44,23 @@ public:
     friend class SetupDialog;
 
 private:
-    void setup_ui();
+    void setup_global_menu();
+    void connect_global_menu_handlers();
+
+    void setup_button_toolbar();
+    void connect_button_toolbar_handlers();
+
+    void setup_status_bar();
+    void connect_status_bar_handlers();
+
+    void setup_fs_table();
+    void connect_fs_table_handlers();
+    void start_fs_table_refresh_cycle();
+
+    void connect_command_finished_signal();
+
+    void show_no_admin_rights_banner();
+
     void refresh_filesystems();
 
     // Button handlers - handles the toolbar buttons
@@ -164,6 +181,15 @@ private:
 
     // root operations
     root_shell_thread* rootThread = nullptr;
+
+    QWidget *central_widget;
+    QVBoxLayout *main_layout;
+
+    // Global menu
+    QAction *menu_quit_act = nullptr;
+    QAction *menu_keyboard_nav_act = nullptr;
+    QAction *menu_tc_help_act = nullptr;
+    QAction *menu_about_act = nullptr;
 
     // UI elements
     QTableWidget *fs_table = nullptr;

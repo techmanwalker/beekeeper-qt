@@ -24,63 +24,55 @@ MainWindow::update_status_bar()
         emit status_updated(QString(), QString());
     }
 
-    refresh_fs_helpers::update_status_manager(fs_table, statusManager);
+    refresh_fs_helpers::update_status_manager(
+        fs_table,
+        statusManager
+    );
 }
 
-// Change the status bar to show the current fs freed space when hovered
 bool
 MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
-    if (!fs_table || !statusBar) return false;
+    if (!fs_table) return QMainWindow::eventFilter(obj, event);
 
-    QString message;
-    int selected_count = refresh_fs_helpers::selected_rows_count(fs_table);
-
-    // -------------------------------------------------
-    // Table hover handling
-    // -------------------------------------------------
-    if (obj == fs_table->viewport()) {
-        if (event->type() == QEvent::MouseMove) {
-            auto *me = static_cast<QMouseEvent*>(event);
-            QModelIndex idx = fs_table->indexAt(me->pos());
-            QString hovered;
-            if (idx.isValid() && fs_table->item(idx.row(), 0))
-                hovered = idx.sibling(idx.row(), 0).data(Qt::UserRole).toString();
-            set_hovered_uuid(hovered);
-
-            message = statusManager.get_status(hovered);
-            if (!message.isEmpty())
-                statusBar->showMessage(message);
-
-            update_status_bar(); // still responsible for multiple selection warning
-        } else if (event->type() == QEvent::Leave) {
-            set_hovered_uuid(QString());
-
-            // Clear message only if no selection and no hover
-            // if (selected_count <= 0)
-                // statusBar->clearMessage();
-
-            update_status_bar();
+    // Handle table hover events
+    if (obj == fs_table->viewport() && event->type() == QEvent::MouseMove) {
+        QMouseEvent *me = static_cast<QMouseEvent*>(event);
+        QPoint pos = me->pos();
+        QModelIndex index = fs_table->indexAt(pos);
+        
+        if (index.isValid()) {
+            // Get UUID from UserRole of column 0
+            QTableWidgetItem *uuid_item = fs_table->item(index.row(), 0);
+            if (uuid_item) {
+                QString uuid = uuid_item->data(Qt::UserRole).toString();
+                if (!uuid.isEmpty() && uuid != current_hovered_uuid) {
+                    current_hovered_uuid = uuid;
+                    
+                    // Update status for this specific UUID
+                    refresh_fs_helpers::update_status_manager_one_uuid(
+                        fs_table,
+                        statusManager,
+                        current_hovered_uuid
+                    );
+                    
+                    // Get and display the status
+                    QString status = statusManager.get_status(uuid);
+                    if (!status.isEmpty()) {
+                        statusBar->showMessage(status);
+                    }
+                }
+            }
+        } else {
+            // Mouse not over any row
+            if (!current_hovered_uuid.isEmpty()) {
+                current_hovered_uuid.clear();
+                update_status_bar(); // This will clear or show selection status
+            }
         }
+        
+        return false; // Let the event propagate
     }
-
-    // -------------------------------------------------
-    // StatusBar hover handling
-    // -------------------------------------------------
-    else if (obj == statusBar) {
-        // Only show tooltip if the statusBar is already created and there is a message
-        if ((event->type() == QEvent::Enter || event->type() == QEvent::MouseMove) &&
-            (!current_hovered_uuid.isEmpty() || !selected_configured_filesystems().isEmpty()))
-        {
-            QMouseEvent *me = static_cast<QMouseEvent*>(event);
-            QToolTip::showText(me->globalPosition().toPoint(), statusBar->currentMessage(), statusBar);
-        } else if (event->type() == QEvent::Leave) {
-            QToolTip::hideText();
-        }
-    }
-
-    if (!message.isEmpty())
-        statusBar->showMessage(message);
-
+    
     return QMainWindow::eventFilter(obj, event);
 }

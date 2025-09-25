@@ -164,5 +164,7 @@ namespace beekeeper {
 
         std::string
         get_filesystem_label(const std::string &mountpoint_or_uuid);
+
+        void add_usr_sbin_to_path();
     }
 }

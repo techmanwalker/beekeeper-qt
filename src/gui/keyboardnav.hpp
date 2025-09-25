@@ -38,7 +38,8 @@ private:
     void moveHover(int delta);         // Move hover up/down
     void selectHover(bool extend_with_shift, bool additive_with_ctrl); // Select current hover
     void highlightRow(int row); // Highlight keyboard hovered row
-    void highlightButton(QWidget *btn); // Highlight keyboard hovered button
+    void highlightButton(QWidget *btn);
+    void exitToolbar();
     void selectAll();
     void activateToolbar();
     void copyUUIDs();

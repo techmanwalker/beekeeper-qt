@@ -8,7 +8,6 @@
 #include "beekeeper/qt-debug.hpp"
 
 #include "mainwindow.hpp"
-#include "../polkit/multicommander.hpp"
 #include "statusdotdelegate.hpp"
 #include "uuidcolumndelegate.hpp"
 
@@ -28,9 +27,10 @@
 
 using namespace beekeeper::privileged;
 
-MainWindow
-::MainWindow(QWidget* parent)
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent)
 {
+    // create widgets / objects (same as before)
     fs_table    = new QTableWidget(this);
     refresh_btn = new QPushButton(QIcon::fromTheme("view-refresh"), "");
     start_btn   = new QPushButton(QIcon::fromTheme("media-playback-start"), "");
@@ -58,39 +58,121 @@ MainWindow
     showlog_btn->setToolTip(tr("Show logs"));
     #endif
 
-    setup_ui();
+    // ----------------------------
+    // SETUP STAGES (only setup, no connections)
+    // ----------------------------
+    setup_global_menu();
+    setup_button_toolbar();
+    setup_status_bar();
+    setup_fs_table();
 
-    // Initialize keyboard navigation
+    // initialize keyboard navigation (not a connect-style operation)
     keyboardNav = new KeyboardNav(this);
     keyboardNav->init();
 
-    connect(refresh_timer, &QTimer::timeout, this, &MainWindow::refresh_filesystems);
-    refresh_timer->start(10000); // every 10s
-
-    connect(refresh_btn, &QPushButton::clicked, this, &MainWindow::refresh_filesystems);
-    connect(start_btn,   &QPushButton::clicked, this, &MainWindow::handle_start);
-    connect(stop_btn,    &QPushButton::clicked, this, &MainWindow::handle_stop);
-    connect(setup_btn,   &QPushButton::clicked, this, &MainWindow::handle_setup);
-    connect(compression_switch_btn, &QPushButton::toggled,
-    this, [this](bool checked) {
-        // checked == pause (button pressed => pause)
-        handle_transparentcompression_switch(checked);
-    });
-
-    connect(add_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_add_to_autostart);
-    connect(remove_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_remove_from_autostart);
-    #ifdef BEEKEEPER_DEBUG_LOGGING
-    connect(showlog_btn, &QPushButton::clicked, this, &MainWindow::handle_showlog);
-    #endif
+    // ----------------------------
+    // Connect everything and start cycles at the very end
+    // ----------------------------
+    connect_global_menu_handlers();
+    connect_button_toolbar_handlers();
+    connect_status_bar_handlers();
+    connect_fs_table_handlers();
+    start_fs_table_refresh_cycle();
+    connect_command_finished_signal();
 }
 
-void
-MainWindow::setup_ui()
+// ---------------------------------------------------------------------
+// Stage 1: menu setup + menu actions creation (no connections)
+// ---------------------------------------------------------------------
+void MainWindow::setup_global_menu()
 {
-    QWidget *central = new QWidget(this);
-    QVBoxLayout *main_layout = new QVBoxLayout(central);
+    QMenu *file_menu = menuBar()->addMenu(tr("&File"));
+    file_menu->setObjectName("fileMenu");
+
+    // Keep Remove menu action for backward compatibility, but the button is the primary UI.
+    QAction *quit_act   = file_menu->addAction(QIcon::fromTheme("application-exit"), tr("Quit"));
+    quit_act->setObjectName("actionQuit");
+
+    // --- HELP ---
+    QMenu *help_menu = menuBar()->addMenu(tr("&Help"));
+    help_menu->setObjectName("helpMenu");
+
+    QAction *keyboard_nav_act = help_menu->addAction(
+        QIcon::fromTheme("input-keyboard"),
+        tr("Keyboard navigation")
+    );
+    keyboard_nav_act->setObjectName("actionKeyboardNav");
+
+    QAction *tc_help_act = help_menu->addAction(
+        QIcon::fromTheme("package-x-generic"),
+        tr("Transparent compression and deduplication")
+    );
+    tc_help_act->setObjectName("actionTC");
+
+    QAction *about_act = help_menu->addAction(
+        QIcon::fromTheme("help-about"),
+        tr("About beekeeper-qt")
+    );
+    about_act->setObjectName("actionAbout");
+
+    // store pointers as members if you need to reference them elsewhere
+    this->menu_quit_act = quit_act;
+    this->menu_keyboard_nav_act = keyboard_nav_act;
+    this->menu_tc_help_act = tc_help_act;
+    this->menu_about_act = about_act;
+}
+
+// ---------------------------------------------------------------------
+// Stage 2: connect global menu handlers (wires the actions)
+// ---------------------------------------------------------------------
+void MainWindow::connect_global_menu_handlers()
+{
+    // Quit
+    connect(menu_quit_act, &QAction::triggered, this, &QWidget::close);
+
+    // Keyboard navigation help
+    connect(menu_keyboard_nav_act, &QAction::triggered, this, [this]() {
+        help_dialog *dlg = new help_dialog(
+            this,
+            tr("About beekeeper-qt"),
+            helptexts().keyboardnav()
+        );
+        dlg->exec();
+    });
+
+    // Transparent compression help
+    connect(menu_tc_help_act, &QAction::triggered, this, [this]() {
+        help_dialog *dlg = new help_dialog(
+            this,
+            tr("Transparent compression and deduplication"),
+            helptexts().transparent_compression()
+        );
+        dlg->exec();
+    });
+
+    // About
+    connect(menu_about_act, &QAction::triggered, this, [this]() {
+        help_dialog *dlg = new help_dialog(
+            this,
+            tr("About beekeeper-qt"),
+            helptexts().what_is_beekeeper_qt()
+        );
+        dlg->exec();
+    });
+}
+
+// ---------------------------------------------------------------------
+// Stage 3: toolbar UI construction (no signal connects)
+// ---------------------------------------------------------------------
+void MainWindow::setup_button_toolbar()
+{
+    // Create central widget and main vertical layout as members so other
+    // setup_* functions can add widgets to the same layout.
+    central_widget = new QWidget(this);
+    main_layout = new QVBoxLayout(central_widget);
 
     QHBoxLayout *toolbar = new QHBoxLayout();
+    // Correct order: refresh, start, stop, spacing, setup, compression, add/remove autostart, debug, stretch, remove config
     toolbar->addWidget(refresh_btn);
     toolbar->addWidget(start_btn);
     toolbar->addWidget(stop_btn);
@@ -103,44 +185,133 @@ MainWindow::setup_ui()
     toolbar->addWidget(compression_switch_btn);
     toolbar->addWidget(add_autostart_btn);
     toolbar->addWidget(remove_autostart_btn);
+
     #ifdef BEEKEEPER_DEBUG_LOGGING
     toolbar->addWidget(showlog_btn);
     #endif
+
+    // stretch pushes the remove_btn to the far right
     toolbar->addStretch();
+
+    // remove configuration button is intended to be on the far right of the toolbar
+    toolbar->addWidget(remove_btn);
+
+    // Add toolbar to the main vertical layout — fs_table will be added later to the same layout
     main_layout->addLayout(toolbar);
 
-    #ifdef BEEKEEPER_DEBUG_LOGGING
-        // Add context menu to Start button
-        start_btn->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(start_btn, &QPushButton::customContextMenuRequested,
-                this, [this](const QPoint &pos) {
-            QMenu menu;
-            QAction *log_act = menu.addAction(tr("Start with logging enabled"));
+    // Set the central widget now; fs_table will be added into main_layout by setup_fs_table()
+    setCentralWidget(central_widget);
 
-            connect(log_act, &QAction::triggered, this, [this]() {
-                QString p1 = tr("Logging the Beesd deduplication is very resource intensive and takes a lot of disk space because Beesd logs are massive and only intended for debugging purposes.");
-                QString p2 = tr("It is discouraged to enable it by the normal user, hence that's why this is only visible in the Debug release of beekeeper-qt.");
-                QString p3 = tr("If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much free space you had before and how much you have free now.");
-                QString p4 = tr("Again, this is purely for debugging purposes and otherwise discouraged to enable.");
-                QString p5 = tr("Are you sure you want to continue?");
+    // Keep a sane default window size
+    resize(600, 400);
 
-                QMessageBox::StandardButton reply = QMessageBox::warning(
-                    this,
-                    tr("Warning"),
-                    p1 + "\n\n" + p2 + "\n\n" + p3 + "\n\n" + p4 + "\n\n" + p5,
-                    QMessageBox::Yes | QMessageBox::No,
-                    QMessageBox::No
-                );
+    // Context menu for Start button (debug only) — creation here, connection in connect_button_toolbar_handlers
+    start_btn->setContextMenuPolicy(Qt::CustomContextMenu);
+}
 
-                if (reply == QMessageBox::Yes) {
-                    handle_start(true);
-                }
+
+// ---------------------------------------------------------------------
+// Stage 4: connect toolbar handlers (signal/slot wiring)
+// ---------------------------------------------------------------------
+void MainWindow::connect_button_toolbar_handlers()
+{
+    // Timer connect (moved to start_fs_table_refresh_cycle normally, but keep UI button connects here)
+    connect(refresh_btn, &QPushButton::clicked, this, &MainWindow::refresh_filesystems);
+    connect(start_btn,   &QPushButton::clicked, this, &MainWindow::handle_start);
+    connect(stop_btn,    &QPushButton::clicked, this, &MainWindow::handle_stop);
+    connect(setup_btn,   &QPushButton::clicked, this, &MainWindow::handle_setup);
+    connect(compression_switch_btn, &QPushButton::toggled,
+            this, [this](bool checked) {
+                handle_transparentcompression_switch(checked);
             });
 
-            menu.exec(start_btn->mapToGlobal(pos));
+    connect(add_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_add_to_autostart);
+    connect(remove_autostart_btn, &QPushButton::clicked, this, &MainWindow::handle_remove_from_autostart);
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    // showlog button handler
+    connect(showlog_btn, &QPushButton::clicked, this, &MainWindow::handle_showlog);
+
+    // Context menu for Start button (debug only) — connect the custom context menu now
+    connect(start_btn, &QPushButton::customContextMenuRequested,
+            this, [this](const QPoint &pos) {
+        QMenu menu;
+        QAction *log_act = menu.addAction(tr("Start with logging enabled"));
+
+        connect(log_act, &QAction::triggered, this, [this]() {
+            QString p1 = tr("Logging the Beesd deduplication is very resource intensive and takes a lot of disk space because Beesd logs are massive and only intended for debugging purposes.");
+            QString p2 = tr("It is discouraged to enable it by the normal user, hence that's why this is only visible in the Debug release of beekeeper-qt.");
+            QString p3 = tr("If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much free space you had before and how much you have free now.");
+            QString p4 = tr("Again, this is purely for debugging purposes and otherwise discouraged to enable.");
+            QString p5 = tr("Are you sure you want to continue?");
+
+            QMessageBox::StandardButton reply = QMessageBox::warning(
+                this,
+                tr("Warning"),
+                p1 + "\n\n" + p2 + "\n\n" + p3 + "\n\n" + p4 + "\n\n" + p5,
+                QMessageBox::Yes | QMessageBox::No,
+                QMessageBox::No
+            );
+
+            if (reply == QMessageBox::Yes) {
+                handle_start(true);
+            }
         });
+
+        menu.exec(start_btn->mapToGlobal(pos));
+    });
     #endif
 
+    // Remove configuration button
+    remove_btn->setToolTip(tr("Remove configuration file"));
+    remove_btn->setEnabled(false); // disabled at startup
+    connect(remove_btn, &QPushButton::clicked, this, &MainWindow::handle_remove_button);
+}
+
+// ---------------------------------------------------------------------
+// Stage 5: status bar setup (no connects)
+// ---------------------------------------------------------------------
+void MainWindow::setup_status_bar()
+{
+    statusBar = new QStatusBar(this);
+    setStatusBar(statusBar);
+
+    // Mouse hover event for the status bar
+    statusBar->setMouseTracking(true);
+    statusBar->installEventFilter(this);
+
+    // CPU usage meter on the status bar
+    cpu_label = new QLabel("CPU: --%", this);
+    cpu_label->setVisible(false);
+    statusBar->addPermanentWidget(cpu_label, 0);
+
+    // CPU timer setup
+    cpu_timer = new QTimer(this);
+    connect(cpu_timer, &QTimer::timeout, this, &MainWindow::handle_cpu_timer);
+    cpu_timer->start(500);
+}
+
+
+// ---------------------------------------------------------------------
+// status bar connects
+// ---------------------------------------------------------------------
+void MainWindow::connect_status_bar_handlers()
+{
+    connect(&statusManager, &DedupStatusManager::status_updated,
+            this, &MainWindow::handle_status_updated);
+
+    connect(this, &MainWindow::status_updated,
+            this, &MainWindow::handle_status_updated);
+
+    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, &MainWindow::update_status_bar);
+}
+
+// ---------------------------------------------------------------------
+// Stage 6: filesystem table setup (no connects, just construction)
+// ---------------------------------------------------------------------
+void MainWindow::setup_fs_table()
+{
+    // FS table initial configuration (same as before)
     fs_table->setColumnCount(3);
     fs_table->setHorizontalHeaderLabels({tr("UUID"), tr("Name"), tr("Dedup status")});
     fs_table->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -156,10 +327,6 @@ MainWindow::setup_ui()
     int width = uuidDelegate->sizeHint(QStyleOptionViewItem(), QModelIndex()).width();
     fs_table->horizontalHeader()->resizeSection(0, width);
 
-    main_layout->addWidget(fs_table);
-    setCentralWidget(central);
-    resize(600, 400);
-
     // Row enumeration
     QHeaderView *vHeader = fs_table->verticalHeader();
     fs_table->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
@@ -168,8 +335,8 @@ MainWindow::setup_ui()
     fs_table->setItemDelegateForColumn(2, new StatusDotDelegate(fs_table));
     // Stretchable / resizable columns
     fs_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);       // UUID fixed
-    fs_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch); // Initially, take all space
-    fs_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed); // Status fixed
+    fs_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);     // name stretches
+    fs_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);       // Status fixed
 
     // Optional: set initial Status column width to match delegate
     int statusWidth = fs_table->itemDelegateForColumn(2)
@@ -179,121 +346,50 @@ MainWindow::setup_ui()
 
     fs_table->setMouseTracking(true);  // allow hover events to reach the delegate
 
+    // --- IMPORTANT: add the table to the main_layout that was created in setup_button_toolbar()
+    if (main_layout) {
+        main_layout->addWidget(fs_table);
+    } else {
+        // Fallback: if for some reason main_layout isn't set, ensure we still set central
+        QWidget *central = new QWidget(this);
+        QVBoxLayout *tmp_layout = new QVBoxLayout(central);
+        tmp_layout->addWidget(fs_table);
+        setCentralWidget(central);
+    }
+}
 
-    QMenu *file_menu = menuBar()->addMenu(tr("&File"));
-    file_menu->setObjectName("fileMenu");
-
-    // Keep Remove menu action for backward compatibility, but the button is the primary UI.
-    QAction *quit_act   = file_menu->addAction(QIcon::fromTheme("application-exit"), tr("Quit"));
-
-    // --- HELP ---
-
-    // Add the help dialog
-    QMenu *help_menu = menuBar()->addMenu(tr("&Help"));
-    help_menu->setObjectName("helpMenu");
-
-    // Keyboard navigation action
-    QAction *keyboard_nav_act = help_menu->addAction(
-        QIcon::fromTheme("input-keyboard"),   // themed keyboard icon
-        tr("Keyboard navigation")
-    );
-      connect(keyboard_nav_act, &QAction::triggered, this, [this]() {
-        // Creamos el dialogo con título y mensaje (Markdown)
-        help_dialog *dlg = new help_dialog(
-            this,
-            tr("About beekeeper-qt"),
-            helptexts().keyboardnav()
-        );
-        dlg->exec();
-    });
-
-    // Transparent compression and deduplication action
-    QAction *tc_help_act = help_menu->addAction(
-        QIcon::fromTheme("package-x-generic"),   // archive-like icon
-        tr("Transparent compression and deduplication")
-    );
-    connect(tc_help_act, &QAction::triggered, this, [this]() {
-        help_dialog *dlg = new help_dialog(
-            this,
-            tr("Transparent compression and deduplication"),
-            helptexts().transparent_compression()
-        );
-        dlg->exec();
-    });
-
-    // About beekeeper-qt action
-    QAction *about_act = help_menu->addAction(
-        QIcon::fromTheme("help-about"),       // standard info icon
-        tr("About beekeeper-qt")
-    );
-    connect(about_act, &QAction::triggered, this, [this]() {
-        // Creamos el dialogo con título y mensaje (Markdown)
-        help_dialog *dlg = new help_dialog(
-            this,
-            tr("About beekeeper-qt"),
-            helptexts().what_is_beekeeper_qt()
-        );
-        dlg->exec();
-    });
-    // --- END HELP ---
-
-    // In MainWindow::setup_ui(), add a new toolbar button for Remove configuration
-    remove_btn->setToolTip(tr("Remove configuration file"));
-    remove_btn->setEnabled(false); // disabled at startup
-    toolbar->addWidget(remove_btn);
-    connect(remove_btn, &QPushButton::clicked, this, &MainWindow::handle_remove_button);
-
-    // Add the freed-space status bar
-    statusBar = new QStatusBar(this);
-    setStatusBar(statusBar);
-
-    // Mouse hover event for the status bar
-    statusBar->setMouseTracking(true);
-    statusBar->installEventFilter(this);
-    connect(&statusManager, &DedupStatusManager::status_updated,
-            this, &MainWindow::handle_status_updated);
-
-    connect(this, &MainWindow::status_updated,
-            this, &MainWindow::handle_status_updated);
+// ---------------------------------------------------------------------
+// filesystem table connects
+// ---------------------------------------------------------------------
+void MainWindow::connect_fs_table_handlers()
+{
+    // selection change updates
+    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, &MainWindow::update_button_states);
 
     connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
             this, &MainWindow::update_status_bar);
 
-    // CPU usage meter on the status bar
-    cpu_label = new QLabel("CPU: --%", this);
-    statusBar->addPermanentWidget(cpu_label, 0);
+    // other table-specific connects can go here
+}
 
-    cpu_timer = new QTimer(this);
-    connect(cpu_timer, &QTimer::timeout, this, &MainWindow::handle_cpu_timer);
-    cpu_timer->start(500); // refresh every 500ms
+// ---------------------------------------------------------------------
+// Start the refresh cycle (connects timer & starts it)
+// ---------------------------------------------------------------------
+void MainWindow::start_fs_table_refresh_cycle()
+{
+    refresh_filesystems();
+    connect(refresh_timer, &QTimer::timeout, this, &MainWindow::refresh_filesystems);
+    refresh_timer->start(10000); // every 10s
+}
 
-
-    // When root privileged operations are ready, inmediately refresh
-    connect(this, &MainWindow::root_shell_ready_signal, this, [this]() {
-        DEBUG_LOG("[MainWindow] Root shell ready signal received!");
-        refresh_filesystems();  // now safe to enable root-only controls
-    });
-
-    // When a command issued by the buttons already finished, inmediately refresh
+// ---------------------------------------------------------------------
+// Connect command finished signal to refresh and other housekeeping
+// ---------------------------------------------------------------------
+void MainWindow::connect_command_finished_signal()
+{
     connect(this, &MainWindow::command_finished, this, [this]() {
         DEBUG_LOG("[MainWindow] Root shell ready signal received!");
         refresh_filesystems();  // now safe to enable root-only controls
     });
-
-    // connect menu action if used
-    connect(quit_act, &QAction::triggered, this, &QWidget::close);
-
-    // update button states every time the table selection changes
-    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
-        this, &MainWindow::update_button_states);
-}
-
-void MainWindow::refresh_filesystems()
-{
-    // disable some buttons early if no root (optional)
-    update_button_states(); // quick check (must be safe on GUI thread)
-
-    // Ask async btrfsls and hand its future to the builder. Returns immediately.
-    auto future_fs = komander->async->btrfsls(); // QFuture<fs_vec>
-    build_filesystem_table(future_fs);
 }

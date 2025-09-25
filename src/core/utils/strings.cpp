@@ -88,7 +88,7 @@ std::string
 bk_util::auto_size_suffix(size_t size_in_bytes)
 {
     double size = static_cast<double>(size_in_bytes);
-    std::vector<std::string> suffixes = {"", "KiB", "MiB", "GiB", "TiB", "PiB"};
+    std::vector<std::string> suffixes = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
 
     size_t i = 0;
     while (i + 1 < suffixes.size() && size >= 1024.0) {
@@ -106,9 +106,8 @@ bk_util::auto_size_suffix(size_t size_in_bytes)
         oss << std::fixed << std::setprecision(2) << size;
     }
 
-    if (!suffixes[i].empty()) {
-        oss << " " << suffixes[i];
-    }
+    // Always append suffix
+    oss << " " << suffixes[i];
 
     return oss.str();
 }

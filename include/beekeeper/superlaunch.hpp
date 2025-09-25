@@ -8,6 +8,7 @@
  * that is exclusively SuperCommander’s job.
  */
 
+#include <atomic>
 #include <mutex>
 #include <sys/types.h> // for pid_t
 
@@ -31,7 +32,8 @@ public:
     beekeeper::privileged::supercommander& create_commander();
 
     // Root helper status
-    bool root_alive = false;
+    std::atomic_bool root_alive = false;
+    std::atomic_bool already_set_root_alive_status = false;
 
 private:
 

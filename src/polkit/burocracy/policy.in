@@ -6,9 +6,9 @@
     <description>Run Beekeeper privileged helper</description>
     <message>Authentication is required to start Beekeeper privileged helper</message>
     <defaults>
-      <allow_any>auth_admin_keep</allow_any>
-      <allow_inactive>auth_admin_keep</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>yes</allow_active>
     </defaults>
   </action>
 </policyconfig>

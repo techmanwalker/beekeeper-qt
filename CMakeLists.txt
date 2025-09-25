@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(beekeeper VERSION 0.9 LANGUAGES CXX)
+project(beekeeper VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -7,6 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+    "qt6-base (>= 6.5), qt6-tools (>= 6.5), libpolkit-qt6-1-1, libblkid, libudev")
+
+set(CPACK_RPM_PACKAGE_REQUIRES
+    "qt6-qtbase, qt6-tools, polkit-qt6-1, libblkid, libudev, systemd")
+
 
 # ------------------------------
 # Qt6
@@ -31,7 +38,32 @@ if(PkgConfig_FOUND)
     endif()
 endif()
 
-set(BEEKEEPER_HELPER_PATH "${CMAKE_INSTALL_FULL_LIBDIR}/beekeeper/bin/beekeeper-helper")
+# ------------------------------
+# NOTE: Compute dynamic install libdir for beekeeper to avoid hardcoding /lib or /lib64
+# This gives:
+#  - BEEKEEPER_INSTALL_LIBDIR -> the full absolute path (e.g. /usr/lib/beekeeper or /usr/lib64/beekeeper)
+#  - BEEKEEPER_INSTALL_LIBDIR_REL -> the relative install destination (e.g. lib/beekeeper or lib64/beekeeper)
+#  - BEEKEEPER_BUILD_LIBDIR -> build-time path inside the build tree for RPATHs (e.g. <builddir>/lib/beekeeper)
+#
+# Also: systemd units must go to the canonical system path (/usr/lib/systemd/system), not into lib64.
+# ------------------------------
+
+include(GNUInstallDirs)
+
+# Full (absolute) install libdir for the packaged runtime libraries (e.g. /usr/lib/beekeeper or /usr/lib64/beekeeper)
+set(BEEKEEPER_INSTALL_LIBDIR "${CMAKE_INSTALL_FULL_LIBDIR}/beekeeper")
+# Relative install destination for install(... DESTINATION ...) (e.g. lib/beekeeper or lib64/beekeeper)
+set(BEEKEEPER_INSTALL_LIBDIR_REL "${CMAKE_INSTALL_LIBDIR}/beekeeper")
+# Build-time RPATH directory inside the build tree (so binaries run from build/ can find libs)
+set(BEEKEEPER_BUILD_LIBDIR "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}/beekeeper")
+
+# Path to the helper binary (used in configure_file replacements)
+set(BEEKEEPER_HELPER_PATH "${BEEKEEPER_INSTALL_LIBDIR}/bin/beekeeper-helper")
+
+# Use canonical systemd directory for unit installation (avoid lib64 path)
+if(NOT DEFINED SYSTEMD_DIR)
+    set(SYSTEMD_DIR "${CMAKE_INSTALL_PREFIX}/lib/systemd/system")
+endif()
 
 # ------------------------------
 # Udev
@@ -53,11 +85,10 @@ endif()
 # ------------------------------
 # Build directories & autogen
 # ------------------------------
-include(GNUInstallDirs)
 set(BUILD_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/include)
 file(MAKE_DIRECTORY ${BUILD_INCLUDE_DIR})
 
-# Configure systemd & DBus services
+# Configure systemd & DBus services (these .in files must reference @BEEKEEPER_INSTALL_LIBDIR@)
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/helper.service.in"
     "${CMAKE_CURRENT_BINARY_DIR}/helper.service" @ONLY
@@ -72,9 +103,6 @@ configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/policy.in"
     "${CMAKE_CURRENT_BINARY_DIR}/policy" @ONLY
 )
-
-# Set up the helper path
-add_compile_definitions(BEEKEEPER_HELPER_PATH="${BEEKEEPER_HELPER_PATH}")
 
 # ------------------------------
 # Core library
@@ -108,8 +136,8 @@ add_executable(beekeeperman
     ${UTIL_SRCS}
 )
 set_target_properties(beekeeperman PROPERTIES
-    BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
-    INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/beekeeper"
+    BUILD_RPATH "${BEEKEEPER_BUILD_LIBDIR}"
+    INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
 )
 target_link_libraries(beekeeperman PRIVATE beekeeper)
 
@@ -119,6 +147,7 @@ target_link_libraries(beekeeperman PRIVATE beekeeper)
 # --- Polkit sources (exclude beekeeper-helper.cpp)
 file(GLOB POLKIT_SRCS
     include/beekeeper/supercommander.hpp
+    src/polkit/auth.cpp
     src/polkit/globals.*           # matches globals.cpp / globals.hpp if needed
     src/polkit/multicommander.*   # matches multicommander.cpp / .hpp
     src/polkit/super*             # matches super*.cpp / .hpp
@@ -145,8 +174,8 @@ target_include_directories(beekeeper-qt PRIVATE
     ${POLKIT_INCLUDES}
 )
 set_target_properties(beekeeper-qt PROPERTIES
-    BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
-    INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/beekeeper"
+    BUILD_RPATH "${BEEKEEPER_BUILD_LIBDIR}"
+    INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
 )
 target_link_libraries(beekeeper-qt PRIVATE
     Qt6::Core Qt6::Concurrent Qt6::Widgets Qt6::DBus
@@ -177,11 +206,11 @@ target_link_libraries(beekeeper-helper PRIVATE
     ${LIBUDEV_LIBRARIES}
 )
 
-# Absolute RPATH
+# Absolute RPATH for helper (use the computed full install libdir)
 set_target_properties(beekeeper-helper PROPERTIES
-    INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/beekeeper"
+    BUILD_RPATH "${BEEKEEPER_BUILD_LIBDIR}"
+    INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
     INSTALL_RPATH_USE_LINK_PATH TRUE
-    BUILD_RPATH "${CMAKE_BINARY_DIR}/lib/beekeeper"
     SKIP_BUILD_RPATH FALSE
 )
 
@@ -256,7 +285,7 @@ endif()
 # Installation
 # ------------------------------
 install(TARGETS beekeeper
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/beekeeper
+    LIBRARY DESTINATION ${BEEKEEPER_INSTALL_LIBDIR_REL}
 )
 
 install(TARGETS beekeeperman
@@ -268,17 +297,19 @@ install(TARGETS beekeeper-qt
 )
 
 install(TARGETS beekeeper-helper
-    RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}/beekeeper/bin"
+    RUNTIME DESTINATION "${BEEKEEPER_INSTALL_LIBDIR_REL}/bin"
 )
 
 # systemd & DBus service dirs
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    # Always prefer canonical system unit dir under /usr/lib/systemd/system for systemd units.
     set(SYSTEMD_DIR "/usr/lib/systemd/system")
     set(DBUS_DIR "/usr/share/dbus-1/system-services")
     set(POLKIT_ACTIONS_DIR "/usr/share/polkit-1/actions")
     set(DBUS_SYSTEM_DIR "/usr/share/dbus-1/system.d")
 else()
-    set(SYSTEMD_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/systemd/system")
+    # When a custom prefix is used, install units under <prefix>/lib/systemd/system (still 'lib', not 'lib64').
+    set(SYSTEMD_DIR "${CMAKE_INSTALL_PREFIX}/lib/systemd/system")
     set(DBUS_DIR "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system-services")
     set(POLKIT_ACTIONS_DIR "${CMAKE_INSTALL_FULL_DATADIR}/polkit-1/actions")
     set(DBUS_SYSTEM_DIR "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system.d")
@@ -389,6 +420,38 @@ add_custom_target(uninstall
 )
 
 # ------------------------------
+# CPack configuration
+# ------------------------------
+
+# Metadata
+set(CPACK_PACKAGE_NAME "beekeeper-qt")
+set(CPACK_PACKAGE_VENDOR "Lito Parra")
+set(CPACK_PACKAGE_DESCRIPTION "Deduplicate redundant data in your disk and save space")
+
+# Generators: DEB, RPM, TGZ
+set(CPACK_GENERATOR "DEB;RPM")
+
+# DEB package info
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Lito Parra")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+    "libqt6core6t64 | libqt6core6 | qt6-base, libqt6gui6, libqt6widgets6, libqt6dbus6, libqt6concurrent6, libpolkit-qt6-1-1, libblkid1, libudev1")
+
+# RPM package info
+set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_GROUP "Applications/System")
+set(CPACK_RPM_PACKAGE_REQUIRES
+    "qt6-qtbase, qt6-qttools, polkit-qt6-1, libblkid, systemd-libs")
+
+# Optional: define package version (si quieres)
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+
+set(CPACK_PACKAGE_CONTACT "Lito Parra <lito.15@proton.me>")
+
+include(CPack)
+
+# ------------------------------
 # Summary
 # ------------------------------
 message(STATUS "")
@@ -402,3 +465,4 @@ if(POLKIT_QT6_FOUND)
     message(STATUS "    Version: ${POLKIT_QT6_VERSION}")
 endif()
 message(STATUS "")
+

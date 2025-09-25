@@ -16,18 +16,24 @@ selected_rows_count(QTableWidget *table);
 // -------------------------
 // Update status manager (dedup lines)
 // -------------------------
-void
-update_status_manager(QTableWidget *fs_table,
-                      DedupStatusManager &statusManager);
+    // Update status for all rows. btrfstat_func(uuid, "free") -> returns string free bytes
+    void update_status_manager(QTableWidget *fs_table,
+                               DedupStatusManager &statusManager);
 
-// -------------------------
-// Read starting free space from file
-// -------------------------
-qint64 read_starting_free_space(const QString &uuid);
+    // Update status only for a single uuid (fast path for hover)
+    void update_status_manager_one_uuid(QTableWidget *fs_table,
+                                        DedupStatusManager &statusManager,
+                                        const QString &uuid);
+
+    // Read the starting free space file (returns 0 if missing / malformed)
+    qint64 read_starting_free_space(const QString &uuid);
 
 // -------------------------
 // Utilities
 // -------------------------
+qint64
+parse_free_bytes_from_btrfstat(const std::string &s);
+
 class status_text_mapper : public QObject
 {
     Q_OBJECT

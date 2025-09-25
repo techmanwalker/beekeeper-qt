@@ -1,9 +1,24 @@
 #include "mainwindow.hpp"
+#include "../polkit/multicommander.hpp"
 #include "beekeeper/debug.hpp"
 #include "beekeeper/util.hpp"
 #include "refreshfilesystems_helpers.hpp"
 
+#include <unordered_set>
+
+
 // ----- Filesystem table builders -----
+
+
+void MainWindow::refresh_filesystems()
+{
+    // disable some buttons early if no root (optional)
+    update_button_states(); // quick check (must be safe on GUI thread)
+
+    // Ask async btrfsls and hand its future to the builder. Returns immediately.
+    auto future_fs = komander->async->btrfsls(); // QFuture<fs_vec>
+    build_filesystem_table(future_fs);
+}
 
 void
 MainWindow::build_filesystem_table(QFuture<fs_vec> filesystem_list_future)
@@ -55,7 +70,10 @@ MainWindow::build_filesystem_table(QFuture<fs_vec> filesystem_list_future)
         // 6) Now update button states on GUI thread
         QMetaObject::invokeMethod(this, [this]() {
             update_button_states();
-            refresh_fs_helpers::update_status_manager(fs_table, statusManager);
+            refresh_fs_helpers::update_status_manager(
+                fs_table,
+                statusManager
+            );
         }, Qt::QueuedConnection);
 
         // 7) Release the guard

@@ -1,0 +1,191 @@
+name: Build Bees Packages (Arch AUR deps + bees .deb/.rpm)
+
+on:
+  workflow_dispatch:
+
+env:
+  BUILD_DIR: /tmp/build
+  AUR_TMP: /tmp/aur-tmp
+  AUR_BUILT: /tmp/aur-built
+  BEES_BUILD: /tmp/bees-build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Update pacman and install base packages
+        run: |
+          set -euxo pipefail
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm \
+            git \
+            rpm-tools \
+            ruby \
+            rubygems \
+            ruby-bundler \
+            ruby-mustache \
+            ruby-rdoc \
+            ruby-rexml \
+            ruby-rspec \
+            squashfs-tools \
+            base-devel \
+            sudo
+        shell: bash
+
+      - name: Create builder user and work dirs
+        run: |
+          set -euxo pipefail
+          useradd -m builder
+          mkdir -p "${BUILD_DIR}" "${AUR_TMP}" "${AUR_BUILT}" "${BEES_BUILD}"
+          chown -R builder:builder "${BUILD_DIR}" "${AUR_TMP}" "${AUR_BUILT}" "${BEES_BUILD}"
+        shell: bash
+
+      - name: Build ruby-cabin and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-cabin.git ${BUILD_DIR}/ruby-cabin"
+          su - builder -c "cd ${BUILD_DIR}/ruby-cabin && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-cabin/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build ruby-backports and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-backports.git ${BUILD_DIR}/ruby-backports"
+          su - builder -c "cd ${BUILD_DIR}/ruby-backports && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-backports/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build ruby-arr-pm and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-arr-pm.git ${BUILD_DIR}/ruby-arr-pm"
+          su - builder -c "cd ${BUILD_DIR}/ruby-arr-pm && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-arr-pm/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build ruby-clamp and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-clamp.git ${BUILD_DIR}/ruby-clamp"
+          su - builder -c "cd ${BUILD_DIR}/ruby-clamp && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-clamp/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build ruby-dotenv and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-dotenv.git ${BUILD_DIR}/ruby-dotenv"
+          su - builder -c "cd ${BUILD_DIR}/ruby-dotenv && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-dotenv/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build ruby-insist and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-insist.git ${BUILD_DIR}/ruby-insist"
+          su - builder -c "cd ${BUILD_DIR}/ruby-insist && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-insist/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build ruby-stud and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-stud.git ${BUILD_DIR}/ruby-stud"
+          su - builder -c "cd ${BUILD_DIR}/ruby-stud && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-stud/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build ruby-pleaserun and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/ruby-pleaserun.git ${BUILD_DIR}/ruby-pleaserun"
+          su - builder -c "cd ${BUILD_DIR}/ruby-pleaserun && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/ruby-pleaserun/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Build fpm and install
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://aur.archlinux.org/fpm.git ${BUILD_DIR}/fpm"
+          su - builder -c "cd ${BUILD_DIR}/fpm && makepkg -sf --noconfirm"
+          pacman -U --noconfirm ${BUILD_DIR}/fpm/*.pkg.tar.zst || true
+        shell: bash
+
+      - name: Clone bees and build (as builder)
+        run: |
+          set -euxo pipefail
+          su - builder -c "git clone https://github.com/Zygo/bees.git ${BEES_BUILD}"
+          su - builder -c "cd ${BEES_BUILD} && git submodule update --init --recursive || true"
+          # build using all cores
+          su - builder -c "cd ${BEES_BUILD} && make -j\"$(nproc)\""
+          # staged install into DESTDIR
+          su - builder -c "cd ${BEES_BUILD} && mkdir -p build/tmp && make install DESTDIR=\$(pwd)/build/tmp -j\"$(nproc)\""
+          su - builder -c "ls -la ${BEES_BUILD}/build/tmp || true"
+        shell: bash
+
+      - name: Package bees with fpm (create .deb and .rpm)
+        run: |
+          set -euxo pipefail
+          
+          # Ensure builder user sees all tags
+          su - builder -c "cd ${BEES_BUILD} && git fetch --tags --prune >/dev/null 2>&1 || true"
+          
+          # Get version from git describe inside builder
+          VERSION=$(su - builder -c "cd ${BEES_BUILD} && git describe --long --tags --always --dirty")
+          echo "Bees version: $VERSION"
+          
+          # Create temporary directory for storing packages
+          PKG_DIR=${BEES_BUILD}/build/packages
+          su - builder -c "mkdir -p ${PKG_DIR}"
+          
+          # Create .deb package using fpm
+          su - builder -c "cd ${BEES_BUILD}/build/tmp && fpm -s dir -t deb \
+            -n bees -v \"${VERSION}\" \
+            --prefix / \
+            --depends util-linux --depends bash \
+            --description 'Best-Effort Extent-Same, a btrfs deduplication agent.' \
+            -C ${BEES_BUILD}/build/tmp"
+          
+          # Create .rpm package using fpm
+          su - builder -c "cd ${BEES_BUILD}/build/tmp && fpm -s dir -t rpm \
+            -n bees -v \"${VERSION}\" \
+            --prefix / \
+            --depends util-linux --depends bash \
+            --description 'Best-Effort Extent-Same, a btrfs deduplication agent.' \
+            -C ${BEES_BUILD}/build/tmp"
+          
+          # Copy generated packages to /tmp/bees-packages for artifact upload
+          mkdir -p /tmp/bees-packages
+          cp -v ${BEES_BUILD}/build/tmp/*.deb /tmp/bees-packages/ || true
+          cp -v ${BEES_BUILD}/build/tmp/*.rpm /tmp/bees-packages/ || true
+          
+          # List the packages for debug purposes
+          ls -la /tmp/bees-packages
+        shell: bash
+
+      - name: Collect AUR packages
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/aur-packages
+          find ${BUILD_DIR} -name "*.pkg.tar.zst" -exec cp -v {} /tmp/aur-packages/ \;
+          ls -la /tmp/aur-packages
+        shell: bash
+
+      - name: Upload AUR packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-packages
+          path: /tmp/aur-packages/*.pkg.tar.zst
+          retention-days: 7
+
+      - name: Upload Bees packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: bees-packages
+          path: /tmp/bees-packages/
+          retention-days: 7

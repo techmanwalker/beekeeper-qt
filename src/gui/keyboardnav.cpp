@@ -1,4 +1,5 @@
-#include "dedupstatusmanager.hpp"
+#include "refreshfilesystems_helpers.hpp"
+
 #include "keyboardnav.hpp"
 #include "mainwindow.hpp"
 #include <QAbstractItemView>
@@ -8,6 +9,8 @@
 #include <QMenuBar>
 #include <QPalette>
 #include <QTableWidget>
+#include <QToolTip>
+#include <QWhatsThis>
 
 KeyboardNav::KeyboardNav(MainWindow *parent)
     : QObject(parent), mainWindow(parent)
@@ -18,15 +21,19 @@ void KeyboardNav::init()
 {
     if (!mainWindow) return;
 
-    mainWindow->fs_table->installEventFilter(this);
+    if (mainWindow->fs_table) {
 
-    // Ensure table can track hover by keyboard
-    mainWindow->fs_table->setFocusPolicy(Qt::StrongFocus);
-    mainWindow->fs_table->setSelectionMode(QAbstractItemView::ExtendedSelection);
+        mainWindow->fs_table->installEventFilter(this);
 
-    // Show initial keyboard hint once
-    QString startup_msg = tr("To access the toolbar with the keyboard, select a filesystem and click Enter or Space. More info on Help > Keyboard navigation.");
-    mainWindow->statusBar->showMessage(startup_msg);
+        // Ensure table can track hover by keyboard
+        mainWindow->fs_table->setFocusPolicy(Qt::StrongFocus);
+        mainWindow->fs_table->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
+        // Show initial keyboard hint once
+        QString startup_msg = tr("To access the toolbar with the keyboard, select a filesystem and click Enter or Space. More info on Help > Keyboard navigation.");
+        mainWindow->statusBar->showMessage(startup_msg);
+
+    }
 }
 
 //---------------------------------------------------------
@@ -107,6 +114,8 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
                 table->setFocus();
             }
 
+            exitToolbar();
+
             return true;
         }
 
@@ -183,6 +192,7 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
                         update_status_bar();
                     }
                 }
+                exitToolbar();
             }
             return true;
 
@@ -321,6 +331,41 @@ void KeyboardNav::selectHover(bool shift, bool ctrl)
     }
 
     last_selected_row = keyboard_hover_row;
+
+    // --- NEW: update status like mouse hover does ---
+    // If exactly one row is selected, show that row's "Deduplicating files..." message
+    int sel_count = refresh_fs_helpers::selected_rows_count(table);
+    if (sel_count == 1) {
+        // Find the UUID for the selected/hovered row
+        QTableWidgetItem *uuid_item = table->item(keyboard_hover_row, 0);
+        QString uuid;
+        if (uuid_item) uuid = uuid_item->data(Qt::UserRole).toString();
+
+        if (!uuid.isEmpty()) {
+            // Set current hovered uuid in the main window (so other code can use it)
+            mainWindow->current_hovered_uuid = uuid;
+
+            // Fast-path update for single UUID (same as mouse hover path)
+            refresh_fs_helpers::update_status_manager_one_uuid(
+                table,
+                mainWindow->statusManager,
+                uuid
+            );
+
+            // Get and display the status
+            QString status = mainWindow->statusManager.get_status(uuid);
+            if (!status.isEmpty()) {
+                mainWindow->statusBar->showMessage(status);
+            } else {
+                // fallback: clear message if no status
+                mainWindow->statusBar->clearMessage();
+            }
+            return;
+        }
+    }
+
+    // If multiple selected or nothing to show, use the normal selection-based status update
+    mainWindow->current_hovered_uuid.clear();
     update_status_bar();
 }
 
@@ -362,25 +407,25 @@ void KeyboardNav::highlightButton(QWidget *btn)
 {
     if (!mainWindow || !btn) return;
 
-    auto buttons = toolbarButtons();
-
     // Reset all toolbar buttons first
+    auto buttons = toolbarButtons();
     for (auto *b : buttons) {
         b->setStyleSheet("");
         b->update();
     }
 
-    // Apply midlight only to current button
-    QPalette pal = mainWindow->fs_table->palette();
-    QPalette inactivePal = pal;
-    inactivePal.setCurrentColorGroup(QPalette::Inactive);
-    QColor highlight = inactivePal.color(QPalette::Highlight); // lighter for inactive effect
+    // Apply highlight style
+    QColor highlight = mainWindow->fs_table->palette().color(QPalette::Highlight);
     btn->setStyleSheet(QString("background-color: %1").arg(highlight.name()));
     btn->update();
 
+    // Update current button
     current_toolbar_button = btn;
 
-    // Clear table highlight if any
+    // Now show tooltip for current button
+    QToolTip::showText(btn->mapToGlobal(QPoint(btn->width()/2, btn->height()/2)), btn->toolTip(), btn);
+
+    // Clear any table highlight
     if (last_highlighted_row >= 0 && mainWindow->fs_table) {
         for (int col = 0; col < mainWindow->fs_table->columnCount(); ++col) {
             QTableWidgetItem *item = mainWindow->fs_table->item(last_highlighted_row, col);
@@ -389,6 +434,24 @@ void KeyboardNav::highlightButton(QWidget *btn)
         last_highlighted_row = -1;
     }
 }
+
+void KeyboardNav::exitToolbar()
+{
+    // Hide tooltip for all toolbar buttons explicitly
+    for (auto *btn : toolbarButtons()) {
+        if (!btn) continue;
+
+        // Standard API: clear any tooltip currently showing for this widget
+        QToolTip::hideText();
+
+        // Also reset visual highlight if it’s the active one
+        btn->setStyleSheet("");
+        btn->update();
+    }
+
+    current_toolbar_button = nullptr;
+}
+
 
 //---------------------------------------------------------
 // Select all rows
@@ -469,6 +532,7 @@ QList<QWidget*> KeyboardNav::toolbarButtons()
             << mainWindow->start_btn
             << mainWindow->stop_btn
             << mainWindow->setup_btn
+            << mainWindow->compression_switch_btn
             << mainWindow->add_autostart_btn
             << mainWindow->remove_autostart_btn
             #ifdef BEEKEEPER_DEBUG_LOGGING

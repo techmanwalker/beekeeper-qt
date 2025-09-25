@@ -1,15 +1,14 @@
-// main.cpp
 #include "../polkit/globals.hpp"
 #include "mainwindow.hpp"
 #include "rootshellthread.hpp"
 
 #include "beekeeper/debug.hpp"
-#include "beekeeper/cmakedependentvariables/translationsdir.hpp"
 #include "beekeeper/qt-debug.hpp"
-#include "beekeeper/superlaunch.hpp"
-#include "beekeeper/supercommander.hpp"
+#include "beekeeper/cmakedependentvariables/translationsdir.hpp"
+#include "beekeeper/util.hpp"
 #include <QApplication>
 #include <QLocale>
+#include <QMessageBox>
 #include <QObject>
 #include <QTranslator>
 #include <csignal>
@@ -19,6 +18,8 @@ using namespace beekeeper::privileged;
 int
 main(int argc, char *argv[])
 {
+    bk_util::add_usr_sbin_to_path();
+    
     // Force early initialization on main thread
     init_globals();
 
@@ -31,14 +32,31 @@ main(int argc, char *argv[])
     QString qm_file = QString("beekeeper-%1.qm").arg(locale.left(2)); // solo "es"
     QTranslator translator;
 
-    QString path = QStringLiteral(TRANSLATIONS_DIR);
-    if (translator.load("beekeeper-" + QLocale::system().name().left(2), TRANSLATIONS_DIR)) {
+    if (translator.load("beekeeper-" + locale.left(2), TRANSLATIONS_DIR)) {
         app.installTranslator(&translator);
         DEBUG_LOG("[main] Translator loaded:", qm_file);
     } else {
         DEBUG_LOG("[main] Translator not found for:", qm_file);
     }
+
+    // --- Check if beesd exists ---
+    if (bk_util::which("beesd").empty()) {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle(QObject::tr("Bees daemon not found"));
         
+        QString text = QObject::tr("Bees is not installed in your system.\nInstall it from: ");
+        QString link = "<a href=\"https://github.com/techmanwalker/beekeeper-qt/releases\">https://github.com/techmanwalker/beekeeper-qt/releases</a>";
+
+        msgBox.setTextFormat(Qt::RichText);
+        msgBox.setTextInteractionFlags(Qt::TextBrowserInteraction);
+        msgBox.setText(text + link);
+
+        msgBox.exec();
+        DEBUG_LOG("[main] beesd not found, exiting program.");
+        return 1; // Abort execution
+    }
+
+    // --- User has permissions, continue normally ---
     MainWindow w;
     DEBUG_LOG("[main] MainWindow created, showing...");
     w.show();
@@ -50,7 +68,6 @@ main(int argc, char *argv[])
                      rootThread, &QThread::quit);
     QObject::connect(rootThread, &QThread::finished,
                      rootThread, &QObject::deleteLater);
-
     QObject::connect(rootThread, &QThread::started,
                      rootThread, &root_shell_thread::init_root_shell);
 
@@ -60,7 +77,7 @@ main(int argc, char *argv[])
     int exitCode = app.exec();
 
     // --- Phase 1: user-perceived exit ---
-    w.hide(); // make it look like the app closed
+    w.hide();
     QCoreApplication::processEvents();
 
     // --- Phase 2: stop privileged helper and threads ---
@@ -76,9 +93,8 @@ main(int argc, char *argv[])
     }
 
     // --- Phase 3: teardown globals safely ---
-    shutdown_globals(); // optional
+    shutdown_globals();
     DEBUG_LOG("[main] Globals cleaned up, exiting.");
     DEBUG_LOG("[main] QApplication exec returned, exit code:", exitCode);
     return exitCode;
 }
-

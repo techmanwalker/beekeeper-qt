@@ -232,3 +232,16 @@ bk_util::exec_commandv(const std::vector<std::string> &args)
 
     return result;
 }
+
+void
+bk_util::add_usr_sbin_to_path() {
+    const char* path_env = std::getenv("PATH");
+    std::string new_path = "/usr/sbin"; // default location to prepend
+
+    if (path_env != nullptr) {
+        new_path += ":" + std::string(path_env);
+    }
+
+    // Update the PATH for the current process
+    setenv("PATH", new_path.c_str(), 1); // 1 = overwrite existing PATH
+}

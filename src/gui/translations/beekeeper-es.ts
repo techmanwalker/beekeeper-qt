@@ -144,22 +144,22 @@
         <translation type="vanished">En resumen: El sistema de navegación por teclado separa el resaltado (feedback visual similar al hover) de la selección. La tabla se encarga de mover el resaltado y de seleccionar los sistemas de archivos, mientras que la barra de herramientas gestiona la activación de botones y la navegación cíclica. La tecla Tab consolida el movimiento horizontal en la barra de herramientas sin afectar la selección en la tabla.</translation>
     </message>
     <message>
-        <location filename="../keyboardnav.cpp" line="28"/>
+        <location filename="../keyboardnav.cpp" line="33"/>
         <source>To access the toolbar with the keyboard, select a filesystem and click Enter or Space. More info on Help &gt; Keyboard navigation.</source>
         <translation>Para acceder a la barra de herramientas con el teclado, selecciona un sistema de archivos y pulsa Intro o Espacio. Más información en Ayuda &gt; Navegación con teclado.</translation>
     </message>
     <message>
-        <location filename="../keyboardnav.cpp" line="123"/>
+        <location filename="../keyboardnav.cpp" line="132"/>
         <source>Press Esc again to exit beekeeper-qt.</source>
         <translation>Presiona Esc de nuevo para salir de beekeeper-qt.</translation>
     </message>
     <message>
-        <location filename="../keyboardnav.cpp" line="287"/>
+        <location filename="../keyboardnav.cpp" line="297"/>
         <source>Do you want to access the toolbar? Press Enter or Space.</source>
         <translation>¿Quieres acceder a la barra de herramientas? Presiona Intro o Espacio.</translation>
     </message>
     <message>
-        <location filename="../keyboardnav.cpp" line="446"/>
+        <location filename="../keyboardnav.cpp" line="509"/>
         <source>UUID(s) copied to clipboard.</source>
         <translation>UUID copiados al portapapeles.</translation>
     </message>
@@ -221,27 +221,27 @@
         <translation>No comenzar a deduplicar archivos al arrancar el sistema</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="118"/>
+        <location filename="../mainwindow.cpp" line="238"/>
         <source>Start with logging enabled</source>
         <translation>Iniciar con el registro activado</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="121"/>
+        <location filename="../mainwindow.cpp" line="241"/>
         <source>Logging the Beesd deduplication is very resource intensive and takes a lot of disk space because Beesd logs are massive and only intended for debugging purposes.</source>
         <translation>Activar el registro de la deduplicación de datos Beesd consume demasiados recursos y ocupa demasiado espacio en disco porque los registros de Beesd son muy grandes y solo se debe realizar con fines de depuración.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="122"/>
+        <location filename="../mainwindow.cpp" line="242"/>
         <source>It is discouraged to enable it by the normal user, hence that&apos;s why this is only visible in the Debug release of beekeeper-qt.</source>
         <translation>No se recomienda para nada al usuario común activarlo. Esta es la razón por la que esta opción solo es visible en el modo de depuración de beekeeper-qt.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="123"/>
+        <location filename="../mainwindow.cpp" line="243"/>
         <source>If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much free space you had before and how much you have free now.</source>
         <translation>Si solamente quieres saber cuánto espacio en disco has liberado desde que iniciaste el servicio, solo pasa el cursor sobre un sistema de archivos o selecciónalo, lo que te mostrará cuánto espacio libre tenías antes de comenzar y cuánto tienes ahora.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="125"/>
+        <location filename="../mainwindow.cpp" line="245"/>
         <source>Are you sure you want to continue?</source>
         <translation>¿Estás seguro de que quieres continuar?</translation>
     </message>
@@ -250,32 +250,32 @@
         <translation type="vanished">Si solamente quieres saber cuánto espacio en disco has liberado desde que iniciaste el servicio, solo pasa el cursor sobre un sistema de archivos o selecciónalo, lo que te mostrará cuánto espacio libre tenías antes de comenzar y cuánto tienes ahora.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="124"/>
+        <location filename="../mainwindow.cpp" line="244"/>
         <source>Again, this is purely for debugging purposes and otherwise discouraged to enable.</source>
         <translation>Repito, esto es puramente para propósitos de depuración y se desaconseja habilitarlo para el uso cotidiano.</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="369"/>
+        <location filename="../buttonhandlers.cpp" line="375"/>
         <source>Do you want to continue?</source>
         <translation>¿Estás seguro de que quieres continuar?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="129"/>
+        <location filename="../mainwindow.cpp" line="249"/>
         <source>Warning</source>
         <translation>Advertencia</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="145"/>
+        <location filename="../mainwindow.cpp" line="316"/>
         <source>UUID</source>
         <translation>UUID</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="145"/>
+        <location filename="../mainwindow.cpp" line="316"/>
         <source>Name</source>
         <translation>Nombre</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="145"/>
+        <location filename="../mainwindow.cpp" line="316"/>
         <source>Dedup status</source>
         <translation>Estado de deduplicación</translation>
     </message>
@@ -295,40 +295,50 @@
         <translation>Compresión transparente ejecutándose para los sistemas de archivos seleccionados</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="249"/>
+        <location filename="../buttonhandlers.cpp" line="135"/>
+        <source>Starting</source>
+        <translation>Iniciando</translation>
+    </message>
+    <message>
+        <location filename="../buttonhandlers.cpp" line="186"/>
+        <source>Stopping</source>
+        <translation>Deteniendo</translation>
+    </message>
+    <message>
+        <location filename="../buttonhandlers.cpp" line="255"/>
         <location filename="../mainwindow.cpp" line="58"/>
         <source>Show logs</source>
         <translation>Mostrar el registro</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="250"/>
+        <location filename="../buttonhandlers.cpp" line="256"/>
         <source>Please select only one filesystem to show its deduplication logs.</source>
         <translation>Por favor selecciona solamente un sistema de archivos para mostrar su historial de deduplicación.</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="261"/>
+        <location filename="../buttonhandlers.cpp" line="267"/>
         <source>Filesystem logs for: </source>
         <translation>Registros del sistema de archivos: </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="344"/>
+        <location filename="../buttonhandlers.cpp" line="350"/>
         <source>No selection</source>
         <translation>Ninguno fue seleccionado</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="345"/>
+        <location filename="../buttonhandlers.cpp" line="351"/>
         <source>Please select at least one filesystem to remove its Beesd configuration.</source>
         <translation>Por favor selecciona al menos un sistema de archivos para eliminar su configuración de Beesd.</translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="367"/>
+        <location filename="../buttonhandlers.cpp" line="373"/>
         <source>You are about to remove the file deduplication engine configuration for the selected filesystem(s).
 </source>
         <translation>Estás a punto de eliminar la configuración del servicio de deduplicación de archivos para este sistema de archivos.
 </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="368"/>
+        <location filename="../buttonhandlers.cpp" line="374"/>
         <source>This does not cause any data loss, but you will lose deduplication functionality until you set up Beesd again.
 
 </source>
@@ -337,7 +347,7 @@
 </translation>
     </message>
     <message>
-        <location filename="../buttonhandlers.cpp" line="374"/>
+        <location filename="../buttonhandlers.cpp" line="380"/>
         <source>Confirm configuration removal</source>
         <translation>Confirmar la eliminación de la configuración</translation>
     </message>
@@ -396,7 +406,7 @@
         <translation type="vanished">Estado de deduplicación</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="183"/>
+        <location filename="../mainwindow.cpp" line="89"/>
         <source>&amp;File</source>
         <translation>&amp;Archivo</translation>
     </message>
@@ -405,35 +415,35 @@
         <translation type="vanished">Abrir registro de depuración</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="187"/>
+        <location filename="../mainwindow.cpp" line="93"/>
         <source>Quit</source>
         <translation>Cerrar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="192"/>
+        <location filename="../mainwindow.cpp" line="97"/>
         <source>&amp;Help</source>
         <translation>&amp;Ayuda</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="198"/>
+        <location filename="../mainwindow.cpp" line="102"/>
         <source>Keyboard navigation</source>
         <translation>Navegación por teclado</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="204"/>
-        <location filename="../mainwindow.cpp" line="227"/>
-        <location filename="../mainwindow.cpp" line="233"/>
+        <location filename="../mainwindow.cpp" line="114"/>
+        <location filename="../mainwindow.cpp" line="137"/>
+        <location filename="../mainwindow.cpp" line="157"/>
         <source>About beekeeper-qt</source>
         <translation>Acerca de beekeeper-qt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="213"/>
-        <location filename="../mainwindow.cpp" line="218"/>
+        <location filename="../mainwindow.cpp" line="108"/>
+        <location filename="../mainwindow.cpp" line="147"/>
         <source>Transparent compression and deduplication</source>
         <translation>Compresión transparente y deduplicación</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="241"/>
+        <location filename="../mainwindow.cpp" line="265"/>
         <source>Remove configuration file</source>
         <translation>Eliminar archivo de configuración</translation>
     </message>
@@ -450,6 +460,39 @@
     <message>
         <source>Help for keyboard navigation</source>
         <translation type="vanished">Ayuda para la navegación por teclado</translation>
+    </message>
+</context>
+<context>
+    <name>QObject</name>
+    <message>
+        <location filename="../main.cpp" line="45"/>
+        <source>Bees daemon not found</source>
+        <translation>Demonio Bees no encontrado</translation>
+    </message>
+    <message>
+        <location filename="../main.cpp" line="47"/>
+        <source>Bees is not installed in your system.
+Install it from: </source>
+        <translation>Bees no está instalado en tu equipo.
+Instálalo desde: </translation>
+    </message>
+    <message>
+        <source>beesd is not installed in your system.
+Install it from: </source>
+        <translation type="obsolete">beesd no está instalado en tu sistema.
+Instálalo desde: </translation>
+    </message>
+    <message>
+        <source>beesd is not installed in your system.
+Install it from: https://github.com/techmanwalker/beekeeper-qt/releases</source>
+        <translation type="vanished">beesd no está instalado en tu sistema.
+Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</translation>
+    </message>
+    <message>
+        <source>beesd is not installed in your system.
+Install it from: https://github.com/Zygo/bees</source>
+        <translation type="vanished">beesd no está instalado en tu sistema.
+Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</translation>
     </message>
 </context>
 <context>
@@ -1054,32 +1097,32 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
 <context>
     <name>refresh_fs_helpers::status_text_mapper</name>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="31"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="75"/>
         <source>Deduplicating files</source>
         <translation>Deduplicando archivos</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="32"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="76"/>
         <source>Not running</source>
         <translation>Parado</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="33"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="77"/>
         <source>Failed to run</source>
         <translation>Fallido al iniciar</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="34"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="78"/>
         <source>Not configured</source>
         <translation>No configurado</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="44"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="88"/>
         <source>Deduplicating files. Started with %1 free, now you have %2 free.</source>
         <translation>Deduplicando archivos. Comenzaste con %1 libre, ahora tienes %2 libre.</translation>
     </message>
     <message>
-        <location filename="../refreshfilesystems_helpers.cpp" line="48"/>
+        <location filename="../refreshfilesystems_helpers.cpp" line="92"/>
         <source>Deduplicating files. You have %1 free right now.</source>
         <translation>Deduplicando archivos. En este momento tienes %1 libre.</translation>
     </message>

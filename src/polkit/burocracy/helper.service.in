@@ -8,7 +8,7 @@ Wants=local-fs.target
 [Service]
 Type=dbus
 BusName=org.beekeeper.Helper
-ExecStart=@CMAKE_INSTALL_PREFIX@/lib/beekeeper/bin/beekeeper-helper
+ExecStart=@BEEKEEPER_INSTALL_LIBDIR@/bin/beekeeper-helper
 Restart=on-failure
 
 # Hardening (keep, can extend later):

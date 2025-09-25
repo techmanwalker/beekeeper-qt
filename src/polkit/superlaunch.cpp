@@ -27,14 +27,11 @@
 #include <QVariant>
 
 #include <arpa/inet.h>
-#include <cerrno>
-#include <cstring>
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-#include <signal.h>
 #include <unistd.h>
 
 using beekeeper::privileged::supercommander;
@@ -74,27 +71,30 @@ superlaunch::create_commander()
 
 // -------------------- unlocked implementations --------------------
 
-// at top of file: #include <chrono>
-
 bool
 superlaunch::start_root_shell_unlocked()
 {
     supercommander &cmd = *komander;
-    if (launcher->root_alive) return true; // Already running
+    if (launcher->root_alive.load()) {
+        launcher->already_set_root_alive_status.store(true);
+        return true; // Already running
+    }
 
     const QString service_name = QStringLiteral("org.beekeeper.Helper");
     QDBusConnection conn = QDBusConnection::systemBus();
 
     if (!conn.isConnected()) {
         qWarning() << "System bus not connected:" << conn.lastError().message();
-        launcher->root_alive = false;
+        launcher->root_alive.store(false);
+        launcher->already_set_root_alive_status.store(true);
         return false;
     }
 
     QDBusConnectionInterface *conn_iface = conn.interface();
     if (!conn_iface) {
         qWarning() << "Cannot obtain system bus interface";
-        launcher->root_alive = false;
+        launcher->root_alive.store(false);
+        launcher->already_set_root_alive_status.store(true);
         return false;
     }
 
@@ -103,7 +103,8 @@ superlaunch::start_root_shell_unlocked()
     QDBusReply<void> r = conn_iface->startService(service_name);
     if (!r.isValid()) {
         qWarning() << "StartService request failed:" << r.error().message();
-        launcher->root_alive = false;
+        launcher->root_alive.store(false);
+        launcher->already_set_root_alive_status.store(true);
     } else {
         DEBUG_LOG("StartService request succeeded for:" , service_name);
     }
@@ -132,7 +133,8 @@ superlaunch::start_root_shell_unlocked()
                                    QStringLiteral("replace"));
             if (!sreply.isValid()) {
                 qWarning() << "StartUnit failed:" << sreply.error().message();
-                launcher->root_alive = false;
+                launcher->root_alive.store(false);
+                launcher->already_set_root_alive_status.store(true);
                 return false;
             }
 
@@ -143,17 +145,20 @@ superlaunch::start_root_shell_unlocked()
             }
             if (!conn_iface->isServiceRegistered(service_name)) {
                 qWarning() << "Helper DBus service did not appear after StartUnit:" << service_name;
-                launcher->root_alive = false;
+                launcher->root_alive.store(false);
+                launcher->already_set_root_alive_status.store(true);
                 return false;
             }
         } else {
             qWarning() << "systemd D-Bus interface not available; cannot StartUnit fallback";
-            launcher->root_alive = false;
+            launcher->root_alive.store(false);
+            launcher->already_set_root_alive_status.store(true);
             return false;
         }
     } else { 
         DEBUG_LOG("Helper already running, skipping StartService/StartUnit");
-        launcher->root_alive = true;
+        launcher->root_alive.store(true);
+        launcher->already_set_root_alive_status.store(true);
         return true;
     }
 
@@ -169,7 +174,8 @@ superlaunch::start_root_shell_unlocked()
 
     if (!helper_iface.isValid()) {
         qWarning() << "Helper DBus interface invalid:" << helper_iface.lastError().message();
-        launcher->root_alive = false;
+        launcher->root_alive.store(false);
+        launcher->already_set_root_alive_status.store(true);
         return false;
     }
 
@@ -178,8 +184,8 @@ superlaunch::start_root_shell_unlocked()
     if (!auth_reply.isValid()) {
         qWarning() << "Polkit authorization call failed:"
                 << auth_reply.error().message();
-        launcher->root_alive = false;
-
+        launcher->root_alive.store(false);
+        launcher->already_set_root_alive_status.store(true);
         return false;
     }
 
@@ -194,12 +200,14 @@ superlaunch::start_root_shell_unlocked()
     if (!reply_map.value("stderr").toString().isEmpty()) {
         qWarning() << "Polkit authorization denied:" << reply_map.value("stderr").toString()
             << "; stdout: " << reply_map.value("stdout").toString();
-        launcher->root_alive = false;
+        launcher->root_alive.store(false);
+        launcher->already_set_root_alive_status.store(true);
         return false;
     }
 
     DEBUG_LOG("Polkit authorization granted, helper alive");
 
-    launcher->root_alive = true;
+    launcher->root_alive.store(true);
+    launcher->already_set_root_alive_status.store(true);
     return true;
 }

@@ -25,4 +25,4 @@ I welcome contributions of all kinds: bugfixes, features, documentation improvem
 
 ## License
 
-By contributing, you agree that your code will be licensed under the same license as the project: **AGPLv3**.
+By contributing, you agree that your code will be licensed under the same license as the project: **GPLv3**.

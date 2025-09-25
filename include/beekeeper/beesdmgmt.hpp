@@ -26,16 +26,37 @@ namespace beekeeper {
 
         // Helper functions for beesdmgmt - declaring them static didn't work
 
+        pid_t read_pidfile(const std::string &path);
+        pid_t read_pidfile_for_uuid(const std::string &uuid);
         std::string get_pid_path (const std::string& uuid);
         void clean_pid_file_for_uuid (const std::string& uuid);
         void remove_pidfile_path(const std::string &pidfile_path);
+        bool check_if_pid_process_is_running(pid_t pid);
         bool check_if_pidfile_process_is_running(const std::string &pidfile);
-        bool wait_for_pid_file_process_to_start(const std::string &pidfile, int retries = 5, int usleep_microseconds = 300000, pid_t fork_pid = -1);
-        bool wait_for_pid_file_process_to_stop(const std::string &pidfile, int retries = 25, int usleep_microseconds = 200000);
+        bool wait_for_pid_process_to_start(pid_t proc,
+                                           int retries = 25,
+                                           int usleep_microseconds = 200000);
+        bool wait_for_pid_process_to_start(const std::string &pidfile,
+                                           int retries = 25,
+                                           int usleep_microseconds = 200000);
+        bool wait_for_pid_process_to_stop(pid_t proc,
+                                          int retries = 25,
+                                          int usleep_microseconds = 200000);
+        bool wait_for_pid_process_to_stop(const std::string &pidfile,
+                                          int retries = 25,
+                                          int usleep_microseconds = 200000);
         void write_pid_file_for_uuid(const std::string &uuid, pid_t pid);
+        bool kill_process(pid_t pid, int sig = SIGTERM, int wait_retries = 25, int wait_usleep = 200000);
         bool kill_pidfile_process(const std::string &pidfile, int sig = SIGTERM, int wait_retries = 25, int wait_usleep = 200000);
 
-        pid_t find_beesd_process (const std::string& uuid, bool find_worker_pid = false);
+        // only one beesd process at a time: worker control planned
+        pid_t grab_one_beesd_process_and_kill_the_rest(
+            const std::string &uuid,
+            bool act_against_the_worker_pids = false
+        );
+
+        std::vector<pid_t> find_processes(const std::vector<std::string> &match_these_substrings); // generic
+        std::vector<pid_t> find_beesd_processes(const std::string &uuid, bool find_worker_pid = false);
         bool verify_beesd_process(pid_t pid);
         bool verify_beesd_process(const std::string &pidfile);
 

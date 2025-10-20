@@ -341,8 +341,13 @@ install(FILES
 )
 
 # pkg-config file
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/beekeeper.pc.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper.pc" IMMEDIATE @ONLY
+)
+
 install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/beekeeper.pc.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper.pc"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
@@ -355,7 +360,7 @@ set(INSTALL_MANIFEST "${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt")
 
 add_custom_target(write-install-manifest ALL
     COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_MANIFEST=${INSTALL_MANIFEST}
-                            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake_write_install_manifest.cmake"
+                            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_write_install_manifest.cmake"
     COMMENT "Writing install manifest to ${INSTALL_MANIFEST}"
 )
 
@@ -391,7 +396,7 @@ if(MAKE_DOCS)
     find_package(Doxygen)
 
     if(DOXYGEN_FOUND)
-        set(DOXYGEN_IN  ${CMAKE_SOURCE_DIR}/Doxyfile.in)
+        set(DOXYGEN_IN  ${CMAKE_SOURCE_DIR}/cmake/Doxyfile.in)
         set(DOXYGEN_OUT ${CMAKE_BINARY_DIR}/Doxyfile)
 
         # Configure Doxyfile with CMake variables
@@ -412,7 +417,7 @@ endif()
 # Uninstall target
 # ------------------------------
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake" IMMEDIATE @ONLY
 )
 add_custom_target(uninstall

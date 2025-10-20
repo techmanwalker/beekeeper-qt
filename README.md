@@ -2,11 +2,13 @@
 
 **Deduplicate redundant data in your disk and save space**    
 
-beekeeper-qt lets you free up disk space by removing redundant block-level data, both inside files and across multiple files. It is based on [bees](https://github.com/Zygo/bees), which does the actual deduplication, and gives you a simple graphical interface to configure and run it without hassle.
+**beekeeper-qt** lets you free up disk space by removing redundant block-level data, both inside files and across multiple files. This is done by **compression** and **deduplication** techniques which are discussed more in deep down below. This is a simple graphical interface to configure and run it without hassle.
 
 > Transparent compression is now fully supported on beekeeper-qt on all the algorithms and levels the *btrfs* driver supports. Set it up along with deduplication with the *Setup* button.
 
 > Note: `beekeeper-qt` is primarily written for Arch Linux and not thoroughly tested in other distros. Feel free to file an issue if bugs happen.
+
+> Warning for Fedora and other SELinux-enabled distros: SELinux is not currently supported. We are currently looking for a proper module to support it and make it easy to use. For now, `beekeeper-qt` must be run in permissive mode. Read more at [security notes](#security-notes).
 
 ![A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.](docs/ui.png)
 
@@ -48,18 +50,11 @@ Root privileges are handled automatically by the systemd service.
 
 You need Qt6 6.5+ to build beekeeper-qt. You'll also need some extra build dependencies for optimal runtime speed. I provide the full lists below.
 
-### Build for Arch
-
-To build for Arch, you simply need to use the PKGBUILD.
-Build with this command:
-
-```
-makepkg -s
-```
-
 To generate the installable packages for Arch Linux.
 
-### Build for other distros
+### Build for distros supported with CPack
+
+Currently, only Fedora and Debian (.rpm and .deb) packages can be built with CPack.
 
 If you are on Fedora, install dependencies with:
 
@@ -124,6 +119,58 @@ sudo cmake --build build --target uninstall
 
 Runtime dependencies are pulled by the packages when installed.
 
+### Build for distros not supported by CPack
+
+#### Build for Arch
+
+To build for Arch, imply download and use the provided **PKGBUILD**.
+
+1. Download the `PKGBUILD` under `packaging/` from this repository.
+2. `cd` into the directory containing the `PKGBUILD`.
+3. To build, run:
+
+   ```bash
+   makepkg -s
+   ```
+4. To install, run:
+
+   ```bash
+   makepkg -i
+
+#### Build for Gentoo
+
+For Gentoo, there's also an `.ebuild` file available under `packaging/`.
+
+1. Download the `.ebuild` from this repository and the 
+2. `cd` into the directory containing the `.ebuild` file.
+3. Choose the version you want to build:
+
+   * **Latest tagged version:**
+
+     ```bash
+     version="$(git describe --tags --abbrev=0 | sed 's/^v//')"
+     ```
+   * **Latest commit (live ebuild):**
+
+     ```bash
+     version=9999
+     ```
+4. Generate the final ebuild file:
+
+   ```bash
+   ebuildpath="beekeeper-qt-$version.ebuild"
+   cp beekeeper-qt-9999.ebuild "$ebuildpath"
+   ```
+5. To prepare the manifest, run:
+
+   ```bash
+   ebuild "$ebuildpath" manifest
+   ```
+6. To build and install, run:
+
+   ```bash
+   ebuild "$ebuildpath" install
+
 ## Usage
 
 1. Open beekeeper-qt and press **Setup** in the program controls.
@@ -142,7 +189,24 @@ Runtime dependencies are pulled by the packages when installed.
 - First deduplication may take some time; CPU usage can spike temporarily.
 - Compression only applies to new files; run the one-time command for existing data (shown in Setup window).
 
+## Security notes
+
+`beekeeper-qt` has custom helper and D-Bus components. SELinux enforcement currently prevents the helper from functioning correctly. For now, you must run in permissive mode:
+
+```
+sudo setenforce 0
+```
+
+Once permissive, the helper will operate normally. You can re-enable enforcing afterward, but the helper will fail under strict policy due to the strictness of SELinux and you will see no filesystems listed and the main window will take really long to spawn because it can't start the root helper. 
+
+*We are actively looking into a proper SELinux policy module; contributions or guidance are welcome.*
+
+**Developers note**: If someone would like to open a pull request for this, please create all SELinux policy files under `src/polkit/burocracy`, and please follow the paths already defined by the CMakeLists.txt file for it to be easier to code. You can, for example, name a `selinux.te` and `selinux.fc.in` files to be the configuration source, to match the file naming convention of the rest of the **beekeeper-qt** project.
+
+
 ## Contributions, License & Credits
+
+* [https://github.com/necrose99](necrose99) for the `.ebuild` file!
 
 * Pull requests are welcome. Please follow the current coding style and describe your changes clearly. Documentation is in [`docs/`](docs/).
 * Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)

@@ -54,7 +54,8 @@ jobs:
             polkit-qt6-1-devel \
             libblkid-devel systemd-devel \
             gcc-c++ cmake ninja-build pkgconfig \
-            rpm-build rpmdevtools make git
+            rpm-build rpmdevtools make git m4 \
+            selinux-policy-devel
 
       - name: Configure (install prefix = /usr)
         run: cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release

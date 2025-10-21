@@ -1,6 +1,6 @@
 # beekeeper-qt Project Architecture
 
-Welcome, dear user or coder. This is my very first public coding project, which is a graphical frontend interface made in C++/Qt that helps Linux system users free up a lot of disk space through file deduplication at the block level, thanks to Zygo's [bees](https://github.com/Zygo/bees) awesome project which this project leverages on. Its name is **beekeeper-qt** and this project explains the project's architecture in general.
+Welcome, dear user or coder. This is my very first public coding project, which is a graphical frontend interface made in C++/Qt that helps Linux system users free up a lot of disk space through file deduplication at the block level, thanks to Zygo's [bees](https://github.com/Zygo/bees) awesome project which this project leverages. Its name is **beekeeper-qt** and this page explains the project's architecture in general.
 
 ## Overview
 
@@ -31,7 +31,7 @@ The last are the two ways in which the program is presented to the user.
 
 ## Programming Philosophy
 
-The project follows a **"inside-out" execution flow** (or top-to-bottom if you think of it as a call tree starting from the main() functions), without going back to previous points in the flow of the same thread that shouldn't be reused. It relies heavily on division, refactorization, and reuse to minimize logic errors and allow focus solely on functionality.
+The project follows an **"inside-out" execution flow** (or top-to-bottom if you think of it as a call tree starting from the main() functions), without going back to previous points in the flow of the same thread that shouldn't be reused. It relies heavily on division, refactorization, and reuse to minimize logic errors and allow focus solely on functionality.
 
 **From now on, we're going to dive more on the programming philosophy of the project.**
 

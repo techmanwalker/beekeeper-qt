@@ -12,7 +12,6 @@ ExecStart=@BEEKEEPER_INSTALL_LIBDIR@/bin/beekeeper-helper
 Restart=on-failure
 
 # Hardening (keep, can extend later):
-NoNewPrivileges=yes
 ProtectSystem=full
 ReadWritePaths=/etc/bees
 ProtectHome=yes

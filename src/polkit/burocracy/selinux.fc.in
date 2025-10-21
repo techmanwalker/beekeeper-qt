@@ -1,0 +1,24 @@
+# beekeeper executable
+@CMAKE_INSTALL_PREFIX@/lib/beekeeper/bin/beekeeper-helper -- system_u:object_r:beekeeper_exec_t
+
+# bees executables (beesd / bees)
+@CMAKE_INSTALL_PREFIX@/bin/beesd             -- system_u:object_r:bees_exec_t
+@LIBEXEC_DIR@/bees/bees                      -- system_u:object_r:bees_exec_t
+
+# Configuration directory and files
+/etc/bees(/.*)?                              system_u:object_r:beekeeper_conf_t
+
+# Log directory and files
+/var/log/bees(/.*)?                          system_u:object_r:beekeeper_log_t
+
+# Runtime directories and files (blkid + bees run files)
+# if bees uses /run/bees, add that
+/run/blkid(/.*)?                             system_u:object_r:beekeeper_blkid_run_t
+/run/blkid/blkid\.tab                        system_u:object_r:beekeeper_blkid_run_t
+/run/bees(/.*)?                              system_u:object_r:beekeeper_blkid_run_t
+
+/var/run/blkid(/.*)?                         system_u:object_r:beekeeper_blkid_run_t
+/run/blkid/blkid\.tab                         -- system_u:object_r:beekeeper_blkid_run_t
+
+# Device nodes — try to keep them their usual types; often block devices are fixed_disk_device_t
+/dev/disk(/.*)?                              system_u:object_r:fixed_disk_device_t

@@ -6,10 +6,6 @@
 
 > Transparent compression is now fully supported on beekeeper-qt on all the algorithms and levels the *btrfs* driver supports. Set it up along with deduplication with the *Setup* button.
 
-> Note: `beekeeper-qt` is primarily written for Arch Linux and not thoroughly tested in other distros. Feel free to file an issue if bugs happen.
-
-> Warning for Fedora and other SELinux-enabled distros: SELinux is not currently supported. We are currently looking for a proper module to support it and make it easy to use. For now, `beekeeper-qt` must be run in permissive mode. Read more at [security notes](#security-notes).
-
 ![A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.](docs/ui.png)
 
 *A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.*
@@ -46,6 +42,10 @@ You can find packages for both `bees` and `beekeeper-qt` in this repo's [GitHub 
 
 Root privileges are handled automatically by the systemd service.
 
+> Note: `beekeeper-qt` is primarily written for Arch Linux and not thoroughly tested in other distros. Feel free to file an issue if bugs happen.
+
+> Warning for Fedora and other SELinux-enabled distros: SELinux is not currently supported. We are currently looking for a proper module to support it and make it easy to use. For now, `beekeeper-qt` must be run in permissive mode. Read more at [security notes](#security-notes).
+
 ## Build - only do this if packages aren't available for your distro
 
 You need Qt6 6.5+ to build beekeeper-qt. You'll also need some extra build dependencies for optimal runtime speed. I provide the full lists below.
@@ -65,7 +65,8 @@ sudo dnf -y install \
     polkit-qt6-1-devel \
     libblkid-devel systemd-devel \
     gcc-c++ cmake ninja-build pkgconfig \
-    rpm-build rpmdevtools make git
+    rpm-build rpmdevtools make git m4 \
+    selinux-policy-devel
 ```
 
 On Debian:
@@ -123,7 +124,7 @@ Runtime dependencies are pulled by the packages when installed.
 
 #### Build for Arch
 
-To build for Arch, imply download and use the provided **PKGBUILD**.
+To build for Arch, simply download and use the provided **PKGBUILD**.
 
 1. Download the `PKGBUILD` under `packaging/` from this repository.
 2. `cd` into the directory containing the `PKGBUILD`.
@@ -136,6 +137,7 @@ To build for Arch, imply download and use the provided **PKGBUILD**.
 
    ```bash
    makepkg -i
+   ```
 
 #### Build for Gentoo
 
@@ -170,6 +172,7 @@ For Gentoo, there's also an `.ebuild` file available under `packaging/`.
 
    ```bash
    ebuild "$ebuildpath" install
+   ```
 
 ## Usage
 
@@ -201,7 +204,7 @@ Once permissive, the helper will operate normally. You can re-enable enforcing a
 
 *We are actively looking into a proper SELinux policy module; contributions or guidance are welcome.*
 
-**Developers note**: If someone would like to open a pull request for this, please create all SELinux policy files under `src/polkit/burocracy`, and please follow the paths already defined by the CMakeLists.txt file for it to be easier to code. You can, for example, name a `selinux.te` and `selinux.fc.in` files to be the configuration source, to match the file naming convention of the rest of the **beekeeper-qt** project.
+**UPDATE**: A partially written selinux policy is available under `src/polkit/burocracy`, but it is not functional because DBUs denies the messages with a `USER_AVC`. Any help is really appreciated.
 
 
 ## Contributions, License & Credits

@@ -1,0 +1,138 @@
+dnl selinux.te - beekeeper (enforcing, files_type expanded)
+include(`support/misc_macros.spt')
+include(`support/loadable_module.spt')
+include(`support/all_perms.spt')
+#include(`contrib/cron.if')
+#include(`contrib/dbus.if')
+
+policy_module(beekeeper, 1.0)
+
+require {
+    attribute domain;
+    attribute exec_type;
+    attribute file_type;
+    attribute entry_type;
+    attribute non_security_file_type;
+    attribute non_auth_file_type;
+
+    type init_t;
+    type unconfined_t;
+    type system_dbusd_t;
+
+    type beekeeper_conf_t;
+    type beekeeper_log_t;
+    type beekeeper_blkid_run_t;
+    type fixed_disk_device_t;
+    type bees_exec_t;
+
+    class file { read write open getattr execute execute_no_trans };
+    class dir { read write open getattr search add_name remove_name };
+    class process { transition execmem execstack sigchld noatsecure rlimitinh };
+}
+
+# --- Beekeeper types ---
+type beekeeper_t, domain;
+type beekeeper_exec_t, entry_type, exec_type, file_type;
+type beekeeper_conf_t;
+type beekeeper_log_t;
+type beekeeper_blkid_run_t;
+
+# Expanded files_type(beekeeper_exec_t)
+typeattribute beekeeper_exec_t file_type, non_security_file_type, non_auth_file_type;
+
+# --- Bees types ---
+type bees_t, domain;
+type bees_exec_t, entry_type, exec_type, file_type;
+
+# Expanded files_type(bees_exec_t)
+typeattribute bees_exec_t file_type, non_security_file_type, non_auth_file_type;
+
+# --- Domain transitions ---
+type_transition unconfined_t beekeeper_exec_t:process beekeeper_t;
+type_transition init_t       beekeeper_exec_t:process beekeeper_t;
+
+type_transition unconfined_t bees_exec_t:process bees_t;
+type_transition init_t       bees_exec_t:process bees_t;
+
+# --- Base execution of binaries ---
+allow unconfined_t beekeeper_exec_t:file { read open getattr execute };
+allow unconfined_t bees_exec_t:file      { read open getattr execute };
+allow init_t       beekeeper_exec_t:file { read open getattr execute };
+allow init_t       bees_exec_t:file      { read open getattr execute };
+
+# --- Beekeeper runtime allowances ---
+
+# beekeeper_t can read/write its configuration and logs
+allow beekeeper_t beekeeper_conf_t:dir  { read write open getattr search add_name remove_name };
+allow beekeeper_t beekeeper_conf_t:file { read write open getattr };
+allow beekeeper_t beekeeper_log_t:dir   { read write open getattr search add_name remove_name };
+allow beekeeper_t beekeeper_log_t:file  { read write open getattr append };
+
+# beekeeper_t can read/write /run/blkid and /run/bees (both tagged as beekeeper_blkid_run_t)
+allow beekeeper_t beekeeper_blkid_run_t:dir  { read write open getattr search add_name remove_name };
+allow beekeeper_t beekeeper_blkid_run_t:file { read write open getattr append };
+
+# beekeeper_t can read block devices (ro)
+allow beekeeper_t fixed_disk_device_t:blk_file { read open getattr };
+
+# beekeeper_t can execute bees_exec_t (ro+x)
+allow beekeeper_t bees_exec_t:file { read open getattr execute execute_no_trans };
+
+# beekeeper_t may execute processes and commands
+allow beekeeper_t self:process { fork sigchld noatsecure rlimitinh };
+
+# beekeeper_t will talk pid 1 through a socket
+allow beekeeper_t init_t:unix_stream_socket { read write };
+
+# ability to cap_net_admin
+allow beekeeper_t self:capability net_admin;
+
+# init_t can inherit signals to spawn the helper
+allow init_t beekeeper_t:process siginh;
+
+
+# --- Bees runtime allowances ---
+
+# bees_t can read/write /mnt/bees (mount content not labeled, assume type matches default_t)
+# if /mnt/bees is labeled default_t or tmp_t, those will appear in audit logs; adjust later.
+allow bees_t beekeeper_blkid_run_t:dir  { read write open getattr search add_name remove_name };
+allow bees_t beekeeper_blkid_run_t:file { read write open getattr append };
+
+# generic ability for /mnt/bees (to be relabeled later if needed)
+# add temporary default_t access for initial audit capture
+require { type default_t; }
+allow bees_t default_t:dir  { read write open getattr search add_name remove_name };
+allow bees_t default_t:file { read write open getattr append };
+
+# allow bees_t to read/write /run/bees (also tagged as beekeeper_blkid_run_t)
+allow bees_t beekeeper_blkid_run_t:dir  { read write open getattr search add_name remove_name };
+allow bees_t beekeeper_blkid_run_t:file { read write open getattr append };
+allow beekeeper_t var_run_t:file { read write open getattr append };
+
+# minimal process permissions
+allow beekeeper_t self:process { execmem execstack };
+
+# read and write pts
+allow beekeeper_t user_devpts_t:chr_file { read write };
+
+
+
+
+# --- D-Bus allow macros ---
+# allow beekeeper_t to own its bus name
+#allow_dbus_name(beekeeper_t, "org.beekeeper.Helper")
+
+# allow beekeeper_t to send messages to unconfined_t / system_dbusd_t
+#allow_dbus_send(beekeeper_t, unconfined_t)
+#allow_dbus_send(beekeeper_t, system_dbusd_t)
+
+# allow beekeeper_t to receive messages from unconfined_t / system_dbusd_t
+#allow_dbus_recv(beekeeper_t, unconfined_t)
+#allow_dbus_recv(beekeeper_t, system_dbusd_t)
+
+# alternatively, use the macro that declares all bus activation:
+#dbus_service(beekeeper_t, "org.beekeeper.Helper")
+
+#allow_dbus_name(beekeeper_t, "org.beekeeper.Helper")
+#allow_dbus_send(beekeeper_t, system_dbusd_t)
+#allow_dbus_recv(beekeeper_t, system_dbusd_t)

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(beekeeper VERSION 1.0 LANGUAGES CXX)
+project(beekeeper VERSION 1.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,11 +14,15 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS
 set(CPACK_RPM_PACKAGE_REQUIRES
     "qt6-qtbase, qt6-tools, polkit-qt6-1, libblkid, libudev, systemd")
 
-
 # ------------------------------
 # Qt6
 # ------------------------------
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets DBus Concurrent LinguistTools)
+
+# ------------------------------
+# SELinux Module -Part 1
+# ------------------------------
+option(BUILD_SELINUX_MODULE "Build and install SELinux policy module" OFF)
 
 # ------------------------------
 # Polkit
@@ -103,6 +107,12 @@ configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/policy.in"
     "${CMAKE_CURRENT_BINARY_DIR}/policy" @ONLY
 )
+
+# ----- SELinux Module - Part 2
+# Include SELinux module build if requested
+if(BUILD_SELINUX_MODULE)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/selinuxmodule.cmake)
+endif()
 
 # ------------------------------
 # Core library
@@ -341,13 +351,8 @@ install(FILES
 )
 
 # pkg-config file
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/beekeeper.pc.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper.pc" IMMEDIATE @ONLY
-)
-
 install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper.pc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/beekeeper.pc.in"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
@@ -396,7 +401,7 @@ if(MAKE_DOCS)
     find_package(Doxygen)
 
     if(DOXYGEN_FOUND)
-        set(DOXYGEN_IN  ${CMAKE_SOURCE_DIR}/cmake/Doxyfile.in)
+        set(DOXYGEN_IN  ${CMAKE_SOURCE_DIR}/Doxyfile.in)
         set(DOXYGEN_OUT ${CMAKE_BINARY_DIR}/Doxyfile)
 
         # Configure Doxyfile with CMake variables
@@ -418,10 +423,10 @@ endif()
 # ------------------------------
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake" IMMEDIATE @ONLY
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake" IMMEDIATE @ONLY
 )
 add_custom_target(uninstall
-    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake
 )
 
 # ------------------------------
@@ -433,19 +438,42 @@ set(CPACK_PACKAGE_NAME "beekeeper-qt")
 set(CPACK_PACKAGE_VENDOR "Lito Parra")
 set(CPACK_PACKAGE_DESCRIPTION "Deduplicate redundant data in your disk and save space")
 
-# Generators: DEB, RPM, TGZ
+# Generators: DEB, RPM
 set(CPACK_GENERATOR "DEB;RPM")
 
 # DEB package info
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Lito Parra")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "libqt6core6t64 | libqt6core6 | qt6-base, libqt6gui6, libqt6widgets6, libqt6dbus6, libqt6concurrent6, libpolkit-qt6-1-1, libblkid1, libudev1")
+    "qt6-base (>= 6.5), qt6-tools (>= 6.5), libpolkit-qt6-1-1, libblkid1, libudev1")
 
 # RPM package info
-set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_LICENSE "GPL3")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/System")
+
+# Base requirements
 set(CPACK_RPM_PACKAGE_REQUIRES
     "qt6-qtbase, qt6-qttools, polkit-qt6-1, libblkid, systemd-libs")
+
+# ----- SELinux Module - Part 2 -----
+
+# Add SELinux requirements if module is being built
+if(BUILD_SELINUX_MODULE)
+    set(CPACK_RPM_PACKAGE_REQUIRES "${BASE_RPM_REQUIRES}, policycoreutils, selinux-policy-base >= 3.13.1")
+    
+    # Create combined RPM scripts if SELinux module is enabled
+    # Combine any existing scripts with SELinux scripts
+    if(EXISTS "${CMAKE_BINARY_DIR}/rpm_selinux_post.sh")
+        set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/rpm_selinux_post.sh")
+    endif()
+    if(EXISTS "${CMAKE_BINARY_DIR}/rpm_selinux_preun.sh")
+        set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/rpm_selinux_preun.sh")
+    endif()
+    if(EXISTS "${CMAKE_BINARY_DIR}/rpm_selinux_postun.sh")
+        set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/rpm_selinux_postun.sh")
+    endif()
+else()
+    set(CPACK_RPM_PACKAGE_REQUIRES "${BASE_RPM_REQUIRES}")
+endif()
 
 # Optional: define package version (si quieres)
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})

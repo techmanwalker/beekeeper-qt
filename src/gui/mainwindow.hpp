@@ -156,15 +156,6 @@ private:
     // Returns true if the filesystem is in the beekeeper autostart file
     bool in_the_autostart_file(const QModelIndex &idx) const;
 
-
-    /**
-    * @brief Return the UUIDs of selected filesystems, or all filesystems if requested.
-    * 
-    * @param check_the_whole_table If true, include all rows in the table; otherwise, only selected rows.
-    * @return std::vector<QString> List of UUIDs.
-    */
-    std::vector<QString> get_fs_uuids(bool check_the_whole_table = false) const;
-
     // --- Refresh filesystem table ---
 
     std::atomic_bool is_being_refreshed{false}; // guard multiple refreshes
@@ -216,7 +207,6 @@ private:
     QString current_hovered_uuid;
 
     KeyboardNav *keyboardNav = nullptr;
-    void set_hovered_uuid(const QString &uuid);
 
     bool eventFilter(QObject *obj, QEvent *event);
 

@@ -125,6 +125,7 @@ jobs:
 
       - name: Build Arch package
         run: |
+          cd packaging
           useradd -m builder
           chown -R builder:builder .
           su builder -c "makepkg -sf --noconfirm"
@@ -133,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: arch-package
-          path: "*.pkg.tar.zst"
+          path: "packaging/*.pkg.tar.zst"
 
   # Job 3: Publish release on GitHub (only if a tag)
   release:

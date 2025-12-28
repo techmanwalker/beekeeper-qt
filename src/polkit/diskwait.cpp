@@ -196,6 +196,10 @@ diskwait::run()
                 // If at least one mount for this uuid has compression running and at least
                 // one does not, call start(uuid) to attempt aligning all mounts.
                 // This favours the "if some mount has compression, ensure all mounts have it".
+
+                /*
+                * COMMENTED OUT SINCE THIS IS CAUSING BKQT TO REPEATEDLY MOUNT
+                * THE SAME DRIVE OVER AND OVER UPON FAILURE
                 bool any_running = tc::is_running(uuid);
                 bool some_not_running = bk_mgmt::transparentcompression::is_not_running_for_at_least_one_mountpoint_of(uuid);
 
@@ -209,6 +213,7 @@ diskwait::run()
                         DEBUG_LOG("[diskwait::worker] tc::start threw unknown exception");
                     }
                 }
+                */
             }
         }
 

@@ -3,6 +3,12 @@ build/
 .cache/
 benchmarks/
 
+# Arch build directories under packaging
+packaging/beekeeper-qt
+packaging/pkg
+packaging/src
+packaging/beekeeper-qt-*.pkg.tar.zst
+
 # Editor/OS files
 *.swp
 *.swo

@@ -1,6 +1,5 @@
 #include "beekeeper/beesdmgmt.hpp"
 #include "beekeeper/debug.hpp"
-#include "beekeeper/qt-debug.hpp"
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "mainwindow.hpp"
 #include "../polkit/multicommander.hpp"
@@ -150,24 +149,6 @@ MainWindow::handle_start(bool enable_logging)
         // Discard running and unconfigured filesystems
         if (running(idx) || !configured(idx))
             continue;
-
-        // Only create starting free space if it doesn't exist
-        fs::path start_file = fs::path("/tmp") / ".beekeeper" / uuid.toStdString() / "startingfreespace";
-        if (!fs::exists(start_file)) {
-            fs::create_directories(start_file.parent_path());
-
-            std::string free_str = komander->btrfstat(uuid.toStdString(), "free");
-            qint64 free_bytes = refresh_fs_helpers::parse_free_bytes_from_btrfstat(free_str);
-
-            if (free_bytes > 0) {
-                std::ofstream ofs(start_file);
-                if (ofs.is_open()) {
-                    ofs << free_bytes;
-                }
-            } else {
-                qWarning() << "handle_start: free_bytes is zero for UUID" << uuid;
-            }
-        }
 
         // Queue the async start job
         futures->append(komander->async->beesstart(uuid, enable_logging));

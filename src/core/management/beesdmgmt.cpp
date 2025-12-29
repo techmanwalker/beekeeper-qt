@@ -273,7 +273,12 @@ bk_mgmt::beesstart(const std::string& uuid, bool enable_logging)
     if (status != "running" && status != "running (with logging)") {
         DEBUG_LOG("Beesd failed to start for UUID: ", uuid);
         return false;
+    } else {
+        DEBUG_LOG("Beesd successfully running for ", uuid);
     }
+
+    // Create "Started with x.xx GiB free" file ONLY at success
+    bk_mgmt::create_started_with_n_gb_file(uuid);
 
     return true;
 }

@@ -1,4 +1,5 @@
 #include "beekeeper/beesdmgmt.hpp"
+#include "beekeeper/btrfsetup.hpp"
 #include "beekeeper/debug.hpp"
 #include <filesystem>
 #include <iostream>
@@ -52,6 +53,32 @@ bk_mgmt::clear_log_file_for_uuid(const std::string &uuid)
         } catch (const fs::filesystem_error &e) {
             DEBUG_LOG("Exception removing log: ", e.what());
             std::cerr << "Warning: Failed to remove log file: " << e.what() << std::endl;
+        }
+    }
+}
+
+void
+bk_mgmt::create_started_with_n_gb_file (const std::string &uuid)
+{
+    unsigned long long free_bytes = bk_mgmt::get_space::free(uuid);
+
+    DEBUG_LOG(uuid, " FREE BYTES: ", std::to_string(free_bytes));
+
+    fs::path start_file = fs::path("/tmp") / ".beekeeper" / uuid / "startingfreespace";
+
+    // Create parent directories if needed
+    fs::create_directories(start_file.parent_path());
+
+    DEBUG_LOG("Attempted to create ", start_file.parent_path(), ". Does it exist? ", (fs::exists(start_file.parent_path()) ? "yes" : "no"));
+    // Only create starting free space file if it doesn't exist
+    if (!fs::exists(start_file)) {
+        if (free_bytes > 0) {
+            std::ofstream ofs(start_file);
+            if (ofs.is_open()) {
+                ofs << free_bytes;
+            }
+        } else {
+            DEBUG_LOG("handle_start: free_bytes is zero for UUID " + uuid);
         }
     }
 }

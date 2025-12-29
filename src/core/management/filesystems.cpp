@@ -481,7 +481,7 @@ get_filesystem_label(const std::string &mountpoint_or_uuid)
     return "";
 }
 
-int64_t
+unsigned long long
 bk_mgmt::get_space::free(const std::string &uuid)
 {
     auto mount_paths = bk_mgmt::get_mount_paths(uuid);
@@ -501,7 +501,7 @@ bk_mgmt::get_space::free(const std::string &uuid)
     }
 }
 
-int64_t
+unsigned long long
 bk_mgmt::get_space::used(const std::string &uuid)
 {
     auto mount_paths = bk_mgmt::get_mount_paths(uuid);

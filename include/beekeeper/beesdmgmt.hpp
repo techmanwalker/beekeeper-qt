@@ -23,6 +23,7 @@ namespace beekeeper {
         std::string get_log_path (const std::string& uuid);
         void ensure_log_dir ();
         void clear_log_file_for_uuid(const std::string &uuid);
+        void create_started_with_n_gb_file (const std::string &uuid);
 
         // Helper functions for beesdmgmt - declaring them static didn't work
 

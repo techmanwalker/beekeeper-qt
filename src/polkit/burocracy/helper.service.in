@@ -15,7 +15,7 @@ Restart=on-failure
 ProtectSystem=full
 ReadWritePaths=/etc/bees
 ProtectHome=yes
-PrivateTmp=yes
+# PrivateTmp=yes
 
 [Install]
 WantedBy=multi-user.target

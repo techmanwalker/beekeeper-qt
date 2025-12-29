@@ -34,9 +34,9 @@ namespace beekeeper {
 
         namespace get_space {
 
-            int64_t free(const std::string &uuid);
+            unsigned long long free(const std::string &uuid);
 
-            int64_t used(const std::string &uuid);
+            unsigned long long used(const std::string &uuid);
         }
     }
 }

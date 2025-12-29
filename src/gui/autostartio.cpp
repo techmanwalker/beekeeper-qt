@@ -9,7 +9,7 @@
  * the corresponding UUIDs to /etc/bees/autostartsettings.cfg if they are
  * not already present. Only configured filesystems are considered.
  *
- * The autostart file is read by the systemd-activated beekeeper-helper
+ * The autostart file is read by the systemd-activated thebeekeeper
  * service at boot, which starts Beesd for each UUID listed here.
  */
 void

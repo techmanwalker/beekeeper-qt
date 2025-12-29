@@ -1,5 +1,5 @@
 # beekeeper executable
-@CMAKE_INSTALL_PREFIX@/lib/beekeeper/bin/beekeeper-helper -- system_u:object_r:beekeeper_exec_t
+@CMAKE_INSTALL_PREFIX@/lib/beekeeper/bin/thebeekeeper -- system_u:object_r:beekeeper_exec_t
 
 # bees executables (beesd / bees)
 @CMAKE_INSTALL_PREFIX@/bin/beesd             -- system_u:object_r:bees_exec_t

@@ -1,5 +1,5 @@
 [D-BUS Service]
 Name=org.beekeeper.Helper
-Exec=@BEEKEEPER_INSTALL_LIBDIR@/bin/beekeeper-helper
+Exec=@BEEKEEPER_INSTALL_LIBDIR@/bin/thebeekeeper
 User=root
 SystemdService=org.beekeeper.helper.service

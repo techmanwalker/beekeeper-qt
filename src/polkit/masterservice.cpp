@@ -137,7 +137,7 @@ main(int argc, char **argv)
         return 2;
     }
 
-    DEBUG_LOG("[beekeeper-helper] registered service org.beekeeper.Helper");
+    DEBUG_LOG("[thebeekeeper] registered service org.beekeeper.Helper");
 
     masterservice helper;
     if (!bus.registerObject("/org/beekeeper/Helper", &helper,
@@ -150,8 +150,8 @@ main(int argc, char **argv)
     // Start diskwait thread after DBus registration (diskwait stays a separate QThread)
     diskwait *disk_thread = new diskwait();
     disk_thread->start();
-    DEBUG_LOG("[beekeeper-helper] diskwait thread launched");
+    DEBUG_LOG("[thebeekeeper] diskwait thread launched");
 
-    DEBUG_LOG("[beekeeper-helper] Helper DBus service ready and waiting for calls");
+    DEBUG_LOG("[thebeekeeper] Helper DBus service ready and waiting for calls");
     return app.exec();
 }

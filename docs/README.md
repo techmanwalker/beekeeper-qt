@@ -13,7 +13,7 @@ Currently, its structure is divided into **three main components**, each with it
 ### **beekeeperman** - Command Line Interface
 The command-line utility that provides an interface prepared for those who prefer not to use a graphical interface and instead use a command line. Previously, it was the bridge between privileged space (root) and the graphical interface so the latter could function, but now these are independent since the creation of the next component.
 
-### **beekeeper-helper** - Privileged Daemon
+### **thebeekeeper** - Privileged Daemon
 This is the other side of the graphical interface - the side you don't see. It's an executable that is launched through a systemd DBus-type service, so yes, it communicates with the graphical interface through DBus calls that serve to obtain privileged data and execute actions that otherwise couldn't be done, since privileges are needed to interact with the filesystem structure at a low level. Being it a DBus service, it doesn't ask you for your password when you launch beekeeper-qt as systemd *trusts* in the executable.
 
 ### **beekeeper-qt** - Graphical Interface
@@ -23,7 +23,7 @@ This is the graphical interface itself, made in Qt as its name suggests (screens
 
 As additional information about the architecture, **the code from all three parts is unified in the handlers.cpp file**, which is always the bridge between the heart of operations (which doesn't exist as a separate executable but rather as the source code itself, which would be **beesdmgmt.cpp** and **btrfsetup.cpp**) and all the points where it's presented to the user, such as:
 
-- The DBus helper and messenger (**beekeeper-helper**, which you interact with through:)
+- The DBus helper and messenger (**thebeekeeper**, which you interact with through:)
 - The graphical interface (**beekeeper-qt**)  
 - The terminal interface (**beekeeperman**, this one *does* need sudo to work)
 

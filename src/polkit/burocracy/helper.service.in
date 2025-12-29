@@ -8,7 +8,7 @@ Wants=local-fs.target
 [Service]
 Type=dbus
 BusName=org.beekeeper.Helper
-ExecStart=@BEEKEEPER_INSTALL_LIBDIR@/bin/beekeeper-helper
+ExecStart=@BEEKEEPER_INSTALL_LIBDIR@/bin/thebeekeeper
 Restart=on-failure
 
 # Hardening (keep, can extend later):

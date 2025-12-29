@@ -62,7 +62,7 @@ set(BEEKEEPER_INSTALL_LIBDIR_REL "${CMAKE_INSTALL_LIBDIR}/beekeeper")
 set(BEEKEEPER_BUILD_LIBDIR "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}/beekeeper")
 
 # Path to the helper binary (used in configure_file replacements)
-set(BEEKEEPER_HELPER_PATH "${BEEKEEPER_INSTALL_LIBDIR}/bin/beekeeper-helper")
+set(BEEKEEPER_HELPER_PATH "${BEEKEEPER_INSTALL_LIBDIR}/bin/thebeekeeper")
 
 # Use canonical systemd directory for unit installation (avoid lib64 path)
 if(NOT DEFINED SYSTEMD_DIR)
@@ -154,7 +154,7 @@ target_link_libraries(beekeeperman PRIVATE beekeeper)
 # ------------------------------
 # GUI sources
 # ------------------------------
-# --- Polkit sources (exclude beekeeper-helper.cpp)
+# --- Polkit sources (exclude thebeekeeper.cpp)
 file(GLOB POLKIT_SRCS
     include/beekeeper/supercommander.hpp
     src/polkit/auth.cpp
@@ -195,7 +195,7 @@ target_link_libraries(beekeeper-qt PRIVATE
 # ------------------------------
 # Helper executable
 # ------------------------------
-add_executable(beekeeper-helper
+add_executable(thebeekeeper
     ${POLKIT_SRCS}
     src/polkit/diskwait.cpp
     src/polkit/masterservice.cpp
@@ -204,20 +204,20 @@ add_executable(beekeeper-helper
     src/cli/handlers.cpp
 )
 
-target_include_directories(beekeeper-helper PRIVATE
+target_include_directories(thebeekeeper PRIVATE
     ${BUILD_INCLUDE_DIR}
     ${POLKIT_INCLUDES}
     ${LIBUDEV_INCLUDE_DIRS}
 )
 
-target_link_libraries(beekeeper-helper PRIVATE
+target_link_libraries(thebeekeeper PRIVATE
     Qt6::Core Qt6::Widgets Qt6::DBus Qt6::Concurrent
     beekeeper ${POLKIT_LIBS}
     ${LIBUDEV_LIBRARIES}
 )
 
 # Absolute RPATH for helper (use the computed full install libdir)
-set_target_properties(beekeeper-helper PROPERTIES
+set_target_properties(thebeekeeper PROPERTIES
     BUILD_RPATH "${BEEKEEPER_BUILD_LIBDIR}"
     INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
     INSTALL_RPATH_USE_LINK_PATH TRUE
@@ -245,8 +245,8 @@ if(PkgConfig_FOUND)
         target_link_libraries(beekeeperman PRIVATE ${LIBBLKID_LIBRARIES})
 
         # Include dirs & libraries for helper executable
-        target_include_directories(beekeeper-helper PRIVATE ${LIBBLKID_INCLUDE_DIRS})
-        target_link_libraries(beekeeper-helper PRIVATE ${LIBBLKID_LIBRARIES})
+        target_include_directories(thebeekeeper PRIVATE ${LIBBLKID_INCLUDE_DIRS})
+        target_link_libraries(thebeekeeper PRIVATE ${LIBBLKID_LIBRARIES})
     else()
         message(WARNING "libblkid not found: falling back to blkid CLI parsing")
     endif()
@@ -306,7 +306,7 @@ install(TARGETS beekeeper-qt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(TARGETS beekeeper-helper
+install(TARGETS thebeekeeper
     RUNTIME DESTINATION "${BEEKEEPER_INSTALL_LIBDIR_REL}/bin"
 )
 

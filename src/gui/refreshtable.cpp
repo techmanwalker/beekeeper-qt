@@ -1,10 +1,12 @@
 #include "mainwindow.hpp"
+#include "../polkit/globals.hpp"
 #include "../polkit/multicommander.hpp"
 #include "beekeeper/debug.hpp"
 #include "beekeeper/util.hpp"
 #include "refreshfilesystems_helpers.hpp"
 
 #include <unordered_set>
+#include <unordered_map>
 
 
 // ----- Filesystem table builders -----
@@ -12,245 +14,248 @@
 
 void MainWindow::refresh_filesystems()
 {
-    // disable some buttons early if no root (optional)
-    update_button_states(); // quick check (must be safe on GUI thread)
-
-    // Ask async btrfsls and hand its future to the builder. Returns immediately.
-    auto future_fs = komander->async->btrfsls(); // QFuture<fs_vec>
+    update_button_states();
+    auto future_fs = komander->async->btrfsls();
     build_filesystem_table(future_fs);
 }
 
-void
-MainWindow::build_filesystem_table(QFuture<fs_vec> filesystem_list_future)
+void MainWindow::build_filesystem_table(QFuture<fs_vec> filesystem_list_future)
 {
-    // If a refresh is already running, bail out immediately.
+    // Avoid simultaneous refreshes
     bool expected = false;
     if (!is_being_refreshed.compare_exchange_strong(expected, true)) {
         DEBUG_LOG("[refresh] already running - skipping new refresh");
         return;
     }
 
-    // Run entire pipeline in a background QtConcurrent thread to return immediately.
     last_build_future = QtConcurrent::run([this, filesystem_list_future]() mutable {
-        // 1) Wait the filesystem_list_future to be ready (it was created by komander->async->btrfsls())
+        // Temporarily disable sorting
+        bool hadSorting = fs_table->isSortingEnabled();
+        fs_table->setSortingEnabled(false);
+        
+        // 1) Wait for the filesystem list
         filesystem_list_future.waitForFinished();
-        fs_vec filesystem_list = filesystem_list_future.result(); // local copy
+        fs_vec filesystem_list = filesystem_list_future.result();
 
-        // 2) Read the current table snapshot - must be done on GUI thread
-        fs_vec table_filesystems;
-        QMetaObject::invokeMethod(this, [this, &table_filesystems]() {
-            // Build table snapshot
-            for (int r = 0; r < fs_table->rowCount(); ++r) {
-                fs_map map;
-                auto *uuid_item = fs_table->item(r, 0);
-                auto *label_item = fs_table->item(r, 1);
-                auto *status_item = fs_table->item(r, 2);
-                if (uuid_item) map["uuid"] = uuid_item->data(Qt::UserRole).toString().toStdString();
-                if (label_item) map["label"] = label_item->data(Qt::UserRole).toString().toStdString();
-                if (status_item) map["status"] = bk_util::trim_string(status_item->data(Qt::UserRole).toString().toStdString());
-                if (!map["uuid"].empty()) table_filesystems.push_back(std::move(map));
+        // 2) Convert filesystem_list to an UUID-indexed map
+        //    This is our ONLY SOURCE OF TRUTH for our entire pipeline
+        std::unordered_map<std::string, fs_map> fs_data_by_uuid;
+        for (const auto &fs : filesystem_list) {
+            auto it = fs.find("uuid");
+            if (it != fs.end() && !it->second.empty()) {
+                fs_data_by_uuid[it->second] = fs;
             }
-        }, Qt::BlockingQueuedConnection); // blocking so background thread can continue with the snapshot
+        }
 
-        // 3) Compute new / removed / existing using the utility functions
-        fs_vec *new_filesystems = new fs_vec(bk_util::subtract_vectors_of_maps(filesystem_list, table_filesystems, std::string("uuid")));
-        fs_vec *removed_filesystems = new fs_vec(bk_util::subtract_vectors_of_maps(table_filesystems, filesystem_list, std::string("uuid")));
-        fs_vec *existing_filesystems = new fs_vec(bk_util::subtract_vectors_of_maps(table_filesystems, *removed_filesystems, std::string("uuid")));
+        // 3) Read current table snapshot (only UUIDs)
+        std::unordered_set<std::string> current_uuids;
+        QMetaObject::invokeMethod(this, [this, &current_uuids]() {
+            for (int r = 0; r < fs_table->rowCount(); ++r) {
+                auto *uuid_item = fs_table->item(r, 0);
+                if (uuid_item) {
+                    std::string uuid = uuid_item->data(Qt::UserRole).toString().toStdString();
+                    if (!uuid.empty()) {
+                        current_uuids.insert(uuid);
+                    }
+                }
+            }
+        }, Qt::BlockingQueuedConnection);
 
-        // 4) Dispatch the three tasks in parallel (each returns QFuture<void>)
-        QFuture<void> f_add = add_new_rows_task(new_filesystems);
-        QFuture<void> f_remove = remove_old_rows_task(removed_filesystems);
-        QFuture<void> f_update = update_existing_rows_task(existing_filesystems);
+        // 4) Determine what to add and remove based on fs_data_by_uuid
+        std::vector<std::string> to_add;
+        for (const auto &pair : fs_data_by_uuid) {
+            const std::string &uuid = pair.first;
+            if (current_uuids.find(uuid) == current_uuids.end()) {
+                to_add.push_back(uuid);
+            }
+        }
 
-        // 5) Wait for them to finish here in background (no UI blocking)
+        std::vector<std::string> to_remove;
+        for (const auto &uuid : current_uuids) {
+            if (fs_data_by_uuid.find(uuid) == fs_data_by_uuid.end()) {
+                to_remove.push_back(uuid);
+            }
+        }
+
+        // ========== CYCLE 1: ADD AND REMOVE ==========
+        QFuture<void> f_add = add_new_rows_task(to_add);
+        QFuture<void> f_remove = remove_old_rows_task(to_remove);
+
+        // Wait for both operations to finish
         f_add.waitForFinished();
         f_remove.waitForFinished();
-        f_update.waitForFinished();
 
-        // 6) Now update button states on GUI thread
+        // ========== CYCLE 2: UPDATE EVERYTHING ==========
+        // Now that the indices are stable, we'll update the entire table
+        // using ONLY the data from fs_data_by_uuid
+        update_all_rows_task(fs_data_by_uuid);
+
+        // 5) Update buttons and status_manager
         QMetaObject::invokeMethod(this, [this]() {
             update_button_states();
-            refresh_fs_helpers::update_status_manager(
-                fs_table,
-                statusManager
-            );
+            refresh_fs_helpers::update_status_manager(fs_table, statusManager);
         }, Qt::QueuedConnection);
 
-        // 7) Release the guard
+        // 6) Release guard and restore sorting
         is_being_refreshed.store(false);
-
-    }); // QtConcurrent::run
-}
-
-QFuture<void> MainWindow::add_new_rows_task(fs_vec *new_filesystems)
-{
-    return QtConcurrent::run([this, new_filesystems]() {
-        if (!new_filesystems || new_filesystems->empty()) {
-            delete new_filesystems;
-            return;
-        }
-
-        // Build a lightweight list of rows to add (do NOT construct QTableWidgetItems here).
-        struct RowToAdd { std::string uuid, label, status; };
-        std::vector<RowToAdd> rows;
-        rows.reserve(new_filesystems->size());
-        for (const auto &m : *new_filesystems) {
-            RowToAdd r;
-            auto it = m.find("uuid"); if (it != m.end()) r.uuid = it->second;
-            it = m.find("label"); if (it != m.end()) r.label = it->second;
-            it = m.find("status"); if (it != m.end()) r.status = it->second;
-            if (!r.uuid.empty())
-                rows.push_back(std::move(r));
-        }
-
-        // Now schedule a GUI-thread batch insertion
-        QMetaObject::invokeMethod(this, [this, rows = std::move(rows)]() mutable {
-            fs_table->setUpdatesEnabled(false);
-            // Optionally disable sorting while we insert:
-            bool hadSorting = fs_table->isSortingEnabled();
-            fs_table->setSortingEnabled(false);
-
-            for (const auto &r : rows) {
-                int row = fs_table->rowCount();
-                fs_table->insertRow(row);
-
-                auto *uuid_item = new QTableWidgetItem(QString::fromStdString(r.uuid));
-                uuid_item->setData(Qt::UserRole, QString::fromStdString(r.uuid));
-                uuid_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-                fs_table->setItem(row, 0, uuid_item);
-
-                auto *label_item = new QTableWidgetItem(QString::fromStdString(r.label));
-                label_item->setData(Qt::UserRole, QString::fromStdString(r.label));
-                label_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-                fs_table->setItem(row, 1, label_item);
-
-                refresh_fs_helpers::status_text_mapper mapper;
-                QString display_status = mapper.map_status_text(QString::fromStdString(r.status));
-                auto *status_item = new QTableWidgetItem(display_status);
-                status_item->setData(Qt::UserRole, QString::fromStdString(r.status));
-                status_item->setData(Qt::DisplayRole, display_status);
-                status_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-                fs_table->setItem(row, 2, status_item);
-            }
-
-            // restore sorting and updates
-            fs_table->setSortingEnabled(hadSorting);
-            fs_table->setUpdatesEnabled(true);
-        }, Qt::QueuedConnection);
-
-        delete new_filesystems;
+        fs_table->setSortingEnabled(hadSorting);
     });
 }
 
-QFuture<void> MainWindow::remove_old_rows_task(fs_vec *removed_filesystems)
+QFuture<void>
+MainWindow::add_new_rows_task(const std::vector<std::string> &uuids_to_add)
 {
-    return QtConcurrent::run([this, removed_filesystems]() {
-        if (!removed_filesystems || removed_filesystems->empty()) {
-            delete removed_filesystems;
+    return QtConcurrent::run([this, uuids_to_add]() {
+        if (uuids_to_add.empty()) {
             return;
         }
 
-        // Build set of UUIDs to remove
-        std::unordered_set<std::string> uuids;
-        uuids.reserve(removed_filesystems->size()*2);
-        for (const auto &m : *removed_filesystems) {
-            auto it = m.find("uuid");
-            if (it != m.end()) uuids.insert(it->second);
-        }
-
-        // Schedule GUI removal batch
-        QMetaObject::invokeMethod(this, [this, uuids = std::move(uuids)]() mutable {
+        // Añadir filas en la GUI (solo estructura básica, sin datos)
+        QMetaObject::invokeMethod(this, [this, uuids_to_add]() {
             fs_table->setUpdatesEnabled(false);
             bool hadSorting = fs_table->isSortingEnabled();
             fs_table->setSortingEnabled(false);
 
-            // iterate rows backwards to safely remove rows
+            for (const auto &uuid : uuids_to_add) {
+                // Verificar por si acaso que no exista ya
+                bool exists = false;
+                for (int r = 0; r < fs_table->rowCount(); ++r) {
+                    auto *uuid_item = fs_table->item(r, 0);
+                    if (uuid_item && 
+                        uuid_item->data(Qt::UserRole).toString().toStdString() == uuid) {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists) {
+                    int row = fs_table->rowCount();
+                    fs_table->insertRow(row);
+
+                    // UUID (solo el identificador, sin datos)
+                    auto *uuid_item = new QTableWidgetItem(QString::fromStdString(uuid));
+                    uuid_item->setData(Qt::UserRole, QString::fromStdString(uuid));
+                    uuid_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+                    fs_table->setItem(row, 0, uuid_item);
+
+                    // Label vacío (se actualizará después en update_all_rows_task)
+                    auto *label_item = new QTableWidgetItem("");
+                    label_item->setData(Qt::UserRole, "");
+                    label_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+                    fs_table->setItem(row, 1, label_item);
+
+                    // Status vacío (se actualizará después en update_all_rows_task)
+                    auto *status_item = new QTableWidgetItem("");
+                    status_item->setData(Qt::UserRole, "");
+                    status_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+                    fs_table->setItem(row, 2, status_item);
+                }
+            }
+
+            fs_table->setSortingEnabled(hadSorting);
+            fs_table->setUpdatesEnabled(true);
+        }, Qt::QueuedConnection);
+    });
+}
+
+QFuture<void>
+MainWindow::remove_old_rows_task(const std::vector<std::string> &uuids_to_remove)
+{
+    return QtConcurrent::run([this, uuids_to_remove]() {
+        if (uuids_to_remove.empty()) {
+            return;
+        }
+
+        // Convertir a set para búsqueda rápida
+        std::unordered_set<std::string> remove_set(
+            uuids_to_remove.begin(), 
+            uuids_to_remove.end()
+        );
+
+        // Quitar filas de la GUI
+        QMetaObject::invokeMethod(this, [this, remove_set = std::move(remove_set)]() {
+            fs_table->setUpdatesEnabled(false);
+            bool hadSorting = fs_table->isSortingEnabled();
+            fs_table->setSortingEnabled(false);
+
+            // Iterar de atrás hacia adelante para evitar problemas con índices
             for (int r = fs_table->rowCount() - 1; r >= 0; --r) {
                 auto *uuid_item = fs_table->item(r, 0);
-                if (!uuid_item) continue;
-                std::string u = uuid_item->data(Qt::UserRole).toString().toStdString();
-                if (uuids.find(u) != uuids.end()) {
-                    fs_table->removeRow(r);
+                if (uuid_item) {
+                    std::string uuid = uuid_item->data(Qt::UserRole).toString().toStdString();
+                    if (remove_set.find(uuid) != remove_set.end()) {
+                        fs_table->removeRow(r);
+                    }
                 }
             }
 
             fs_table->setSortingEnabled(hadSorting);
             fs_table->setUpdatesEnabled(true);
         }, Qt::QueuedConnection);
-
-        delete removed_filesystems;
     });
 }
 
-QFuture<void> MainWindow::update_existing_rows_task(fs_vec *existing_filesystems)
+void
+MainWindow::update_all_rows_task(
+    const std::unordered_map<std::string, fs_map> &fs_data_by_uuid
+)
 {
-    return QtConcurrent::run([this, existing_filesystems]() {
-        if (!existing_filesystems || existing_filesystems->empty()) {
-            delete existing_filesystems;
-            return;
-        }
+    // Esta función se ejecuta en el mismo hilo background que build_filesystem_table
+    // NO hace consultas adicionales, SOLO usa fs_data_by_uuid como fuente de verdad
+    
+    // Actualizar la tabla con los datos de fs_data_by_uuid
+    QMetaObject::invokeMethod(this, [this, fs_data_by_uuid]() {
+        fs_table->setUpdatesEnabled(false);
+        bool hadSorting = fs_table->isSortingEnabled();
+        fs_table->setSortingEnabled(false);
 
-        // Build map uuid -> map of new fields for quick lookup
-        std::unordered_map<std::string, fs_map> update_map;
-        update_map.reserve(existing_filesystems->size()*2);
-        
-        // Re-fetch status for each existing filesystem
-        for (const auto &m : *existing_filesystems) {
-            auto it = m.find("uuid");
-            if (it != m.end()) {
-                fs_map updated = m;
-                // Re-query the actual status right now
-                std::string fresh_status = komander->beesstatus(it->second);
-                updated["status"] = fresh_status;
-                update_map.emplace(it->second, updated);
+        for (int r = 0; r < fs_table->rowCount(); ++r) {
+            auto *uuid_item = fs_table->item(r, 0);
+            if (!uuid_item) continue;
+
+            std::string uuid = uuid_item->data(Qt::UserRole).toString().toStdString();
+            auto it = fs_data_by_uuid.find(uuid);
+            if (it == fs_data_by_uuid.end()) continue;
+
+            const fs_map &fs_data = it->second;
+
+            // REGLA 1: column 0 (UUID) ya está correcta desde add_new_rows_task
+            // Solo verificamos que Qt::UserRole esté bien (debería estarlo)
+            auto uuid_it = fs_data.find("uuid");
+            if (uuid_it != fs_data.end()) {
+                uuid_item->setData(Qt::UserRole, QString::fromStdString(uuid_it->second));
+                uuid_item->setText(QString::fromStdString(uuid_it->second));
             }
-        }
 
-        // Schedule GUI update batch
-        QMetaObject::invokeMethod(this, [this, update_map = std::move(update_map)]() mutable {
-            fs_table->setUpdatesEnabled(false);
-            bool hadSorting = fs_table->isSortingEnabled();
-            fs_table->setSortingEnabled(false);
-
-            for (int r = 0; r < fs_table->rowCount(); ++r) {
-                auto *uuid_item = fs_table->item(r, 0);
-                if (!uuid_item) continue;
-                std::string u = uuid_item->data(Qt::UserRole).toString().toStdString();
-                auto it = update_map.find(u);
-                if (it == update_map.end()) continue;
-
-                const fs_map &m = it->second;
-                // Update label
-                auto itlab = m.find("label");
-                if (itlab != m.end()) {
-                    auto *label_item = fs_table->item(r, 1);
-                    if (label_item) {
-                        label_item->setData(Qt::UserRole, QString::fromStdString(itlab->second));
-                        label_item->setText(QString::fromStdString(itlab->second));
-                    }
-                }
-                // Update status
-                auto itst = m.find("status");
-                if (itst != m.end()) {
-                    auto *status_item = fs_table->item(r, 2);
-                    if (status_item) {
-                        QString raw_status = QString::fromStdString(itst->second);
-                        status_item->setData(Qt::UserRole, raw_status);
-                        
-                        // Map the status for display
-                        refresh_fs_helpers::status_text_mapper mapper;
-                        QString display_status = mapper.map_status_text(raw_status);
-                        status_item->setData(Qt::DisplayRole, display_status);
-                        status_item->setText(display_status);
-                    }
+            // REGLA 2: column 1 (Label) = filesystem_list[uuid]["label"]
+            auto label_it = fs_data.find("label");
+            if (label_it != fs_data.end()) {
+                auto *label_item = fs_table->item(r, 1);
+                if (label_item) {
+                    QString label = QString::fromStdString(label_it->second);
+                    label_item->setData(Qt::UserRole, label);
+                    label_item->setText(label);
                 }
             }
 
-            fs_table->setSortingEnabled(hadSorting);
-            fs_table->setUpdatesEnabled(true);
+            // REGLA 3: column 2 (Status) = filesystem_list[uuid]["status"]
+            auto status_it = fs_data.find("status");
+            if (status_it != fs_data.end()) {
+                auto *status_item = fs_table->item(r, 2);
+                if (status_item) {
+                    QString raw_status = QString::fromStdString(status_it->second);
+                    status_item->setData(Qt::UserRole, raw_status);
+                    
+                    // Mapear el status para display
+                    refresh_fs_helpers::status_text_mapper mapper;
+                    QString display_status = mapper.map_status_text(raw_status);
+                    status_item->setData(Qt::DisplayRole, display_status);
+                    status_item->setText(display_status);
+                }
+            }
+        }
 
-        }, Qt::QueuedConnection);
-
-        delete existing_filesystems;
-    });
+        fs_table->setSortingEnabled(hadSorting);
+        fs_table->setUpdatesEnabled(true);
+    }, Qt::QueuedConnection);
 }

@@ -1,5 +1,6 @@
 #include "beekeeper/beesdmgmt.hpp"
 #include "mainwindow.hpp"
+#include "../polkit/globals.hpp"
 #include "../polkit/multicommander.hpp"
 
 /**

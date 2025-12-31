@@ -2,15 +2,13 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "mainwindow.hpp"
+#include "../polkit/globals.hpp"
 #include "../polkit/multicommander.hpp"
 #include "refreshfilesystems_helpers.hpp"
-#include <filesystem>
 #include <QGraphicsColorizeEffect>
 #include <QMessageBox>
 #include <QPushButton>
 #include <string>
-
-namespace fs = std::filesystem;
 
 // -------------------------
 void

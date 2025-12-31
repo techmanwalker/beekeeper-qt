@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -98,8 +99,61 @@ namespace beekeeper {
         std::string
         trim_config_path_after_colon(const std::string &raw);
 
-        std::string
-        serialize_vector(const std::vector<std::string> &vec);
+        // ----- BEGIN OF VECTOR SERIALIZER
+
+        // Template genérico (debe estar en el header)
+        template<typename T>
+        std::string serialize_vector(const std::vector<T> &vec)
+        {
+            std::ostringstream oss;
+            oss << "[";
+            for (size_t i = 0; i < vec.size(); ++i)
+            {
+                oss << vec[i];
+                if (i + 1 < vec.size())
+                    oss << ", ";
+            }
+            oss << "]";
+            return oss.str();
+        }
+
+        // Especialización para std::string
+        template<>
+        inline std::string serialize_vector<std::string>(const std::vector<std::string> &vec)
+        {
+            std::ostringstream oss;
+            oss << "[";
+            for (size_t i = 0; i < vec.size(); ++i)
+            {
+                oss << "\"" << vec[i] << "\"";
+                if (i + 1 < vec.size())
+                    oss << ", ";
+            }
+            oss << "]";
+            return oss.str();
+        }
+
+        // Template para punteros
+        template<typename T>
+        std::string serialize_vector(const std::vector<T*> &vec)
+        {
+            std::ostringstream oss;
+            oss << "[";
+            for (size_t i = 0; i < vec.size(); ++i)
+            {
+                if (vec[i] != nullptr)
+                    oss << *vec[i];
+                else
+                    oss << "nullptr";
+                
+                if (i + 1 < vec.size())
+                    oss << ", ";
+            }
+            oss << "]";
+            return oss.str();
+        }
+
+        // ----- END OF SERIALIZER -----
 
         bool is_uuid(const std::string &s);
 

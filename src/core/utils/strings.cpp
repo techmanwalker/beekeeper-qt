@@ -138,21 +138,6 @@ bk_util::trim_config_path_after_colon(const std::string &raw)
 }
 
 std::string
-bk_util::serialize_vector(const std::vector<std::string> &vec)
-{
-    std::ostringstream oss;
-    oss << "[";
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        oss << vec[i];
-        if (i + 1 < vec.size())
-            oss << ", ";
-    }
-    oss << "]";
-    return oss.str();
-}
-
-std::string
 bk_util::to_lower(const std::string& str) {
     std::string lower;
     for (char c : str) {

@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QThread>
-#include "../polkit/globals.hpp"
+
 #include "beekeeper/superlaunch.hpp"
 
 // A small helper QThread class to run the root shell

@@ -163,10 +163,13 @@ private:
     // Optionally store last build future so you can cancel/wait if desired
     QFuture<void> last_build_future;
 
-   void build_filesystem_table(QFuture<fs_vec> filesystem_list_future); // fetch filesystem data with btrfsls()
-    QFuture<void> add_new_rows_task(fs_vec *new_filesystems); // If there are new btrfs filesystems available, add them to the table
-    QFuture<void> remove_old_rows_task(fs_vec *removed_filesystems); // Remove now-unavailable btrfs filesystems
-    QFuture<void> update_existing_rows_task(fs_vec *existing_filesystems); // Update the status data for the filesystems that stayed existing
+    void build_filesystem_table(QFuture<fs_vec> filesystem_list_future); // fetch filesystem data with btrfsls()
+    QFuture<void> add_new_rows_task(const std::vector<std::string> &uuids_to_add); // If there are new btrfs filesystems available, add them to the table
+    QFuture<void> remove_old_rows_task(const std::vector<std::string> &uuids_to_remove); // Remove now-unavailable btrfs filesystems
+    void
+    update_all_rows_task(
+        const std::unordered_map<std::string, fs_map> &fs_data_by_uuid
+    );// Update the status data for all the filesystems right at the end of the refresh
 
     // ---
 

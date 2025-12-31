@@ -3,8 +3,6 @@
 #include "beekeeper/supercommander.hpp"
 #include "../polkit/globals.hpp"
 
-using beekeeper::privileged::supercommander;
-
 // A small helper QThread class to run the root shell
 
 void

@@ -1,5 +1,6 @@
 #include "mainwindow.hpp"
 #include "beekeeper/debug.hpp"
+#include "../polkit/globals.hpp"
 
 void
 MainWindow::on_root_shell_ready() {

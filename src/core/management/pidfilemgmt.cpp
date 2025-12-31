@@ -1,5 +1,6 @@
 #include "beekeeper/beesdmgmt.hpp"
 #include "beekeeper/debug.hpp"
+#include "beekeeper/util.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -85,7 +86,7 @@ bk_mgmt::clean_pid_file_for_uuid (const std::string& uuid)
 {
     std::string pidfile = bk_mgmt::get_pid_path(uuid);
     if (bk_util::file_exists(pidfile)) {
-        fs::remove(pidfile);
+        remove_pidfile_path(pidfile);
     }
 }
 
@@ -288,6 +289,8 @@ bk_mgmt::grab_one_beesd_process_and_kill_the_rest(
     auto pids = act_against_the_worker_pids
                     ? find_beesd_processes(uuid, true)
                     : find_beesd_processes(uuid);
+
+    DEBUG_LOG("Found pid for UUID ", uuid, ": ", bk_util::serialize_vector(pids));
 
     if (pids.empty())
         return 0;

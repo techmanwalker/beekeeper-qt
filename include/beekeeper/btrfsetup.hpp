@@ -11,7 +11,7 @@ namespace beekeeper {
     // Management subsystem
     namespace management {
         // List btrfs filesystems
-        fs_vec btrfsls();
+        fs_map btrfsls();
 
         // Check if a btrfs filesystem has a corresponding configuration file
         std::string

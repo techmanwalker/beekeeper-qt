@@ -15,33 +15,30 @@
 /**
  * @brief Find system processes whose command line matches given substrings.
  *
- * This function searches for processes whose command line contains any of
- * the provided substrings. It tries to use libprocps (readproc) if available;
- * if not, it falls back to invoking `ps aux` and filtering the output.
+ * This function searches for processes whose command line contains ALL of
+ * the provided substrings (AND logic, not OR). It uses ps aux and filters
+ * the output carefully to avoid false matches.
  *
  * @param match_these_substrings A vector of substrings to match against each process's command line.
  * @return A vector of process IDs (pid_t) for all matching processes. If no matches are found, returns an empty vector.
  *
- * @note The search is case-sensitive and matches substrings anywhere in the command line.
- * @note When using the fallback (ps aux), some edge cases with unusual characters in command lines may not be matched correctly.
+ * @note The search is case-sensitive and requires ALL substrings to match.
+ * @note Uses manual parsing instead of chained greps to avoid shell escaping issues.
  */
 std::vector<pid_t>
 bk_mgmt::find_processes(const std::vector<std::string> &match_these_substrings)
 {
     std::vector<pid_t> matching_processes;
 
-    // --- Fallback: ps aux + grep ---
-    std::string cmd = "ps aux";
-    for (const auto &needle : match_these_substrings)
-    {
-        cmd += " | grep -e " + needle;
+    if (match_these_substrings.empty()) {
+        return matching_processes;
     }
-    cmd += " | grep -v defunct | grep -v grep";
 
-    command_streams res = bk_util::exec_command_shell(cmd.c_str());
+    // Get all processes
+    command_streams res = bk_util::exec_command("ps", "aux");
     if (!res.stderr_str.empty())
     {
-        std::cerr << "Failed to run process search for ["
+        std::cerr << "Failed to run ps aux for ["
                   << bk_util::serialize_vector(match_these_substrings)
                   << "]. Message: " << res.stderr_str << std::endl;
         return {};
@@ -49,25 +46,52 @@ bk_mgmt::find_processes(const std::vector<std::string> &match_these_substrings)
 
     if (res.stdout_str.empty())
     {
-        DEBUG_LOG("No processes found for: ",
+        DEBUG_LOG("No ps output for: ",
                   bk_util::serialize_vector(match_these_substrings));
         return {};
     }
 
-    DEBUG_LOG("Process search output: ", res.stdout_str);
-
     // Split into lines
-    auto vectorized_command_output =
-        bk_util::split_command_streams_by_lines(res).first;
+    auto all_lines = bk_util::split_command_streams_by_lines(res).first;
 
-    // Apply filtering again for safety
-    auto beesd_processes_lines =
-        bk_util::find_lines_matching_substring_in_vector(vectorized_command_output,
-                                                         match_these_substrings);
-
-    for (const auto &beesd_proc_line : beesd_processes_lines)
+    // Filter lines manually to ensure ALL substrings match
+    std::vector<std::string> matching_lines;
+    for (const auto &line : all_lines)
     {
-        auto tokens = bk_util::tokenize(beesd_proc_line);
+        // Skip grep and ps aux itself
+        if (line.find("grep") != std::string::npos || 
+            line.find("ps aux") != std::string::npos) {
+            continue;
+        }
+
+        // Skip defunct processes
+        if (line.find("defunct") != std::string::npos) {
+            continue;
+        }
+
+        // Check if ALL substrings are present in this line
+        bool all_match = true;
+        for (const auto &needle : match_these_substrings)
+        {
+            if (line.find(needle) == std::string::npos) {
+                all_match = false;
+                break;
+            }
+        }
+
+        if (all_match) {
+            matching_lines.push_back(line);
+        }
+    }
+
+    DEBUG_LOG("Process search for [", 
+              bk_util::serialize_vector(match_these_substrings),
+              "] found ", matching_lines.size(), " matches");
+
+    // Extract PIDs from matching lines
+    for (const auto &line : matching_lines)
+    {
+        auto tokens = bk_util::tokenize(line);
         if (tokens.size() > 1)
         {
             try
@@ -81,6 +105,8 @@ bk_mgmt::find_processes(const std::vector<std::string> &match_these_substrings)
         }
     }
 
+    DEBUG_LOG("Extracted PIDs: ", bk_util::serialize_vector(matching_processes));
+
     return matching_processes;
 }
 
@@ -88,13 +114,11 @@ bk_mgmt::find_processes(const std::vector<std::string> &match_these_substrings)
  * @brief Find the PID of the bees daemon or its worker process for a given UUID.
  *
  * This function searches for the process corresponding to the given UUID.
- * Depending on the `find_worker_pid` flag, it can either return:
- *   - the main beesd daemon PID (`find_worker_pid == false`)
- *   - the child worker bees process PID (`find_worker_pid == true`)
+ * The search is now more precise to avoid matching wrong processes.
  *
- * @param uuid The UUID associated with the beesd process.
+ * @param mountpoint_or_uuid The UUID or mountpoint to search for.
  * @param find_worker_pid If true, search for the child worker bees process; otherwise, search for the main beesd daemon.
- * @return The PID of the matching process, or 0 if not found.
+ * @return The PIDs of all matching processes (should be 0 or 1 normally).
  */
 std::vector<pid_t>
 bk_mgmt::find_beesd_processes(const std::string &mountpoint_or_uuid, bool find_worker_pid)
@@ -105,11 +129,55 @@ bk_mgmt::find_beesd_processes(const std::string &mountpoint_or_uuid, bool find_w
         if (mount_paths.empty())
             return {};
 
+        // Search for: "bees" process operating on this specific mountpoint
+        // This will match lines like: "/usr/bin/bees /mnt/myfs"
         return find_processes({"bees", mount_paths[0]});
     }
     else
     {
-        return find_processes({"beesd", mountpoint_or_uuid});
+        // Search for: "beesd" process with this EXACT uuid as argument
+        // This is more specific: we want "beesd <uuid>" not just any line containing uuid
+        
+        // Get all beesd processes first
+        auto all_beesd = find_processes({"beesd"});
+        
+        // Now filter to find only those with our UUID as an argument
+        std::vector<pid_t> matching_pids;
+        
+        for (pid_t pid : all_beesd) {
+            // Read the command line for this PID
+            std::string cmdline_path = "/proc/" + std::to_string(pid) + "/cmdline";
+            std::ifstream cmdline_file(cmdline_path);
+            if (!cmdline_file) continue;
+            
+            std::string cmdline;
+            std::getline(cmdline_file, cmdline);
+            
+            // cmdline has null separators, replace with spaces
+            std::replace(cmdline.begin(), cmdline.end(), '\0', ' ');
+            
+            // Now check if this specific UUID appears as a separate argument
+            // We want "beesd <uuid>" not just uuid appearing anywhere
+            auto tokens = bk_util::tokenize(cmdline);
+            
+            // Look for our UUID in the tokens (case-insensitive)
+            bool found = false;
+            for (const auto &token : tokens) {
+                if (bk_util::compare_strings_case_insensitive(token, mountpoint_or_uuid)) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (found) {
+                matching_pids.push_back(pid);
+            }
+        }
+        
+        DEBUG_LOG("find_beesd_processes for UUID [", mountpoint_or_uuid, 
+                  "] found PIDs: ", bk_util::serialize_vector(matching_pids));
+        
+        return matching_pids;
     }
 }
 

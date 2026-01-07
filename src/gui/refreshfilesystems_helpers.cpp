@@ -8,6 +8,7 @@
 #include <QMap>
 #include <QStringList>
 #include <QTableWidgetItem>
+#include <qtablewidget.h>
 
 namespace fs = std::filesystem;
 
@@ -194,6 +195,15 @@ qint64 read_starting_free_space(const QString &uuid)
     } catch (...) {
         return 0;
     }
+}
+
+QString
+fetch_user_role(
+    const QModelIndex &idx, int column
+)
+{
+    QModelIndex col_idx = idx.sibling(idx.row(), column);
+    return col_idx.data(Qt::UserRole).toString();
 }
 
 } // namespace refresh_fs_helpers

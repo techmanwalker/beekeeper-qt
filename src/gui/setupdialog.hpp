@@ -14,7 +14,9 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
+#include <QMainWindow>
 #include <QStringList>
+#include <qtablewidget.h>
 
 class QLineEdit;
 class QPushButton;
@@ -26,6 +28,8 @@ public:
     // uuids: list of selected filesystem UUIDs (may be empty)
     explicit SetupDialog(const QStringList &uuids, QWidget *parent = nullptr);
     ~SetupDialog() override = default;
+
+    QStringList filter_unconfigured_uuids (const QModelIndexList &selected);
 
 private slots:
     // Override accept() so we run the setup operations before closing the dialog.

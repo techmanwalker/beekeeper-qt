@@ -14,8 +14,8 @@ namespace fs = std::filesystem;
 
 // Command handler implementations
 int
-beekeeper::cli::handle_start(const std::map<std::string, std::string>& options, 
-                 const std::vector<std::string>& subjects)
+beekeeper::cli::handle_start(const std::map<std::string, std::string> &options, 
+                 const std::vector<std::string> &subjects)
 {
     bool enable_logging = options.find("enable-logging") != options.end();
     
@@ -35,8 +35,8 @@ beekeeper::cli::handle_start(const std::map<std::string, std::string>& options,
 }
 
 int
-beekeeper::cli::handle_stop(const std::map<std::string, std::string>& options, 
-                const std::vector<std::string>& subjects)
+beekeeper::cli::handle_stop(const std::map<std::string, std::string> &options, 
+                const std::vector<std::string> &subjects)
 {
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesstop(uuid)) {
@@ -50,8 +50,8 @@ beekeeper::cli::handle_stop(const std::map<std::string, std::string>& options,
 }
 
 int
-beekeeper::cli::handle_restart(const std::map<std::string, std::string>& options, 
-                   const std::vector<std::string>& subjects)
+beekeeper::cli::handle_restart(const std::map<std::string, std::string> &options, 
+                   const std::vector<std::string> &subjects)
 {
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesrestart(uuid)) {
@@ -65,8 +65,8 @@ beekeeper::cli::handle_restart(const std::map<std::string, std::string>& options
 }
 
 int
-beekeeper::cli::handle_status(const std::map<std::string, std::string>& options, 
-                  const std::vector<std::string>& subjects)
+beekeeper::cli::handle_status(const std::map<std::string, std::string> &options, 
+                  const std::vector<std::string> &subjects)
 {
     for (const auto& uuid : subjects) {
         std::cout << "Status for " << uuid << ": " << bk_mgmt::beesstatus(uuid) << std::endl;
@@ -75,16 +75,16 @@ beekeeper::cli::handle_status(const std::map<std::string, std::string>& options,
 }
 
 int
-beekeeper::cli::handle_log(const std::map<std::string, std::string>& options, 
-               const std::vector<std::string>& subjects)
+beekeeper::cli::handle_log(const std::map<std::string, std::string> &options, 
+               const std::vector<std::string> &subjects)
 {
     bk_mgmt::beeslog(subjects[0]);
     return 0;
 }
 
 int
-beekeeper::cli::handle_clean(const std::map<std::string, std::string>& options, 
-                 const std::vector<std::string>& subjects)
+beekeeper::cli::handle_clean(const std::map<std::string, std::string> &options, 
+                 const std::vector<std::string> &subjects)
 {
     bk_mgmt::beescleanlogfiles(subjects[0]);
     std::cout << "Cleaned PID file for " << subjects[0] << std::endl;
@@ -92,16 +92,16 @@ beekeeper::cli::handle_clean(const std::map<std::string, std::string>& options,
 }
 
 int
-beekeeper::cli::handle_help(const std::map<std::string, std::string>& options, 
-                const std::vector<std::string>& subjects)
+beekeeper::cli::handle_help(const std::map<std::string, std::string> &options, 
+                const std::vector<std::string> &subjects)
 {
     // Help is handled by the parser
     return 0;
 }
 
 int
-beekeeper::cli::handle_setup(const std::map<std::string, std::string>& options, 
-                             const std::vector<std::string>& subjects) 
+beekeeper::cli::handle_setup(const std::map<std::string, std::string> &options, 
+                             const std::vector<std::string> &subjects) 
 {
     bool json_mode = options.count("json") > 0;
 
@@ -165,8 +165,8 @@ beekeeper::cli::handle_setup(const std::map<std::string, std::string>& options,
 }
 
 int
-beekeeper::cli::handle_locate(const std::map<std::string, std::string>& options,
-                              const std::vector<std::string>& subjects)
+beekeeper::cli::handle_locate(const std::map<std::string, std::string> &options,
+                              const std::vector<std::string> &subjects)
 {
     bool json_output = options.find("json") != options.end();
 
@@ -218,10 +218,10 @@ beekeeper::cli::handle_locate(const std::map<std::string, std::string>& options,
 }
 
 int
-beekeeper::cli::handle_list(const std::map<std::string, std::string>& options,
-                            const std::vector<std::string>& subjects)
+beekeeper::cli::handle_list(const std::map<std::string, std::string> &options,
+                            const std::vector<std::string> &subjects)
 {
-    auto filesystems = bk_mgmt::btrfsls();
+    fs_map filesystems = bk_mgmt::btrfsls();
 
     bool want_json = (options.find("json") != options.end());
 
@@ -230,26 +230,30 @@ beekeeper::cli::handle_list(const std::map<std::string, std::string>& options,
         std::ostringstream out;
         out << '[';
 
-        for (size_t i = 0; i < filesystems.size(); ++i) {
-            const auto &fs = filesystems[i];
+        bool is_first = true;
+        for (const auto &[uuid, info] : filesystems) {
+            if (!is_first) {
+                out << ",";
+            }
 
-            std::string uuid    = (fs.find("uuid")    != fs.end()) ? fs.at("uuid")    : "";
-            std::string label   = (fs.find("label")   != fs.end()) ? fs.at("label")   : "";
-            std::string status  = (fs.find("status")  != fs.end()) ? fs.at("status")  : "";
-            std::string devname = (fs.find("devname") != fs.end()) ? fs.at("devname") : "";
+            is_first = false;
 
-            // Provide config path (always included in JSON)
-            std::string config_path = bk_mgmt::btrfstat(uuid);
+            std::string label   = info.label;
+            std::string status  = info.status;
+            std::string devname = info.devname;
+            std::string config_path = info.config;
+            bool compressing = info.compressing;
+            bool autostart = info.autostart;
 
             out << '{';
             out << "\"uuid\":\""    << bk_util::json_escape(uuid)    << "\",";
             out << "\"label\":\""   << bk_util::json_escape(label)   << "\",";
             out << "\"status\":\""  << bk_util::json_escape(status)  << "\",";
             out << "\"devname\":\"" << bk_util::json_escape(devname) << "\",";
-            out << "\"config\":\""  << bk_util::json_escape(config_path) << "\"";
+            out << "\"config\":\""  << bk_util::json_escape(config_path) << "\",";
+            out << "\"compressing\":" << bk_util::json_escape(compressing ? "true" : "false") << ",";
+            out << "\"autostart\":" << bk_util::json_escape(autostart ? "true" : "false") << "";
             out << '}';
-
-            if (i + 1 < filesystems.size()) out << ',';
         }
 
         out << ']';
@@ -267,12 +271,13 @@ beekeeper::cli::handle_list(const std::map<std::string, std::string>& options,
 
     // Precompute all status strings
     std::vector<std::string> status_lines;
-    size_t max_status_len = 6; // "STATUS" header length
+    size_t status_width = 7; // "STATUS" header length
 
-    for (const auto &fs : filesystems) {
-        std::string status = (fs.find("status") != fs.end()) ? fs.at("status") : "unknown";
-        status_lines.push_back(status);
-        max_status_len = std::max(max_status_len, status.length());
+    for (const auto &[uuid, info] : filesystems) {
+        std::string status = (info.status.empty() ? "unknown" : info.status);
+        size_t status_length = status.length();
+        status_lines.push_back(std::move(status));
+        status_width = std::max(status_width, status_length);
     }
 
     // Column constraints
@@ -287,34 +292,33 @@ beekeeper::cli::handle_list(const std::map<std::string, std::string>& options,
     size_t uuid_width  = MIN_UUID_LEN;
     size_t label_width = MIN_LABEL_LEN;
 
-    for (const auto &fs : filesystems) {
-        uuid_width  = std::max(uuid_width,  fs.at("uuid").length());
-        label_width = std::max(label_width, fs.at("label").length());
+    for (const auto &[uuid, info] : filesystems) {
+        uuid_width  = std::max(uuid_width,  uuid.length());
+        label_width = std::max(label_width, info.label.length());
     }
 
     // Apply constraints
     uuid_width  = std::min(std::max(uuid_width,  MIN_UUID_LEN),  MAX_UUID_LEN);
     label_width = std::min(std::max(label_width, MIN_LABEL_LEN), MAX_LABEL_LEN);
-    max_status_len = std::min(std::max(max_status_len, MIN_STATUS_LEN), MAX_STATUS_LEN);
+    status_width = std::min(std::max(status_width, MIN_STATUS_LEN), MAX_STATUS_LEN);
 
     // Table header
     std::cout << std::left
               << std::setw(uuid_width)  << "UUID"   << " "
               << std::setw(label_width) << "LABEL"  << " "
-              << std::setw(max_status_len) << "STATUS"
+              << std::setw(status_width) << "STATUS"
               << "\n";
 
     // Separator line
     std::cout << std::string(uuid_width, '-')  << " "
               << std::string(label_width, '-') << " "
-              << std::string(max_status_len, '-') << "\n";
+              << std::string(status_width, '-') << "\n";
 
     // Print rows
-    for (size_t i = 0; i < filesystems.size(); i++) {
-        const auto& fs = filesystems[i];
-        std::string uuid   = fs.at("uuid");
-        std::string label  = fs.at("label");
-        std::string status = status_lines[i];
+    for (const auto &[src_uuid, info] : filesystems) {
+        std::string uuid = src_uuid; // mutable copy
+        std::string label  = info.label;
+        std::string status = info.status;
 
         if (uuid.length() > uuid_width) {
             uuid = uuid.substr(0, uuid_width - 3) + "...";
@@ -328,22 +332,23 @@ beekeeper::cli::handle_list(const std::map<std::string, std::string>& options,
             label += std::string(label_width - label.length(), ' ');
         }
 
-        if (status.length() > max_status_len) {
-            status = status.substr(0, max_status_len - 3) + "...";
+        if (status.length() > status_width) {
+            status = status.substr(0, status_width - 3) + "...";
         }
+
+        std::cout << "\n";
 
         std::cout << uuid << " "
                   << label << " "
-                  << status
-                  << "\n";
+                  << status;
     }
 
     return 0;
 }
 
 int
-beekeeper::cli::handle_stat(const std::map<std::string, std::string>& options,
-                            const std::vector<std::string>& subjects)
+beekeeper::cli::handle_stat(const std::map<std::string, std::string> &options,
+                            const std::vector<std::string> &subjects)
 {
     if (subjects.empty()) {
         std::cerr << "Error: UUID not specified" << std::endl;

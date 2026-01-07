@@ -34,6 +34,11 @@ selected_rows_count(QTableWidget *table);
 qint64
 parse_free_bytes_from_btrfstat(const std::string &s);
 
+QString
+fetch_user_role(
+    const QModelIndex &idx, int column
+);
+
 class status_text_mapper : public QObject
 {
     Q_OBJECT

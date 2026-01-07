@@ -1,261 +1,252 @@
+#include "beekeeper/debug.hpp"
+#include "beekeeper/internalaliases.hpp"
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
-#include "../polkit/multicommander.hpp"
-#include "beekeeper/debug.hpp"
-#include "beekeeper/util.hpp"
 #include "refreshfilesystems_helpers.hpp"
-
-#include <unordered_set>
-#include <unordered_map>
-
+#include <qabstractitemmodel.h>
 
 // ----- Filesystem table builders -----
 
-
-void MainWindow::refresh_filesystems()
+void
+MainWindow::refresh_table(const bool fetch_data_from_daemon)
 {
-    update_button_states();
-    auto future_fs = komander->async->btrfsls();
-    build_filesystem_table(future_fs);
-}
-
-void MainWindow::build_filesystem_table(QFuture<fs_vec> filesystem_list_future)
-{
-    // Avoid simultaneous refreshes
-    bool expected = false;
-    if (!is_being_refreshed.compare_exchange_strong(expected, true)) {
-        DEBUG_LOG("[refresh] already running - skipping new refresh");
+    // ------------------------------------------------------------------
+    // Guard against multiple concurrent refreshes
+    // ------------------------------------------------------------------
+    if (is_being_refreshed.exchange(true))
         return;
+
+    // Immediate UI feedback
+    update_button_states();
+
+    // ------------------------------------------------------------------
+    // Record what the table is currently rendering
+    // This is our "what the user is seeing right now" baseline
+    // ------------------------------------------------------------------
+    std::unordered_map<std::string, std::string> the_status_table_is_showing_for_uuid;
+
+    if (fs_table) {
+        const int row_count = fs_table->rowCount();
+        the_status_table_is_showing_for_uuid.reserve(row_count);
+
+        for (int row = 0; row < row_count; ++row) {
+            QModelIndex uuid_idx   = fs_table->model()->index(row, 0);
+            QModelIndex status_idx = fs_table->model()->index(row, 2);
+
+            QString uuid_qstr   = refresh_fs_helpers::fetch_user_role(uuid_idx, 0);
+            QString status_qstr = refresh_fs_helpers::fetch_user_role(status_idx, 2);
+
+            if (!uuid_qstr.isEmpty()) {
+                the_status_table_is_showing_for_uuid.emplace(
+                    uuid_qstr.toStdString(),
+                    status_qstr.toStdString()
+                );
+            }
+        }
     }
 
-    last_build_future = QtConcurrent::run([this, filesystem_list_future]() mutable {
-        // Temporarily disable sorting
-        bool hadSorting = fs_table->isSortingEnabled();
-        fs_table->setSortingEnabled(false);
+    // ------------------------------------------------------------------
+    // Heavy work outside the GUI thread
+    // ------------------------------------------------------------------
+    (void) QtConcurrent::run(
+        [this, fetch_data_from_daemon, the_status_table_is_showing_for_uuid]() mutable {
+
+        fs_map fresh_data;
+
+        // ------------------------------------------------------------------
+        // Decide where "fresh_data" comes from
+        // ------------------------------------------------------------------
+        if (fetch_data_from_daemon) {
+            // Full refresh: ask the daemon
+            fresh_data = komander->btrfsls();
+
+            // Now the GUI's optimistic state is reset to reality
+            fs_view_state = fresh_data;
+        } else {
+            // Soft refresh: trust what the GUI already believes
+            fresh_data = fs_view_state;
+        }
+
+        // ------------------------------------------------------------------
+        // Compute what changed, using what the table was showing as baseline
+        // ------------------------------------------------------------------
+        fs_diff changes;
+
+        // 1) Changed or removed entries
+        for (const auto &[uuid, rendered_status] : the_status_table_is_showing_for_uuid) {
+
+            auto it = fresh_data.find(uuid);
+
+            if (it != fresh_data.end()) {
+                // Still exists → check if status changed
+                if (rendered_status != it->second.status) {
+                    changes.just_changed.emplace(uuid, it->second);
+                }
+            } else {
+                // Not present anymore → only allowed on full refresh
+                if (fetch_data_from_daemon) {
+                    changes.just_removed.emplace_back(uuid);
+                }
+            }
+        }
+
+        // 2) Newly added entries (only on full refresh)
+        if (fetch_data_from_daemon) {
+            for (const auto &[uuid, info] : fresh_data) {
+                if (the_status_table_is_showing_for_uuid.find(uuid)
+                    == the_status_table_is_showing_for_uuid.end()) {
+                    changes.newly_added.emplace(uuid, info);
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Now go back to the GUI thread and apply the dumb renders
+        // ------------------------------------------------------------------
+        QMetaObject::invokeMethod(
+            this,
+            [this, changes]() mutable {
+
+                refresh_fs_helpers::status_text_mapper mapper;
+
+                if (fs_table && fs_table->selectionModel()) {
+                    fs_table->selectionModel()->blockSignals(true);
+                }
+
+                apply_removed(changes.just_removed);
+                apply_added(changes.newly_added, mapper);
+                apply_changed(changes.just_changed, mapper);
+
+                if (fs_table && fs_table->selectionModel()) {
+                    fs_table->selectionModel()->blockSignals(false);
+                }
+
+                is_being_refreshed.store(false);
+
+                update_button_states();
+            },
+            Qt::QueuedConnection
+        );
+    });
+}
+
+/**
+* @brief Return the uuids of all the filesystems the table is showing..
+* @note This is just an indicator of what the user is SEEING
+* right now. This is just meant to control what the table
+* is rendering and optimize the refresh.
+*/
+std::vector<std::string>
+MainWindow::list_currently_displayed_filesystems()
+{
+    std::vector<std::string> displayed_filesystems;
+    displayed_filesystems.reserve(fs_table->rowCount());
+    
+    for (int r = 0; r < fs_table->rowCount(); ++r) {
+        auto *uuid_item = fs_table->item(r, 0);
         
-        // 1) Wait for the filesystem list
-        filesystem_list_future.waitForFinished();
-        fs_vec filesystem_list = filesystem_list_future.result();
-
-        // 2) Convert filesystem_list to an UUID-indexed map
-        //    This is our ONLY SOURCE OF TRUTH for our entire pipeline
-        std::unordered_map<std::string, fs_map> fs_data_by_uuid;
-        for (const auto &fs : filesystem_list) {
-            auto it = fs.find("uuid");
-            if (it != fs.end() && !it->second.empty()) {
-                fs_data_by_uuid[it->second] = fs;
-            }
+        std::string uuid = uuid_item ? uuid_item->data(Qt::UserRole).toString().toStdString() : "";
+        
+        // Only add if we have a UUID
+        if (!uuid.empty()) {
+            displayed_filesystems.emplace_back(uuid);
         }
-
-        // 3) Read current table snapshot (only UUIDs)
-        std::unordered_set<std::string> current_uuids;
-        QMetaObject::invokeMethod(this, [this, &current_uuids]() {
-            for (int r = 0; r < fs_table->rowCount(); ++r) {
-                auto *uuid_item = fs_table->item(r, 0);
-                if (uuid_item) {
-                    std::string uuid = uuid_item->data(Qt::UserRole).toString().toStdString();
-                    if (!uuid.empty()) {
-                        current_uuids.insert(uuid);
-                    }
-                }
-            }
-        }, Qt::BlockingQueuedConnection);
-
-        // 4) Determine what to add and remove based on fs_data_by_uuid
-        std::vector<std::string> to_add;
-        for (const auto &pair : fs_data_by_uuid) {
-            const std::string &uuid = pair.first;
-            if (current_uuids.find(uuid) == current_uuids.end()) {
-                to_add.push_back(uuid);
-            }
-        }
-
-        std::vector<std::string> to_remove;
-        for (const auto &uuid : current_uuids) {
-            if (fs_data_by_uuid.find(uuid) == fs_data_by_uuid.end()) {
-                to_remove.push_back(uuid);
-            }
-        }
-
-        // ========== CYCLE 1: ADD AND REMOVE ==========
-        QFuture<void> f_add = add_new_rows_task(to_add);
-        QFuture<void> f_remove = remove_old_rows_task(to_remove);
-
-        // Wait for both operations to finish
-        f_add.waitForFinished();
-        f_remove.waitForFinished();
-
-        // ========== CYCLE 2: UPDATE EVERYTHING ==========
-        // Now that the indices are stable, we'll update the entire table
-        // using ONLY the data from fs_data_by_uuid
-        update_all_rows_task(fs_data_by_uuid);
-
-        // 5) Update buttons and status_manager
-        QMetaObject::invokeMethod(this, [this]() {
-            update_button_states();
-            refresh_fs_helpers::update_status_manager(fs_table, statusManager);
-        }, Qt::QueuedConnection);
-
-        // 6) Release guard and restore sorting
-        is_being_refreshed.store(false);
-        fs_table->setSortingEnabled(hadSorting);
-    });
+    }
+    
+    return displayed_filesystems;
 }
 
-QFuture<void>
-MainWindow::add_new_rows_task(const std::vector<std::string> &uuids_to_add)
+// ----- REAL DUMB RENDER WORKERS -----
+
+// Add whatever rows "added" tells it to do
+void
+MainWindow::apply_added(const fs_map &added, refresh_fs_helpers::status_text_mapper &mapper)
 {
-    return QtConcurrent::run([this, uuids_to_add]() {
-        if (uuids_to_add.empty()) {
-            return;
-        }
+    for (const auto &[uuid, info] : added) {
+        int row = fs_table->rowCount();
+        fs_table->insertRow(row);
 
-        // Añadir filas en la GUI (solo estructura básica, sin datos)
-        QMetaObject::invokeMethod(this, [this, uuids_to_add]() {
-            fs_table->setUpdatesEnabled(false);
-            bool hadSorting = fs_table->isSortingEnabled();
-            fs_table->setSortingEnabled(false);
+        auto *uuid_item = new QTableWidgetItem;
+        uuid_item->setData(Qt::UserRole, QString::fromStdString(uuid));
+        uuid_item->setText(uuid_item->data(Qt::UserRole).toString());
 
-            for (const auto &uuid : uuids_to_add) {
-                // Verificar por si acaso que no exista ya
-                bool exists = false;
-                for (int r = 0; r < fs_table->rowCount(); ++r) {
-                    auto *uuid_item = fs_table->item(r, 0);
-                    if (uuid_item && 
-                        uuid_item->data(Qt::UserRole).toString().toStdString() == uuid) {
-                        exists = true;
-                        break;
-                    }
-                }
+        auto *label_item = new QTableWidgetItem;
+        label_item->setData(
+            Qt::UserRole,
+            QString::fromStdString(info.label)
+        );
+        label_item->setText(label_item->data(Qt::UserRole).toString());
 
-                if (!exists) {
-                    int row = fs_table->rowCount();
-                    fs_table->insertRow(row);
-
-                    // UUID (solo el identificador, sin datos)
-                    auto *uuid_item = new QTableWidgetItem(QString::fromStdString(uuid));
-                    uuid_item->setData(Qt::UserRole, QString::fromStdString(uuid));
-                    uuid_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-                    fs_table->setItem(row, 0, uuid_item);
-
-                    // Label vacío (se actualizará después en update_all_rows_task)
-                    auto *label_item = new QTableWidgetItem("");
-                    label_item->setData(Qt::UserRole, "");
-                    label_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-                    fs_table->setItem(row, 1, label_item);
-
-                    // Status vacío (se actualizará después en update_all_rows_task)
-                    auto *status_item = new QTableWidgetItem("");
-                    status_item->setData(Qt::UserRole, "");
-                    status_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-                    fs_table->setItem(row, 2, status_item);
-                }
-            }
-
-            fs_table->setSortingEnabled(hadSorting);
-            fs_table->setUpdatesEnabled(true);
-        }, Qt::QueuedConnection);
-    });
-}
-
-QFuture<void>
-MainWindow::remove_old_rows_task(const std::vector<std::string> &uuids_to_remove)
-{
-    return QtConcurrent::run([this, uuids_to_remove]() {
-        if (uuids_to_remove.empty()) {
-            return;
-        }
-
-        // Convertir a set para búsqueda rápida
-        std::unordered_set<std::string> remove_set(
-            uuids_to_remove.begin(), 
-            uuids_to_remove.end()
+        auto *status_item = new QTableWidgetItem;
+        status_item->setData(
+            Qt::UserRole,
+            QString::fromStdString(info.status)
+        );
+        status_item->setText(
+            mapper.map_status_text(status_item->data(Qt::UserRole).toString())
         );
 
-        // Quitar filas de la GUI
-        QMetaObject::invokeMethod(this, [this, remove_set = std::move(remove_set)]() {
-            fs_table->setUpdatesEnabled(false);
-            bool hadSorting = fs_table->isSortingEnabled();
-            fs_table->setSortingEnabled(false);
-
-            // Iterar de atrás hacia adelante para evitar problemas con índices
-            for (int r = fs_table->rowCount() - 1; r >= 0; --r) {
-                auto *uuid_item = fs_table->item(r, 0);
-                if (uuid_item) {
-                    std::string uuid = uuid_item->data(Qt::UserRole).toString().toStdString();
-                    if (remove_set.find(uuid) != remove_set.end()) {
-                        fs_table->removeRow(r);
-                    }
-                }
-            }
-
-            fs_table->setSortingEnabled(hadSorting);
-            fs_table->setUpdatesEnabled(true);
-        }, Qt::QueuedConnection);
-    });
+        fs_table->setItem(row, 0, uuid_item);
+        fs_table->setItem(row, 1, label_item);
+        fs_table->setItem(row, 2, status_item);
+    }
 }
 
+// Remove whatever rows "removed" tells it to do
 void
-MainWindow::update_all_rows_task(
-    const std::unordered_map<std::string, fs_map> &fs_data_by_uuid
-)
+MainWindow::apply_removed(const std::vector<std::string> &removed)
 {
-    // Esta función se ejecuta en el mismo hilo background que build_filesystem_table
-    // NO hace consultas adicionales, SOLO usa fs_data_by_uuid como fuente de verdad
-    
-    // Actualizar la tabla con los datos de fs_data_by_uuid
-    QMetaObject::invokeMethod(this, [this, fs_data_by_uuid]() {
-        fs_table->setUpdatesEnabled(false);
-        bool hadSorting = fs_table->isSortingEnabled();
-        fs_table->setSortingEnabled(false);
-
+    for (const auto &uuid: removed) {
         for (int r = 0; r < fs_table->rowCount(); ++r) {
-            auto *uuid_item = fs_table->item(r, 0);
-            if (!uuid_item) continue;
+            auto *item = fs_table->item(r, 0);
+            if (!item)
+                continue;
 
-            std::string uuid = uuid_item->data(Qt::UserRole).toString().toStdString();
-            auto it = fs_data_by_uuid.find(uuid);
-            if (it == fs_data_by_uuid.end()) continue;
-
-            const fs_map &fs_data = it->second;
-
-            // REGLA 1: column 0 (UUID) ya está correcta desde add_new_rows_task
-            // Solo verificamos que Qt::UserRole esté bien (debería estarlo)
-            auto uuid_it = fs_data.find("uuid");
-            if (uuid_it != fs_data.end()) {
-                uuid_item->setData(Qt::UserRole, QString::fromStdString(uuid_it->second));
-                uuid_item->setText(QString::fromStdString(uuid_it->second));
-            }
-
-            // REGLA 2: column 1 (Label) = filesystem_list[uuid]["label"]
-            auto label_it = fs_data.find("label");
-            if (label_it != fs_data.end()) {
-                auto *label_item = fs_table->item(r, 1);
-                if (label_item) {
-                    QString label = QString::fromStdString(label_it->second);
-                    label_item->setData(Qt::UserRole, label);
-                    label_item->setText(label);
-                }
-            }
-
-            // REGLA 3: column 2 (Status) = filesystem_list[uuid]["status"]
-            auto status_it = fs_data.find("status");
-            if (status_it != fs_data.end()) {
-                auto *status_item = fs_table->item(r, 2);
-                if (status_item) {
-                    QString raw_status = QString::fromStdString(status_it->second);
-                    status_item->setData(Qt::UserRole, raw_status);
-                    
-                    // Mapear el status para display
-                    refresh_fs_helpers::status_text_mapper mapper;
-                    QString display_status = mapper.map_status_text(raw_status);
-                    status_item->setData(Qt::DisplayRole, display_status);
-                    status_item->setText(display_status);
-                }
+            if (item->data(Qt::UserRole).toString().toStdString() == uuid) {
+                fs_table->removeRow(r);
+                break;
             }
         }
+    }
+}
 
-        fs_table->setSortingEnabled(hadSorting);
-        fs_table->setUpdatesEnabled(true);
-    }, Qt::QueuedConnection);
+// Replace the data of whatever rows "changed" tells it to do
+void
+MainWindow::apply_changed(const fs_map &changed, refresh_fs_helpers::status_text_mapper &mapper)
+{
+    for (const auto &[uuid, info] : changed) {
+        for (int r = 0; r < fs_table->rowCount(); ++r) {
+            auto *uuid_item = fs_table->item(r, 0);
+            if (!uuid_item)
+                continue;
+
+            if (uuid_item->data(Qt::UserRole).toString().toStdString() == uuid) {
+
+                auto *label_item = fs_table->item(r, 1);
+                auto *status_item = fs_table->item(r, 2);
+
+                if (label_item) {
+                    label_item->setData(
+                        Qt::UserRole,
+                        QString::fromStdString(info.label)
+                    );
+                    label_item->setText(
+                        label_item->data(Qt::UserRole).toString()
+                    );
+                }
+
+                if (status_item) {
+                    status_item->setData(
+                        Qt::UserRole,
+                        QString::fromStdString(info.status)
+                    );
+                    status_item->setText(
+                        mapper.map_status_text(status_item->data(Qt::UserRole).toString())
+                    );
+                }
+
+                break;
+            }
+        }
+    }
 }

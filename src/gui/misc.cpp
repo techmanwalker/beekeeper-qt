@@ -15,6 +15,6 @@ MainWindow::set_root_thread(root_shell_thread *thread)
     connect(this->rootThread, &root_shell_thread::command_finished,
             this, [this](const QString &cmd, const QString &out){
                 DEBUG_LOG("[GUI] Command finished:", cmd.toStdString(), out.toStdString());
-                refresh_filesystems();
+                refresh_table(true);
             });
 }

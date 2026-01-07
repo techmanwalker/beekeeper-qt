@@ -1,8 +1,11 @@
 #include "dedupstatusmanager.hpp"
 #include "beekeeper/util.hpp"
 #include "mainwindow.hpp"
+#include "tablecheckers.hpp"
 #include <QString>
 #include <QTimer>
+
+using namespace tablecheckers;
 
 void
 DedupStatusManager::set_status(const QString &uuid, const QString &message)
@@ -53,7 +56,7 @@ MainWindow::set_temporal_status_message(const QString message, qint64 duration_i
 void
 MainWindow::handle_cpu_timer()
 {
-    if (!is_any_not(&MainWindow::running)) {
+    if (!is_any_not(running, fs_table, fs_view_state)) {
         cpu_label->setVisible(false); // hide if no beesd is running
         return;
     }

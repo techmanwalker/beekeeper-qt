@@ -1,14 +1,25 @@
 #include "multicommander.hpp"
+#include "beekeeper/debug.hpp"
 #include "globals.hpp"
 #include "beekeeper/supercommander.hpp"
 #include <cstddef>
 using namespace beekeeper::privileged; // simple qualifier as requested
 
-QFuture<std::vector<std::map<std::string,std::string>>>
+QFuture<fs_map>
 multicommander::btrfsls()
 {
-    return QtConcurrent::run([this]{
-        auto result = komander->btrfsls();
+    return QtConcurrent::run([this]() -> fs_map {
+        DEBUG_LOG("[multicommander::btrfsls] Starting btrfsls call...");
+        
+        fs_map result = komander->btrfsls();
+        
+        DEBUG_LOG("[multicommander::btrfsls] Received ", result.size(), " filesystems");
+        for (const auto &[uuid, info] : result) {
+            DEBUG_LOG("  - uuid: ", uuid,
+                     ", label: ", info.label,
+                     ", status: ", info.status);
+        }
+        
         emit command_finished("btrfsls", "success", "");
         return result;
     });
@@ -183,3 +194,118 @@ multicommander::pause_transparentcompression_for_uuid(const QString &uuid)
         return result;
     });
 }
+
+// Static versions, so they can be called as a predicate
+
+namespace beekeeper { namespace privileged { namespace _static {
+
+    QFuture<fs_map>
+    btrfsls()
+    {
+        return komander->async->btrfsls();
+    }
+
+    QFuture<std::string>
+    beesstatus(const QString &uuid)
+    {
+        return komander->async->beesstatus(uuid);
+    }
+
+    QFuture<bool>
+    beesstart(const QString &uuid, bool enable_logging)
+    {
+        return komander->async->beesstart(uuid, enable_logging);
+    }
+
+    QFuture<bool>
+    beesstop(const QString &uuid)
+    {
+        return komander->async->beesstop(uuid);
+    }
+
+    QFuture<bool>
+    beesrestart(const QString &uuid)
+    {
+        return komander->async->beesrestart(uuid);
+    }
+
+    QFuture<std::string>
+    beeslog(const QString &uuid)
+    {
+        return komander->async->beeslog(uuid);
+    }
+
+    QFuture<bool>
+    beesclean(const QString &uuid)
+    {
+        return komander->async->beesclean(uuid);
+    }
+
+    QFuture<bool>
+    beessetup(const QString &uuid, size_t db_size)
+    {
+        return komander->async->beessetup(uuid, db_size);
+    }
+
+    QFuture<std::string>
+    beeslocate(const QString &uuid)
+    {
+        return komander->async->beeslocate(uuid);
+    }
+
+    QFuture<bool>
+    beesremoveconfig(const QString &uuid)
+    {
+        return komander->async->beesremoveconfig(uuid);
+    }
+
+    QFuture<bool>
+    btrfstat(const QString &uuid, const QString &mode)
+    {
+        return komander->async->btrfstat(uuid, mode);
+    }
+
+    QFuture<bool>
+    add_uuid_to_transparentcompression(const QString &uuid,
+                                       const QString &compression_level)
+    {
+        return komander->async
+            ->add_uuid_to_transparentcompression(uuid, compression_level);
+    }
+
+    QFuture<bool>
+    remove_uuid_from_transparentcompression(const QString &uuid)
+    {
+        return komander->async
+            ->remove_uuid_from_transparentcompression(uuid);
+    }
+
+    QFuture<bool>
+    start_transparentcompression_for_uuid(const QString &uuid)
+    {
+        return komander->async
+            ->start_transparentcompression_for_uuid(uuid);
+    }
+
+    QFuture<bool>
+    pause_transparentcompression_for_uuid(const QString &uuid)
+    {
+        return komander->async
+            ->pause_transparentcompression_for_uuid(uuid);
+    }
+
+    // --- Autostart control ---
+
+    QFuture<bool>
+    add_uuid_to_autostart(const QString &uuid)
+    {
+        return komander->async->add_uuid_to_autostart(uuid);
+    }
+
+    QFuture<bool>
+    remove_uuid_from_autostart(const QString &uuid)
+    {
+        return komander->async->remove_uuid_from_autostart(uuid);
+    }
+
+}}}

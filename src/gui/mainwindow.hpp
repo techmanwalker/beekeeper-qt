@@ -1,7 +1,10 @@
 #pragma once
 
+#include "beekeeper/debug.hpp"
+#include "beekeeper/internalaliases.hpp"
 #include "dedupstatusmanager.hpp"
 #include "keyboardnav.hpp"
+#include "refreshfilesystems_helpers.hpp"
 #include "rootshellthread.hpp"
 #include "setupdialog.hpp"
 #include <QLabel>
@@ -13,15 +16,11 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QTimer>
 #include <QVBoxLayout>
-#include <vector>
+#include <string>
 
 // Forward declarations
 class StatusDotDelegate;
 class UUIDColumnDelegate;
-
-// Type aliases
-using fs_map = std::map<std::string, std::string>;
-using fs_vec = std::vector<fs_map>;
 
 class MainWindow : public QMainWindow
 {
@@ -61,7 +60,11 @@ private:
 
     void show_no_admin_rights_banner();
 
-    void refresh_filesystems();
+    void refresh_table(const bool fetch_data_from_daemon = false);
+
+
+
+
 
     // Button handlers - handles the toolbar buttons
 
@@ -81,7 +84,8 @@ private:
     void handle_remove_from_autostart();
 
     /** The star function - handles all the button handlers
-    * @brief Processes a batch of asynchronous filesystem commands.
+    * @brief Waits for a batch of asynchronous filesystem commands to finish
+    * and triggers a UI refresh afterwards.
     *
     * Each toolbar button (Start, Stop, etc.) prepares its own list of QFuture<bool> tasks corresponding
     * to the selected (or all) filesystems. These tasks represent operations that may take time, like
@@ -89,7 +93,7 @@ private:
     *
     * The purpose of this function is to **wait for all provided asynchronous tasks to complete** without
     * blocking the GUI thread. Once all tasks have finished, it performs the necessary updates:
-    *   - refresh_filesystems() indirectly via update_status_manager()
+    *   - refresh_table(true) indirectly via update_status_manager()
     *   - update_status_manager() to update the status manager UI
     *   - update_button_states() to reflect the new state of the filesystems
     *
@@ -101,77 +105,174 @@ private:
     * @param futures A list of QFuture<bool> tasks representing pending asynchronous operations.
     *                This list may be empty; in that case, the function returns immediately.
     */
-    template <typename T> void process_fs_async(QList<QFuture<T>> *futures);
+    template <typename T>
+    void
+    refresh_after_these_futures_finish(QList<QFuture<T>> *futures)
+    {
+        // wait until they finish, delete them and issue command_finished();
 
+        if (!futures || futures->isEmpty()) {
+            delete futures;
+            return;
+        }
 
-    // ----- Table checkers - per entire selection -----
+        auto remaining = new int(futures->size());
+        auto success_count = new int(0);
+
+        (void) QtConcurrent::run([this, futures, remaining, success_count]() {
+            const int timeout_ms = 30'000;       // 30 seconds per future
+            const int poll_interval_ms = 50;     // poll every 50 ms
+
+            for (auto &f : *futures) {
+                QElapsedTimer timer;
+                timer.start();
+
+                // Poll until finished or timeout
+                while (!f.isFinished() && timer.elapsed() < timeout_ms) {
+                    QThread::msleep(poll_interval_ms);
+                }
+
+                if (f.isFinished()) {
+                    if constexpr (std::is_same_v<T, bool>) {
+                        if (f.result()) {
+                            (*success_count)++;
+                        }
+                    } else {
+                        // For non-bool futures, just count successful completions
+                        (*success_count)++;
+                        // You could log/store f.result() here if you want the actual values
+                        // DEBUG_LOG("Future result: " + QString::fromStdString(f.result()));
+                    }
+                } else {
+                    DEBUG_LOG("Future timed out!");
+                }
+
+                (*remaining)--;
+                DEBUG_LOG(std::to_string(*remaining) + " futures remaining.");
+            }
+
+            // Post back to main thread safely
+            QMetaObject::invokeMethod(this, [this, remaining, success_count, futures]() {
+                emit command_finished();
+
+                delete remaining;
+                delete success_count;
+                delete futures;
+            }, Qt::QueuedConnection);
+        });
+    }
 
     /**
-    * Check if any filesystem is in a certain state.
+    * @brief Receive a list of QModelIndex, pass it to a predicate
+    * that returns a QFuture<T>, and let refresh_after_these_futures_finish
+    * handle the resulting QFutures list.
     *
-    * By default, these functions only check the status of selected rows.
-    * See in the block right below this one what the possible states are
-    * (spoiler: running, stopped, configured, being_compressed, etc.0)
-    * If `check_the_whole_table` is true, they will check the status of
-    * all rows in the table instead of just the selection.
+    * @param predicate Pass each indices_list item to this function.
     *
-    * @param check_the_whole_table If true, include all rows in the table; otherwise, only selected rows are checked.
-    * @return true if at least one filesystem matches the condition, false otherwise.
+    * @param discard_if_true Discard calls to the predicate if at least one
+    * of these predicates returns true.
+    *
+    * @param indices_list List of table rows to pass to the predicate if the
+    * above checks passed.
+    *
+    * @param pred_args Additional arguments to pass to the predicate, after
+    * the uuid.
     */
-    // Generic row-testing helpers (operate on selected rows by default,
-    // otherwise whole table if check_the_whole_table is true).
-    bool is_any(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
-    bool is_any_not(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
-    bool is_none(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
-    bool are_all(std::function<bool(const QModelIndex&)> func, bool check_the_whole_table = false) const;
+    template <
+        typename Predicate,
+        typename... predicate_args
+    >
+    void
+    futuristically_process_indices_with_predicate (
+        // Pass me each indices_list item
+        // Arguments type and length does not matter
+        Predicate predicate,
 
-    // Overloads that accept pointer-to-member (so you can call is_any(running))
-    bool is_any(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
-    bool is_any_not(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
-    bool is_none(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
-    bool are_all(bool (MainWindow::*mf)(const QModelIndex&) const, bool check_the_whole_table = false) const;
+        // ...or don't
+        std::vector<
+            std::function<
+                bool (const QModelIndex&)
+            >
+        > &discard_if_true,
 
-    // Gets the selected table items and gets all the table items if check_the_whole_table is true.
-    static QModelIndexList build_rows_to_check(const QTableWidget *fs_table, bool check_the_whole_table);
+        // Items to pass to predicate
+        const QModelIndexList &indices_list,
+
+        // Additional arguments to pass to the predicate, after the uuid
+        predicate_args... pred_args
+    ) {
+        DEBUG_LOG("Entered to futuristically_process_indices_with_predicate...");
+        using future_type =
+            decltype(predicate(
+                std::declval<const QString&>(),
+                std::declval<predicate_args>()...
+            ));
+
+        auto *futures = new QList<future_type>;
+
+        for (const auto &idx : indices_list) {
+            QString uuid = refresh_fs_helpers::fetch_user_role(idx, 0);
+            bool was_discarded = false;
+
+            for (size_t i = 0; i < discard_if_true.size(); i++) {
+                if (discard_if_true[i](idx)) {
+                    DEBUG_LOG(uuid.toStdString(), " was discarded by discard condition ", std::to_string(i), ".");
+                    was_discarded = true;
+                    break;
+                }
+            }
+
+            if (was_discarded)
+                continue; // no-op
+
+            // if not killed, continue
+
+            // Queue the async job
+            // First argument is always the uuid
+            DEBUG_LOG("Processing uuid ", uuid.toStdString(), " with some predicate in a future...");
+            futures->append(predicate(uuid, pred_args...));
+        }
+
+        // Hand over the queued futures for processing
+        refresh_after_these_futures_finish(futures);
+    }
 
 
 
-    // ----- Table-checkers - per row checks -----
-
-    // Returns true if the filesystem in this row is running
-    bool running(const QModelIndex &idx) const;
-
-    // Returns true if the filesystem in this row is running AND has logging enabled
-    bool running_with_logging(const QModelIndex &idx) const;
-
-    // Returns true if the filesystem in this row is stopped
-    bool stopped(const QModelIndex &idx) const;
-
-    // Returns true if the filesystem in this row is configured (not "unconfigured")
-    bool configured(const QModelIndex &idx) const;
-
-    // Returns true if the filesystem in this row has a compress= mount option
-    bool being_compressed(const QModelIndex &idx) const;
-
-    // Returns true if the filesystem is in the beekeeper autostart file
-    bool in_the_autostart_file(const QModelIndex &idx) const;
 
     // --- Refresh filesystem table ---
 
     std::atomic_bool is_being_refreshed{false}; // guard multiple refreshes
 
-    // Optionally store last build future so you can cancel/wait if desired
-    QFuture<void> last_build_future;
+    fs_map fs_snapshot;
+    /* so we don't rely on the table itself anymore as a source of truth
+    * if the gui goes funky, at least the backend won't
+    * fs_snapshot represents the last filesystem state confirmed by the daemon.
+    * It is not meant to be mutated by GUI actions and is only updated during
+    * refresh operations.
+    */
 
-    void build_filesystem_table(QFuture<fs_vec> filesystem_list_future); // fetch filesystem data with btrfsls()
-    QFuture<void> add_new_rows_task(const std::vector<std::string> &uuids_to_add); // If there are new btrfs filesystems available, add them to the table
-    QFuture<void> remove_old_rows_task(const std::vector<std::string> &uuids_to_remove); // Remove now-unavailable btrfs filesystems
-    void
-    update_all_rows_task(
-        const std::unordered_map<std::string, fs_map> &fs_data_by_uuid
-    );// Update the status data for all the filesystems right at the end of the refresh
+    fs_map fs_view_state;
+    /* To complement the snapshot, we'll make a mutable copy of it that
+    * is what's going to be rendered instead. This is so buttons like
+    * Start, Stop, Setup and Remove don't stay unresponsive after being
+    * clicked.
+    */
 
+
+    std::vector<std::string> list_currently_displayed_filesystems(); // in the fs_table, direct mirror from the gui
+
+
+    // real dumb render workers
+    void apply_added(const fs_map &added, refresh_fs_helpers::status_text_mapper &mapper);
+    void apply_removed(const std::vector<std::string> &removed);
+    void apply_changed(const fs_map &changed, refresh_fs_helpers::status_text_mapper &mapper);
     // ---
+
+
+
+
+
 
     // root operations
     root_shell_thread* rootThread = nullptr;
@@ -198,7 +299,8 @@ private:
     QPushButton *showlog_btn = nullptr; // exclusively for debugging purposes
     #endif
     QPushButton *remove_btn = nullptr;
-    QTimer *refresh_timer = nullptr;
+    QTimer *soft_refresh_timer = nullptr;
+    QTimer *full_refresh_timer = nullptr;
 
     QLabel* cpu_label = nullptr;
     QTimer* cpu_timer = nullptr;

@@ -46,7 +46,8 @@ MainWindow::MainWindow(QWidget* parent)
     showlog_btn = new QPushButton(QIcon::fromTheme("text-x-log"), "");
     #endif
     remove_btn = new QPushButton(QIcon::fromTheme("user-trash"), "");
-    refresh_timer = new QTimer(this);
+    soft_refresh_timer = new QTimer(this);
+    full_refresh_timer = new QTimer(this);
 
     refresh_btn->setToolTip(tr("Refresh"));
     start_btn->setToolTip(tr("Start"));
@@ -69,6 +70,8 @@ MainWindow::MainWindow(QWidget* parent)
     // initialize keyboard navigation (not a connect-style operation)
     keyboardNav = new KeyboardNav(this);
     keyboardNav->init();
+
+    set_temporal_status_message(tr("Loading list..."), 5000);
 
     // ----------------------------
     // Connect everything and start cycles at the very end
@@ -216,7 +219,14 @@ void MainWindow::setup_button_toolbar()
 void MainWindow::connect_button_toolbar_handlers()
 {
     // Timer connect (moved to start_fs_table_refresh_cycle normally, but keep UI button connects here)
-    connect(refresh_btn, &QPushButton::clicked, this, &MainWindow::refresh_filesystems);
+    connect(
+        refresh_btn,
+        &QPushButton::clicked,
+        this,
+        [this]() {
+            refresh_table(true);   // full refresh from daemon
+        }
+    );
     connect(start_btn,   &QPushButton::clicked, this, &MainWindow::handle_start);
     connect(stop_btn,    &QPushButton::clicked, this, &MainWindow::handle_stop);
     connect(setup_btn,   &QPushButton::clicked, this, &MainWindow::handle_setup);
@@ -346,6 +356,8 @@ void MainWindow::setup_fs_table()
 
     fs_table->setMouseTracking(true);  // allow hover events to reach the delegate
 
+    fs_table->setSortingEnabled(true); // allow sorting
+
     // --- IMPORTANT: add the table to the main_layout that was created in setup_button_toolbar()
     if (main_layout) {
         main_layout->addWidget(fs_table);
@@ -361,26 +373,74 @@ void MainWindow::setup_fs_table()
 // ---------------------------------------------------------------------
 // filesystem table connects
 // ---------------------------------------------------------------------
-void MainWindow::connect_fs_table_handlers()
+// ---------------------------------------------------------------------
+// filesystem table connects
+// ---------------------------------------------------------------------
+void
+MainWindow::connect_fs_table_handlers()
 {
-    // selection change updates
-    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &MainWindow::update_button_states);
+    auto *selection_model = fs_table->selectionModel();
 
-    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &MainWindow::update_status_bar);
+    connect(selection_model,
+            &QItemSelectionModel::selectionChanged,
+            this,
+            [this]() {
+                // Immediate visual feedback first
+                QMetaObject::invokeMethod(
+                    this,
+                    &MainWindow::update_button_states,
+                    Qt::QueuedConnection
+                );
+
+                // Heavier / derived state after event loop settles
+                QMetaObject::invokeMethod(
+                    this,
+                    &MainWindow::update_status_bar,
+                    Qt::QueuedConnection
+                );
+            });
 
     // other table-specific connects can go here
 }
 
+
 // ---------------------------------------------------------------------
-// Start the refresh cycle (connects timer & starts it)
+// Start the refresh cycle (connects timers & starts them)
 // ---------------------------------------------------------------------
-void MainWindow::start_fs_table_refresh_cycle()
+void
+MainWindow::start_fs_table_refresh_cycle()
 {
-    refresh_filesystems();
-    connect(refresh_timer, &QTimer::timeout, this, &MainWindow::refresh_filesystems);
-    refresh_timer->start(10000); // every 10s
+    // First one is a full refresh
+    refresh_table(true);
+
+    // -----------------------------------------------------------------
+    // Soft refresh timer (UI coherence, cheap, frequent)
+    // -----------------------------------------------------------------
+    connect(
+        soft_refresh_timer,
+        &QTimer::timeout,
+        this,
+        [this]() {
+            refresh_table(false);   // soft refresh
+        }
+    );
+
+    soft_refresh_timer->start(5000); // every 5s
+
+
+    // -----------------------------------------------------------------
+    // Full refresh timer (truth from daemon, slower)
+    // -----------------------------------------------------------------
+    connect(
+        full_refresh_timer,
+        &QTimer::timeout,
+        this,
+        [this]() {
+            refresh_table(true);    // full refresh from daemon
+        }
+    );
+
+    full_refresh_timer->start(30000); // every 30s
 }
 
 // ---------------------------------------------------------------------
@@ -390,6 +450,6 @@ void MainWindow::connect_command_finished_signal()
 {
     connect(this, &MainWindow::command_finished, this, [this]() {
         DEBUG_LOG("[MainWindow] Root shell ready signal received!");
-        refresh_filesystems();  // now safe to enable root-only controls
+        refresh_table(false); // first refresh the buttons before doing the full refresh
     });
 }

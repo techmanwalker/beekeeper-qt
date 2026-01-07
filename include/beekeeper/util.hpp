@@ -2,7 +2,6 @@
 #include "beekeeper/internalaliases.hpp"
 
 #include <cstddef>
-#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -15,10 +14,6 @@ struct command_streams
     std::string stdout_str;
     std::string stderr_str;
 };
-
-// Type aliases
-using fs_map = std::map<std::string, std::string>;
-using fs_vec = std::vector<fs_map>;
 
 namespace beekeeper {
     namespace __util__ {
@@ -209,10 +204,6 @@ namespace beekeeper {
         std::vector<std::string>
         tokenize(const std::string &line, char split_char = ' ');
 
-        fs_vec subtract_vectors_of_maps(const fs_vec &A,
-                                       const fs_vec &B,
-                                       const std::string &key);
-
         std::pair<std::vector<std::string>, std::vector<std::string>>
         split_command_streams_by_lines(const command_streams &cs);
 
@@ -220,5 +211,16 @@ namespace beekeeper {
         get_filesystem_label(const std::string &mountpoint_or_uuid);
 
         void add_usr_sbin_to_path();
+
+        // Filesystem vector operations
+        const fs_info *retrieve_filesystem_info_from_a_list(const fs_map &haystack, const std::string &needle);
+        fs_map list_of_newly_added_filesystems (const std::vector<std::string> &snapshot, const fs_map &new_list);
+        std::vector<std::string> list_of_just_removed_filesystems (const std::vector<std::string> &snapshot, const fs_map &new_list);
+        fs_map list_of_filesystems_that_still_exist_and_were_changed (const fs_map &snapshot, const fs_map &new_list);
+        fs_diff
+        difference_between_two_fs_maps (
+            const fs_map &snapshot,
+            const fs_map &fresh_list
+        );
     }
 }

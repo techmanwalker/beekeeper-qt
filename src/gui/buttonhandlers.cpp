@@ -1,14 +1,20 @@
-#include "beekeeper/beesdmgmt.hpp"
-#include "beekeeper/debug.hpp"
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
 #include "../polkit/multicommander.hpp"
 #include "refreshfilesystems_helpers.hpp"
+#include "tablecheckers.hpp"
+#include <QFuture>
 #include <QGraphicsColorizeEffect>
 #include <QMessageBox>
 #include <QPushButton>
-#include <string>
+#include <qabstractitemmodel.h>
+#include <unordered_map>
+
+// So we can use the asynchronic versions as predicates
+namespace neokomander = beekeeper::privileged::_static;
+
+using namespace tablecheckers;
 
 // -------------------------
 void
@@ -19,50 +25,32 @@ MainWindow::update_button_states()
     // Enable if any selected filesystem is stopped, or
     // if none is selected and at least one of the whole table is stopped
     start_btn->setEnabled(
-        is_any(&mw::stopped)
-            ||
-        (
-            refresh_fs_helpers::selected_rows_count(fs_table) == 0
-                &&
-            is_any(&mw::stopped, true)
-        )
+        is_any(stopped, fs_table, fs_view_state, true)
     );
 
     // Enable if any selected filesystem is running, or
     // if none is selected and at least one of the whole table is running
     stop_btn->setEnabled(
-        is_any(&mw::running)
-            ||
-        (
-            refresh_fs_helpers::selected_rows_count(fs_table) == 0
-                &&
-            is_any(&mw::running, true)
-        )
+        is_any(running, fs_table, fs_view_state, true)
     );
 
     // Enable if any selected filesystem is not configured, or
     // if none is selected and at least one of the whole table is not configured
     setup_btn->setEnabled(
-        is_any_not(&mw::configured)
-            ||
-        (
-            refresh_fs_helpers::selected_rows_count(fs_table) == 0
-                &&
-            is_any_not(&mw::configured, true)
-        )
+        is_any_not(configured, fs_table, fs_view_state, false)
     );
 
     // Enable if any of the selected fs is not in autostart
     add_autostart_btn->setEnabled(
-        is_any(&mw::configured)
+        is_any(configured, fs_table, fs_view_state, true)
             &&
-        is_any_not(&mw::in_the_autostart_file)
+        is_any_not(in_the_autostart_file, fs_table, fs_view_state)
     );
 
     remove_autostart_btn->setEnabled(
-        is_any(&mw::configured)
+        is_any(configured, fs_table, fs_view_state)
             &&
-        is_any(&mw::in_the_autostart_file)
+        is_any(in_the_autostart_file, fs_table, fs_view_state)
     );
 
     #ifdef BEEKEEPER_DEBUG_LOGGING
@@ -70,7 +58,7 @@ MainWindow::update_button_states()
     showlog_btn->setEnabled(
         refresh_fs_helpers::selected_rows_count(fs_table) == 1
             &&
-        is_any(&mw::running_with_logging)
+        is_any(running_with_logging, fs_table, fs_view_state)
     );
     #endif
 
@@ -79,9 +67,9 @@ MainWindow::update_button_states()
     remove_btn->setEnabled(
         refresh_fs_helpers::selected_rows_count(fs_table) == 1
             &&
-        is_any(&mw::configured)
+        is_any(configured, fs_table, fs_view_state)
             &&
-        is_any(&mw::stopped)
+        is_any(stopped, fs_table, fs_view_state)
     );
 
     // -------------------------
@@ -91,19 +79,18 @@ MainWindow::update_button_states()
         static QIcon base_icon = QIcon::fromTheme("package-x-generic");
         compression_switch_btn->setIcon(base_icon);
 
-        int sel_count = refresh_fs_helpers::selected_rows_count(fs_table);
-
-        // Determine scope: if nothing selected, consider whole table
-        bool check_whole_table = (sel_count == 0);
+        int sel_count = refresh_fs_helpers::selected_rows_count(fs_table);;
 
         using mw = MainWindow;
-        bool any_not_compressed = is_any_not(&mw::being_compressed, check_whole_table);
-        bool any_compressed     = is_any(&mw::being_compressed, check_whole_table);
+        bool any_not_compressed = is_any_not(being_compressed, fs_table, fs_view_state, true);
+        bool any_compressed     = is_any(being_compressed, fs_table, fs_view_state, true);
 
         // Decide visual state:
         // - If ANY filesystem in scope is NOT being compressed => we show the button PRESSED
         //   because user can click to *pause* (the button represents the "freeze/stop" action).
         // - Otherwise (all running) show UNPRESSED (normal color).
+
+        // In other words: always prefer to start the compression rather than stopping it
         bool should_be_checked = any_not_compressed;
 
         // Temporarily block signals so setChecked(...) does NOT trigger the handler.
@@ -123,37 +110,59 @@ MainWindow::update_button_states()
     }
 }
 
+
 void
-MainWindow::handle_start(bool enable_logging)
+MainWindow::handle_start (bool enable_logging)
 {
     if (!komander->do_i_have_root_permissions())
         return;
 
     set_temporal_status_message(tr("Starting") + "...", 3000);
 
-    auto *futures = new QList<QFuture<bool>>;
-
     // Decide which rows to process
-    QList<QModelIndex> rows_to_process = fs_table->selectionModel()->selectedRows();
-    if (rows_to_process.isEmpty()) {
-        // No selection → consider all rows
-        for (int r = 0; r < fs_table->rowCount(); ++r)
-            rows_to_process.append(fs_table->model()->index(r, 0));
+    // No selection → consider all rows
+    const QModelIndexList selected = list_of_selected_rows(fs_table, true);
+
+    // Discard if...
+    std::vector<std::function<bool(const QModelIndex &)>> discard_if = {
+        [this](const QModelIndex &idx) { return running(idx, fs_view_state); },
+
+        // or
+
+        // not_configured
+        [this](const QModelIndex &idx) { return !configured(idx, this->fs_view_state); }
+    };
+
+
+    futuristically_process_indices_with_predicate(
+        // what to do
+        neokomander::beesstart,
+
+        // discard_if
+        discard_if,
+
+        // for what
+        selected,
+
+        // and what else
+        enable_logging
+    );
+
+    // Update status in the GUI
+    /* Let's be optimistic, but first, let's be real: if something goes
+    * wrong here, the Status column on the GUI will catch it anyway and
+    * the refresh cycle will fix this with refreshing ice cold water like
+    * 5 seconds later.
+    * This holds true for all of the following functions.
+    */
+    for (const auto &idx : selected) {
+        fs_view_state[
+            // for this UUID...
+            refresh_fs_helpers::fetch_user_role(idx, 0).toStdString()
+
+            // change status of something to...
+        ].status = "running";
     }
-
-    for (auto idx : rows_to_process) {
-        QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-
-        // Discard running and unconfigured filesystems
-        if (running(idx) || !configured(idx))
-            continue;
-
-        // Queue the async start job
-        futures->append(komander->async->beesstart(uuid, enable_logging));
-    }
-
-    // Hand over the queued futures for processing
-    process_fs_async(futures);
 }
 
 void
@@ -164,34 +173,30 @@ MainWindow::handle_stop()
 
     set_temporal_status_message(tr("Stopping") + "...", 3000);
 
-    // Decide which rows to process
-    QList<QModelIndex> rows_to_process = fs_table->selectionModel()->selectedRows();
-    if (rows_to_process.isEmpty()) {
-        // No selection → consider all rows
-        for (int r = 0; r < fs_table->rowCount(); ++r)
-            rows_to_process.append(fs_table->model()->index(r, 0));
+    const QModelIndexList selected = list_of_selected_rows(fs_table, true);
+
+    std::vector<std::function<bool(const QModelIndex &)>> discard_if = {
+        // not running
+        [this](const QModelIndex &idx) { return !running(idx, fs_view_state); },
+
+        // or not configured
+        [this](const QModelIndex &idx) { return !configured(idx, fs_view_state); }
+    };
+
+    futuristically_process_indices_with_predicate(
+        neokomander::beesstop,
+        discard_if,
+        selected
+    );
+
+    for (const auto &idx : selected) {
+        fs_view_state[
+            // for this UUID...
+            refresh_fs_helpers::fetch_user_role(idx, 0).toStdString()
+
+            // change status of something to...
+        ].status = "stopped";
     }
-
-    // Use heap allocation so the futures survive after this function returns
-    auto *futures = new QList<QFuture<bool>>;
-
-    for (auto idx : rows_to_process) {
-        QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-
-        // Discard stopped filesystems
-        if (stopped(idx))
-            continue;
-
-        // Discard unconfigured filesystems
-        if (!configured(idx))
-            continue;
-
-        // Queue the async stop job
-        futures->append(komander->async->beesstop(uuid));
-    }
-
-    // Hand over the queued futures for processing
-    process_fs_async(futures);
 }
 
 void
@@ -199,27 +204,25 @@ MainWindow::handle_setup()
 {
     if (!komander->do_i_have_root_permissions()) return;
 
+    // No selection → consider all rows
+    const QModelIndexList selected = list_of_selected_rows(fs_table, true);
+
+    // this does not directly throw a neokomander predicate, just hands
+    // over to the setup dialog
+
     QStringList uuids_to_setup;
 
-    auto selected_rows = fs_table->selectionModel()->selectedRows();
-    if (selected_rows.isEmpty()) {
-        // No selection → consider all rows
-        for (int row = 0; row < fs_table->rowCount(); ++row)
-            uuids_to_setup.append(fs_table->item(row, 0)->data(Qt::UserRole).toString());
-    } else {
-        // Only selected rows
-        for (auto idx : selected_rows)
-            uuids_to_setup.append(fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString());
+    for (const auto &idx : selected) {
+        uuids_to_setup.push_back(refresh_fs_helpers::fetch_user_role(idx, 0));
     }
 
     if (!uuids_to_setup.isEmpty()) {
         // SetupDialog internally filters only unconfigured UUIDs
         SetupDialog dlg(uuids_to_setup, this);
         dlg.exec();
-        refresh_filesystems();
     }
 
-    update_button_states();
+    // will change the status in the Setup dialog instead
 }
 
 void
@@ -229,23 +232,7 @@ MainWindow::handle_showlog()
         return;
     }
 
-    if (refresh_fs_helpers::selected_rows_count(fs_table) != 1) {
-        QMessageBox::warning(this,
-                             tr("Show logs"),
-                             tr("Please select only one filesystem to show its deduplication logs."));
-        return;
-    }
-
-    auto idx = fs_table->selectionModel()->selectedRows().first();
-    QString uuid   = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-    QString name   = fs_table->item(idx.row(), 1)->data(Qt::UserRole).toString();
-    QString status = fs_table->item(idx.row(), 2)->data(Qt::UserRole).toString().toLower();
-
-    // Always attempt to show logs, regardless of status
-    QString logpath = QString::fromStdString(bk_mgmt::get_log_path(uuid.toStdString()));
-    showLog(logpath, tr("Filesystem logs for: ") + name);
-
-    update_button_states();
+    // no-op: logging through GUI doesn't exist anymore
 }
 
 void
@@ -254,76 +241,84 @@ MainWindow::handle_transparentcompression_switch(bool pause)
     using namespace beekeeper::privileged;
     namespace tc = bk_mgmt::transparentcompression;
 
-    if (!komander->do_i_have_root_permissions()) {
-        return; // No root → nothing to do
-    }
-
-    // Build the rows we want to consider (selection or whole table if empty)
-    QModelIndexList rows_to_process =
-        build_rows_to_check(fs_table,
-                            fs_table->selectionModel()->selectedRows().isEmpty());
-
-    if (rows_to_process.isEmpty()) {
-        return; // Nothing to do
-    }
-
-    // Create futures container on the heap so process_fs_async can own it
-    auto *futures = new QList<QFuture<bool>>();
-
-    for (const QModelIndex &idx : rows_to_process) {
-        QTableWidgetItem *uuid_item = fs_table->item(idx.row(), 0);
-        if (!uuid_item) continue;
-
-        QString uuid_q = uuid_item->data(Qt::UserRole).toString();
-        if (uuid_q.isEmpty()) continue;
-
-        std::string uuid_std = uuid_q.toStdString();
-
-        // Skip if compression not enabled for this uuid
-        if (!tc::is_enabled_for(uuid_std)) {
-            continue;
-        }
-
-        // Check actual compression state of this row
-        bool currently_compressed = being_compressed(idx);
-
-        if (pause) {
-            // Pause only if currently compressed
-            if (currently_compressed) {
-                futures->append(
-                    komander->async->pause_transparentcompression_for_uuid(uuid_q)
-                );
-            }
-        } else {
-            // Start only if not currently compressed
-            if (!currently_compressed) {
-                futures->append(
-                    komander->async->start_transparentcompression_for_uuid(uuid_q)
-                );
-            }
-        }
-    }
-
-    if (futures->isEmpty()) {
-        delete futures;
+    if (!komander->do_i_have_root_permissions())
         return;
+
+    const QModelIndexList selected =
+        list_of_selected_rows(fs_table, true);
+
+    // record uuids and what was their last compression status
+    std::unordered_map<std::string, bool> did_this_uuid_have_compression_running;
+    for (const auto &idx : selected) {
+        // what uuid?
+        std::string uuid = refresh_fs_helpers::fetch_user_role(idx, 0).toStdString();
+
+        did_this_uuid_have_compression_running.emplace(
+            // record such info for this uuid
+            uuid,
+
+            // actually know if it had it enabled
+            tc::is_running(uuid)
+        );
     }
 
-    // Fire and forget: process async futures
-    process_fs_async(futures);
+    std::vector<std::function<bool(const QModelIndex &)>> discard_if = {
+        // no discard rules
+    };
+
+    // toggle transparent compression
+    auto predicate =
+        [this, pause, did_this_uuid_have_compression_running](const QString &uuid) -> QFuture<bool>
+        {
+            return QtConcurrent::run([this, uuid, pause, did_this_uuid_have_compression_running]() -> bool {
+                if (!did_this_uuid_have_compression_running.at(uuid.toStdString()) && !pause) {
+                    // wants to start
+                    return komander
+                        ->start_transparentcompression_for_uuid(uuid.toStdString());
+                }
+
+                if (did_this_uuid_have_compression_running.at(uuid.toStdString()) && pause) {
+                    // wants to stop
+                    return komander
+                        ->pause_transparentcompression_for_uuid(uuid.toStdString());
+                }
+
+                // no-op
+                return false;
+            });
+        };
+
+    futuristically_process_indices_with_predicate(
+        predicate,
+        discard_if,
+        selected
+    );
+
+    // change visible status on table
+    for (const auto &idx : selected) {
+        // what uuid?
+        std::string uuid = refresh_fs_helpers::fetch_user_role(idx, 0).toStdString();
+
+        fs_view_state[
+            // for this UUID...
+            uuid
+
+            // change status of something to...
+        ].compressing = !did_this_uuid_have_compression_running.at(uuid);
+    }
 }
 
 
 void
 MainWindow::handle_remove_button()
 {
-    if (!komander->do_i_have_root_permissions()) {
+    if (!komander->do_i_have_root_permissions())
         return;
-    }
 
-    // Gather selected rows; only allow configured + stopped ones
-    QModelIndexList selected_rows = fs_table->selectionModel()->selectedRows();
-    if (selected_rows.isEmpty()) {
+    const QModelIndexList selected =
+        list_of_selected_rows(fs_table, false);
+
+    if (selected.isEmpty()) {
         QMessageBox::information(
             this,
             tr("No selection"),
@@ -332,140 +327,46 @@ MainWindow::handle_remove_button()
         return;
     }
 
-    QList<QModelIndex> rows_to_process;
-    for (const QModelIndex &idx : selected_rows) {
-        if (running(idx)) {
-            continue; // Skip running instances
-        }
-        if (!configured(idx)) {
-            continue; // Skip unconfigured filesystems
-        }
-        rows_to_process.append(idx);
-    }
+    QString message =
+        tr("You are about to remove the file deduplication engine configuration for the selected filesystem(s).\n")
+        + tr("This does not cause any data loss, but you will lose deduplication functionality until you set up Beesd again.\n\n")
+        + tr("Do you want to continue?");
 
-    if (rows_to_process.isEmpty()) {
-        // Nothing valid to remove
+    if (QMessageBox::question(
+            this,
+            tr("Confirm configuration removal"),
+            message,
+            QMessageBox::Yes | QMessageBox::No
+        ) != QMessageBox::Yes)
+    {
         return;
     }
 
-    // Confirmation dialog with detailed explanation
-    QString line1 = tr("You are about to remove the file deduplication engine configuration for the selected filesystem(s).\n");
-    QString line2 = tr("This does not cause any data loss, but you will lose deduplication functionality until you set up Beesd again.\n\n");
-    QString line3 = tr("Do you want to continue?");
-    QString message = line1 + line2 + line3;
+    std::vector<std::function<bool(const QModelIndex &)>> discard_if = {
+        // discard if running
+        [this](const QModelIndex &idx) { return running(idx, fs_view_state); },
 
-    QMessageBox::StandardButton reply = QMessageBox::question(
-        this,
-        tr("Confirm configuration removal"),
-        message,
-        QMessageBox::Yes | QMessageBox::No
+        // or not configured
+        [this](const QModelIndex &idx) { return !configured(idx, fs_view_state); }
+    };
+
+    futuristically_process_indices_with_predicate(
+        neokomander::beesremoveconfig,
+        discard_if,
+        selected
     );
 
-    if (reply != QMessageBox::Yes) {
-        return; // User canceled
+    // mark it as unconfigured and empty the config path
+    for (const auto &idx : selected) {
+        std::string uuid = refresh_fs_helpers::fetch_user_role(idx, 0).toStdString();
+        fs_view_state[
+            // for this UUID...
+            uuid
+
+            // change status of something to...
+        ].status = "unconfigured";
+        fs_view_state[
+            uuid
+        ].config = "";
     }
-
-    // Build async futures
-    auto *futures = new QList<QFuture<bool>>();
-
-    for (const QModelIndex &idx : rows_to_process) {
-        QString uuid_q = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
-        if (uuid_q.isEmpty()) {
-            continue;
-        }
-
-        std::string uuid = uuid_q.toStdString();
-
-        // Verify if there is a configuration file; skip if not
-        std::string configfilepath = bk_util::trim_config_path_after_colon(
-            komander->btrfstat(uuid, "")
-        );
-        if (configfilepath.empty()) {
-            continue;
-        }
-
-        // Queue removal of Beesd configuration
-        futures->append(
-            komander->async->beesremoveconfig(uuid_q)
-        );
-
-        // Queue removal from autostart if present
-        if (bk_mgmt::autostart::is_enabled_for(uuid)) {
-            futures->append(
-                komander->async->remove_uuid_from_autostart(uuid_q)
-            );
-        }
-
-        // Queue removal from transparent compression if present
-        if (bk_mgmt::transparentcompression::is_enabled_for(uuid)) {
-            futures->append(
-                komander->async->remove_uuid_from_transparentcompression(uuid_q)
-            );
-        }
-    }
-
-    if (futures->isEmpty()) {
-        delete futures;
-        return;
-    }
-
-    // Hand over to async processor, which handles timeouts, logging, and cleanup
-    process_fs_async(futures);
 }
-
-template <typename T>
-void
-MainWindow::process_fs_async(QList<QFuture<T>> *futures)
-{
-    if (!futures || futures->isEmpty()) {
-        delete futures;
-        return;
-    }
-
-    auto remaining = new int(futures->size());
-    auto success_count = new int(0);
-
-    (void) QtConcurrent::run([this, futures, remaining, success_count]() {
-        const int timeout_ms = 30'000;       // 30 seconds per future
-        const int poll_interval_ms = 50;     // poll every 50 ms
-
-        for (auto &f : *futures) {
-            QElapsedTimer timer;
-            timer.start();
-
-            // Poll until finished or timeout
-            while (!f.isFinished() && timer.elapsed() < timeout_ms) {
-                QThread::msleep(poll_interval_ms);
-            }
-
-            if (f.isFinished()) {
-                if constexpr (std::is_same_v<T, bool>) {
-                    if (f.result()) {
-                        (*success_count)++;
-                    }
-                } else {
-                    // For non-bool futures, just count successful completions
-                    (*success_count)++;
-                    // You could log/store f.result() here if you want the actual values
-                    // DEBUG_LOG("Future result: " + QString::fromStdString(f.result()));
-                }
-            } else {
-                DEBUG_LOG("Future timed out!");
-            }
-
-            (*remaining)--;
-            DEBUG_LOG(std::to_string(*remaining) + " futures remaining.");
-        }
-
-        // Post back to main thread safely
-        QMetaObject::invokeMethod(this, [this, remaining, success_count, futures]() {
-            emit command_finished();
-
-            delete remaining;
-            delete success_count;
-            delete futures;
-        }, Qt::QueuedConnection);
-    });
-}
-
-

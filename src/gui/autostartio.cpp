@@ -1,7 +1,10 @@
 #include "beekeeper/beesdmgmt.hpp"
 #include "mainwindow.hpp"
+#include "tablecheckers.hpp"
 #include "../polkit/globals.hpp"
 #include "../polkit/multicommander.hpp"
+
+using namespace tablecheckers;
 
 /**
  * @brief Adds the selected configured filesystems to the autostart list.
@@ -16,24 +19,27 @@
 void
 MainWindow::handle_add_to_autostart()
 {
-    QModelIndexList selected = fs_table->selectionModel()->selectedRows();
-    if (selected.isEmpty())
-        return;
+    QModelIndexList selected = list_of_selected_rows(fs_table, false);
 
     auto futures = new QList<QFuture<bool>>; // heap allocation
 
     for (const QModelIndex &idx : selected) {
-        if (!configured(idx))
+        if (!configured(idx, fs_view_state))
             continue;
 
         QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
         if (bk_mgmt::autostart::is_enabled_for(uuid.toStdString()))
             continue;
 
+        // be optimistic
+        fs_view_state[
+            uuid.toStdString()
+        ].autostart = true;
+
         futures->append(komander->async->add_uuid_to_autostart(uuid));
     }
 
-    process_fs_async(futures);
+    refresh_after_these_futures_finish(futures);
 }
 
 /**
@@ -48,23 +54,26 @@ MainWindow::handle_add_to_autostart()
 void
 MainWindow::handle_remove_from_autostart()
 {
-    QModelIndexList selected = fs_table->selectionModel()->selectedRows();
-    if (selected.isEmpty())
-        return;
+    QModelIndexList selected = list_of_selected_rows(fs_table, false);
 
     auto futures = new QList<QFuture<bool>>; // heap allocation
 
     for (const QModelIndex &idx : selected) {
-        if (!configured(idx))
+        if (!configured(idx, fs_view_state))
             continue;
 
         QString uuid = fs_table->item(idx.row(), 0)->data(Qt::UserRole).toString();
         if (!bk_mgmt::autostart::is_enabled_for(uuid.toStdString()))
             continue;
 
+        // be optimistic
+        fs_view_state[
+            uuid.toStdString()
+        ].autostart = false;
+
         futures->append(komander->async->remove_uuid_from_autostart(uuid));
     }
 
     if (!futures->isEmpty())
-        process_fs_async(futures);
+        refresh_after_these_futures_finish(futures);
 }

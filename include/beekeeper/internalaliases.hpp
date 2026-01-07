@@ -1,7 +1,7 @@
 #pragma once
-#include <map>
-#include <vector>
+#include <unordered_map>
 #include <string>
+#include <vector>
 
 // forward declarations
 namespace beekeeper {
@@ -27,5 +27,19 @@ namespace beekeeper {
 }
 
 // Type aliases
-using fs_map = std::map<std::string, std::string>;
-using fs_vec = std::vector<fs_map>;
+struct fs_info {
+    std::string label;
+    std::string status;
+    std::string devname;
+    std::string config; // config file path
+    bool compressing; // is transparent compression currently running for it?
+    bool autostart; // is autostart enabled? 
+};
+
+using fs_map = std::unordered_map<std::string, fs_info>;
+
+struct fs_diff {
+    fs_map newly_added;
+    std::vector<std::string> just_removed;
+    fs_map just_changed;
+};

@@ -1,4 +1,5 @@
 #include "beekeeper/debug.hpp"
+#include "beekeeper/internalaliases.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "beekeeper/supercommander.hpp"
 #include "beekeeper/superlaunch.hpp"
@@ -124,16 +125,17 @@ supercommander::do_i_have_root_permissions()
 
 // ------------------ High-level beekeeperman wrappers ------------------
 
-std::vector<std::map<std::string,std::string>>
+fs_map
 supercommander::btrfsls()
 {
     QVariantMap opts;
     opts.insert("json", "<default>");
 
     command_streams res = call_bk("list", opts, QStringList{});
-    std::vector<std::map<std::string,std::string>> result;
+    fs_map result;
 
     if (!res.stdout_str.empty()) {
+        DEBUG_LOG("RECEIVED BY btrfsls(): ", res.stdout_str);
         QJsonParseError parseError;
         QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(res.stdout_str), &parseError);
         if (parseError.error != QJsonParseError::NoError) return result;
@@ -143,13 +145,35 @@ supercommander::btrfsls()
         for (const QJsonValue &val : fsArray) {
             if (!val.isObject()) continue;
             QJsonObject obj = val.toObject();
-            std::map<std::string,std::string> entry;
-            entry["uuid"]   = obj.value("uuid").toString("").toStdString();
-            entry["label"]  = obj.value("label").toString("").toStdString();
-            entry["status"] = obj.value("status").toString("unknown").trimmed().toStdString();
-            result.push_back(std::move(entry));
+
+            result.emplace(
+                obj.value("uuid").toString("").toStdString(),
+                fs_info {
+                    obj.value("label").toString("").toStdString(),
+                    obj.value("status").toString("unknown").trimmed().toStdString(),
+                    obj.value("devname").toString("unknown").trimmed().toStdString(),
+                    obj.value("config").toString("unknown").trimmed().toStdString(),
+                    obj.value("compressing").toBool(false),
+                    obj.value("autostart").toBool(false)
+                }
+            );
         }
     }
+
+    #ifdef BEEKEEPER_DEBUG_LOGGING
+    DEBUG_LOG("Found filesystems: ");
+    for (const auto &[uuid, info]: result) {
+        DEBUG_LOG(
+            "FS: uuid=", uuid, "\n",
+            " label=", info.label, "\n",
+            " status=", info.status, "\n",
+            " devname=", info.devname, "\n",
+            " config=", info.config, "\n",
+            " compressing=", info.compressing, "\n",
+            " autostart=", info.autostart, "\n"
+        );
+    }
+    #endif
 
     return result;
 }

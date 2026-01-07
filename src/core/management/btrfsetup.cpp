@@ -2,6 +2,8 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/btrfsetup.hpp"
 #include "beekeeper/debug.hpp"
+#include "beekeeper/internalaliases.hpp"
+#include "beekeeper/transparentcompressionmgmt.hpp"
 #include "beekeeper/util.hpp"
 #include <algorithm>
 #include <fstream>
@@ -95,10 +97,10 @@ parse_config (const fs::path& config_path)
  *
  * @return Vector of maps; each map contains keys "uuid", "label" and "status".
  */
-fs_vec
+fs_map
 bk_mgmt::btrfsls()
 {
-    fs_vec available_filesystems;
+    fs_map available_filesystems;
 
 #ifdef HAVE_LIBBLKID
     DEBUG_LOG("If you can see this, libblkid was compiled into beekeeper-qt.");
@@ -122,20 +124,28 @@ bk_mgmt::btrfsls()
         char *label = blkid_get_tag_value(cache, "LABEL", devname);
 
         if (type && std::strcmp(type, "btrfs") == 0) {
-            std::map<std::string, std::string> entry;
+            std::pair<std::string, fs_info> entry;
 
-            if (devname) entry["devname"] = devname;
-            if (uuid)    entry["uuid"]    = uuid;
-            if (label)   entry["label"]   = label;
+            if (uuid)    entry.first    = uuid;
+            if (devname) entry.second.devname = devname;
+            if (label)   entry.second.label   = label;
 
             // also fetch .status using beesstatus(uuid)
             if (uuid) {
-                entry["status"] = bk_mgmt::beesstatus(uuid);
+                entry.second.status = bk_mgmt::beesstatus(uuid);
+                entry.second.config = bk_mgmt::btrfstat(uuid);
+                entry.second.compressing = bk_mgmt::transparentcompression::is_running(uuid);
+                entry.second.autostart = bk_mgmt::autostart::is_enabled_for(uuid);
             } else {
-                entry["status"] = "unknown";
+                entry.second.status = "unknown";
+                entry.second.config = "unknown";
+                entry.second.compressing = "unknown";
+                entry.second.autostart = "unknown";
             }
 
-            available_filesystems.push_back(std::move(entry));
+
+
+            available_filesystems.insert(std::move(entry));
         }
 
         if (type)  free(type);
@@ -147,6 +157,7 @@ bk_mgmt::btrfsls()
     blkid_put_cache(cache);
 
 #else
+
     // Fallback: shell out to blkid and parse lines
     {
         command_streams res = bk_util::exec_command("blkid", "-s", "UUID", "-s", "LABEL", "-s", "TYPE");
@@ -157,11 +168,11 @@ bk_mgmt::btrfsls()
         DEBUG_LOG("blkid lines: ", bk_util::serialize_vector(btrfs_lines));
 
         for (const auto &line : btrfs_lines) {
-            fs_map this_filesystem;
-            this_filesystem["uuid"]   = "";
-            this_filesystem["label"]  = "";
-            this_filesystem["status"] = "";
-            this_filesystem["devname"] = "";
+            std::pair<std::string, fs_info> this_filesystem;
+            this_filesystem.first   = "";
+            this_filesystem.second.label = "";
+            this_filesystem.second.status = "";
+            this_filesystem.second.devname = "";
 
             std::vector<std::string> fs_tokens = bk_util::tokenize(line, ' ');
             DEBUG_LOG("tokenized line: ", bk_util::serialize_vector(fs_tokens));
@@ -176,15 +187,24 @@ bk_mgmt::btrfsls()
                 }
             }
 
-            this_filesystem["uuid"]  = peeled_uuid;
-            this_filesystem["label"] = peeled_label;
+            this_filesystem.first  = peeled_uuid;
+            this_filesystem.second.label = peeled_label;
 
             if (!peeled_uuid.empty()) {
-                this_filesystem["status"]  = bk_mgmt::beesstatus(peeled_uuid);
-                this_filesystem["devname"] = bk_mgmt::get_real_device(peeled_uuid);
+                this_filesystem.second.status  = bk_mgmt::beesstatus(peeled_uuid);
+                this_filesystem.second.devname = bk_mgmt::get_real_device(peeled_uuid);
+                this_filesystem.second.config = bk_mgmt::btrfstat(uuid);
+                this_filesystem.second.compressing = bk_mgmt::transparentcompression::is_running(uuid);
+                this_filesystem.second.autostart = bk_mgmt::autostart::is_enabled_for(uuid);
+            } else {
+                this_filesystem.second.status  = "unknown";
+                this_filesystem.second.devname = "unknown";
+                this_filesystem.second.config = "unknown";
+                this_filesystem.second.compressing = "unknown";
+                this_filesystem.second.autostart = "unknown";
             }
 
-            available_filesystems.push_back(std::move(this_filesystem));
+            available_filesystems.insert(std::move(this_filesystem));
         }
     }
 #endif

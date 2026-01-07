@@ -14,8 +14,10 @@
 // an existing configuration. Immediately closes after running setup;
 // GUI refresh handles status updates.
 
+#include "beekeeper/btrfsetup.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "mainwindow.hpp"
+#include "tablecheckers.hpp"
 #include "../polkit/globals.hpp" // launcher + komander
 #include "../polkit/multicommander.hpp"
 #include "setupdialog.hpp"
@@ -30,13 +32,40 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFont>
+#include <QMetaObject>
+#include <qabstractitemmodel.h>
+#include <qobjectdefs.h>
+#include <qwindowdefs.h>
 #include <string>
 
 using namespace beekeeper::privileged;
+using namespace tablecheckers;
+
+
+QStringList
+SetupDialog::filter_unconfigured_uuids (const QModelIndexList &selected)
+{
+    QStringList unconfigured_uuids;
+    MainWindow *mw = qobject_cast<MainWindow*>(parentWidget());
+
+    for (const QModelIndex &idx : selected) {
+        QString uuid = refresh_fs_helpers::fetch_user_role(idx, 0);
+        std::string uuid_std = uuid.toStdString();
+
+        // if configured
+        if (mw->fs_view_state[uuid_std].status == "unconfigured")
+            unconfigured_uuids.push_back(uuid);
+    }
+
+    return unconfigured_uuids;
+}
+
+
+
+
 
 SetupDialog::SetupDialog(const QStringList &uuids, QWidget *parent)
     : QDialog(parent)
-    , m_uuids(uuids)
 {
     setWindowTitle(tr("Setting up selected filesystems"));
     setModal(true);
@@ -167,20 +196,23 @@ SetupDialog::accept()
         db_size = static_cast<size_t>(m_dbSizeCombo->currentData().toULongLong());
     }
 
-    // Filter only unconfigured filesystems
-    QStringList uuids_to_setup;
-    for (const QString &q : m_uuids) {
-        std::string uuid = q.toStdString();
-        std::string stat = komander->btrfstat(uuid, "");
-        if (stat.empty()) {   // significa que no hay configuración
-            uuids_to_setup.append(q);
-        }
-    }
 
-    if (uuids_to_setup.isEmpty()) {
-        QDialog::accept();
+    // Fetch selection directly (GUI thread)
+    MainWindow *mw = qobject_cast<MainWindow*>(parentWidget());
+    if (!mw) {
+        QMessageBox::critical(this,
+                              tr("Error"),
+                              tr("Internal error: no main window."));
         return;
     }
+
+    QModelIndexList selected =
+        list_of_selected_rows(mw->fs_table, false);
+
+
+    // Filter only selected unconfigured filesystems
+    QStringList uuids_to_setup = filter_unconfigured_uuids(selected);
+
 
     // Collect async futures on heap so they can outlive this dialog
     auto *futures = new QList<QFuture<bool>>();
@@ -188,6 +220,11 @@ SetupDialog::accept()
     // --- Beesd setup ---
     for (const QString &q : uuids_to_setup) {
         futures->append(komander->async->beessetup(q, db_size));
+        // Render it as set up
+        mw->fs_view_state[q.toStdString()].status = "stopped";
+        mw->fs_view_state[q.toStdString()].config = "__DUMMY__";
+        // if remove is called and this is still __DUMMY__, remove will need
+        // to wait for the next refresh for the actual config path
     }
 
     // --- Transparent compression ---
@@ -204,15 +241,17 @@ SetupDialog::accept()
             futures->append(
                 komander->async->start_transparentcompression_for_uuid(q)
             );
+
+            mw->fs_view_state[q.toStdString()].compressing = true;
         }
     }
 
-    // Close dialog immediately (UI will update once process_fs_async finishes)
+    // Close dialog immediately (UI will update once refresh_after_these_futures_finish finishes)
     QDialog::accept();
 
     // Hand over futures to the main window’s async processor
     if (MainWindow *mw = qobject_cast<MainWindow*>(parentWidget())) {
-        mw->process_fs_async(futures);
+        mw->refresh_after_these_futures_finish(futures);
     } else {
         // Fallback cleanup if no main window found
         delete futures;

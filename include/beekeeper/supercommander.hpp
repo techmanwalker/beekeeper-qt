@@ -30,10 +30,9 @@
 
 class superlaunch;   // <--- forward declare so we can friend it later
 
+#include "beekeeper/internalaliases.hpp"
 #include "beekeeper/util.hpp"
 #include <string>
-#include <vector>
-#include <map>
 #include <memory>
 #include <QtConcurrent/QtConcurrent>
 
@@ -71,7 +70,7 @@ public:
     bool do_i_have_root_permissions();
 
     // High-level wrappers...
-    std::vector<std::map<std::string,std::string>> btrfsls();
+    fs_map btrfsls();
     std::string beesstatus(const std::string &uuid);
     bool beesstart(const std::string &uuid, bool enable_logging = false);
     bool beesstop(const std::string &uuid);

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <thread>
 #include <type_traits>
 #include <utility>
 
@@ -94,6 +95,12 @@ debug_print(std::ostream& os, T value) {
     os << value;
 }
 
+// std::thread::id
+inline void debug_print(std::ostream& os, const std::thread::id& tid) {
+    std::ostringstream oss;
+    oss << tid;
+    os << oss.str();
+}
 
 // Debug logging macro
 #define DEBUG_LOG(...) do { \

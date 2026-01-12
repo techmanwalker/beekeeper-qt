@@ -34,6 +34,7 @@ class superlaunch;   // <--- forward declare so we can friend it later
 #include "beekeeper/util.hpp"
 #include <string>
 #include <memory>
+#include <QDBusInterface>
 #include <QtConcurrent/QtConcurrent>
 
 namespace beekeeper {
@@ -54,6 +55,8 @@ public:
 
     supercommander(const supercommander&) = delete;
     supercommander& operator=(const supercommander&) = delete;
+
+    QDBusInterface* get_helper_interface();
 
     // call the helper to do something
     command_streams

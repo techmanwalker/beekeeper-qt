@@ -8,8 +8,10 @@ MainWindow::update_status_bar()
     if (!fs_table || !statusBar)
         return; // avoids crash at startup
 
-    if (is_being_refreshed.load())
+    if (is_being_refreshed.load()) {
+        emit status_updated(QString(), QString());
         return;
+    }
 
     int selected_count = refresh_fs_helpers::selected_rows_count(fs_table);
 
@@ -37,9 +39,6 @@ bool
 MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
     if (!fs_table)
-        return QMainWindow::eventFilter(obj, event);
-
-    if (is_being_refreshed.load())
         return QMainWindow::eventFilter(obj, event);
 
     // Handle table hover events

@@ -1,3 +1,4 @@
+#include "beekeeper/btrfsetup.hpp"
 #include "dedupstatusmanager.hpp"
 #include "refreshfilesystems_helpers.hpp"
 #include "beekeeper/util.hpp"
@@ -111,10 +112,10 @@ void update_status_manager(QTableWidget *fs_table,
         QString uuid = item_uuid->data(Qt::UserRole).toString();
         if (uuid.isEmpty()) continue;
 
-        // Query current free using provided callable
+        // Query current free space using provided callable
         std::string free_str;
         try {
-            free_str = komander->btrfstat(uuid.toStdString(), "free");
+            free_str = bk_mgmt::get_space::free(uuid.toStdString());
         } catch (...) {
             free_str.clear();
         }
@@ -158,7 +159,7 @@ void update_status_manager_one_uuid(QTableWidget *fs_table,
     // Query current free using callable
     std::string free_str;
     try {
-        free_str = komander->btrfstat(uuid.toStdString(), "free");
+        free_str = bk_mgmt::get_space::free(uuid.toStdString());
     } catch (...) {
         free_str.clear();
     }

@@ -13,8 +13,9 @@ MainWindow::refresh_table(const bool fetch_data_from_daemon)
     // ------------------------------------------------------------------
     // Guard against multiple concurrent refreshes
     // ------------------------------------------------------------------
-    if (is_being_refreshed.exchange(true))
-        return;
+    if (is_being_refreshed.exchange(true)) {
+        DEBUG_LOG("Was already refreshing. Discarding...");
+    }
 
     // Immediate UI feedback
     update_button_states();

@@ -109,57 +109,46 @@ private:
     void
     refresh_after_these_futures_finish(QList<QFuture<T>> *futures)
     {
-        // wait until they finish, delete them and issue command_finished();
-
         if (!futures || futures->isEmpty()) {
             delete futures;
             return;
         }
 
-        auto remaining = new int(futures->size());
-        auto success_count = new int(0);
+        auto *remaining = new int(futures->size());
+        auto *success_count = new int(0);
 
-        (void) QtConcurrent::run([this, futures, remaining, success_count]() {
-            const int timeout_ms = 30'000;       // 30 seconds per future
-            const int poll_interval_ms = 50;     // poll every 50 ms
+        for (auto &f : *futures) {
+            auto *watcher = new QFutureWatcher<T>(this);
 
-            for (auto &f : *futures) {
-                QElapsedTimer timer;
-                timer.start();
+            connect(watcher, &QFutureWatcher<T>::finished, this,
+                [this, watcher, remaining, success_count, futures]() {
 
-                // Poll until finished or timeout
-                while (!f.isFinished() && timer.elapsed() < timeout_ms) {
-                    QThread::msleep(poll_interval_ms);
-                }
-
-                if (f.isFinished()) {
                     if constexpr (std::is_same_v<T, bool>) {
-                        if (f.result()) {
+                        if (watcher->result())
                             (*success_count)++;
-                        }
                     } else {
-                        // For non-bool futures, just count successful completions
                         (*success_count)++;
-                        // You could log/store f.result() here if you want the actual values
-                        // DEBUG_LOG("Future result: " + QString::fromStdString(f.result()));
                     }
-                } else {
-                    DEBUG_LOG("Future timed out!");
-                }
 
-                (*remaining)--;
-                DEBUG_LOG(std::to_string(*remaining) + " futures remaining.");
-            }
+                    watcher->deleteLater();
 
-            // Post back to main thread safely
-            QMetaObject::invokeMethod(this, [this, remaining, success_count, futures]() {
-                emit command_finished();
+                    (*remaining)--;
 
-                delete remaining;
-                delete success_count;
-                delete futures;
-            }, Qt::QueuedConnection);
-        });
+                    DEBUG_LOG(std::to_string(*remaining) + " futures remaining.");
+
+                    if (*remaining == 0) {
+                        emit command_finished();
+
+                        delete remaining;
+                        delete success_count;
+                        delete futures;
+                    }
+                },
+                Qt::QueuedConnection
+            );
+
+            watcher->setFuture(f);
+        }
     }
 
     /**

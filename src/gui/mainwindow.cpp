@@ -357,6 +357,7 @@ void MainWindow::setup_fs_table()
     fs_table->setMouseTracking(true);  // allow hover events to reach the delegate
 
     fs_table->setSortingEnabled(true); // allow sorting
+    fs_table->setEditTriggers(QAbstractItemView::NoEditTriggers); // this is NOT Excel
 
     // --- IMPORTANT: add the table to the main_layout that was created in setup_button_toolbar()
     if (main_layout) {

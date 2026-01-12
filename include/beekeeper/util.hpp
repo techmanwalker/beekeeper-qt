@@ -212,6 +212,8 @@ namespace beekeeper {
 
         void add_usr_sbin_to_path();
 
+        std::vector<std::string> get_process_lines (const std::string &process_name, const std::string &uuid);
+
         // Filesystem vector operations
         const fs_info *retrieve_filesystem_info_from_a_list(const fs_map &haystack, const std::string &needle);
         fs_map list_of_newly_added_filesystems (const std::vector<std::string> &snapshot, const fs_map &new_list);

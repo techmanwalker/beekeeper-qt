@@ -20,7 +20,7 @@ beekeeper::cli::handle_start(const std::map<std::string, std::string> &options,
     bool enable_logging = options.find("enable-logging") != options.end();
     
     for (const auto& uuid : subjects) {
-        if (bk_mgmt::beesstart(uuid, enable_logging)) {
+        if (bk_mgmt::beesstart(uuid)) {
             std::cout << "Started beesd for " << uuid;
             if (enable_logging) {
                 std::cout << " with logging enabled";

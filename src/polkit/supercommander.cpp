@@ -1,6 +1,6 @@
 #include "beekeeper/debug.hpp"
-#include "beekeeper/internalaliases.hpp"
 #include "beekeeper/qt-debug.hpp"
+#include "beekeeper/internalaliases.hpp"
 #include "beekeeper/supercommander.hpp"
 #include "beekeeper/superlaunch.hpp"
 #include <beekeeper/util.hpp>
@@ -17,6 +17,40 @@
 #include "globals.hpp"
 
 namespace beekeeper { namespace privileged {
+
+// thread-local storage: each thread has its own interface
+thread_local std::unique_ptr<QDBusInterface> thread_local_iface;
+
+QDBusInterface*
+supercommander::get_helper_interface()
+{
+    // no need for mutex - each thread has its own variable
+    
+    // if this thread has a valid interface, reuse it
+    if (thread_local_iface && thread_local_iface->isValid()) {
+        DEBUG_LOG("DBus interface still valid. Returning that one...");
+        return thread_local_iface.get();
+    }
+    
+    // create new interface fot THIS thread
+    thread_local_iface = std::make_unique<QDBusInterface>(
+        "org.beekeeper.Helper",
+        "/org/beekeeper/Helper",
+        "org.beekeeper.Helper",
+        QDBusConnection::systemBus()
+    );
+    
+    if (thread_local_iface->isValid()) {
+        thread_local_iface->setTimeout(120000); // 2 minutes
+        DEBUG_LOG("[supercommander] DBus interface (re)created for thread ",
+                  std::this_thread::get_id());
+    } else {
+        DEBUG_LOG("[supercommander] Failed to (re)create DBus interface: ",
+                  thread_local_iface->lastError().message());
+    }
+    
+    return thread_local_iface.get();
+}
 
 // Execute a command in the DBus helper
 command_streams
@@ -50,25 +84,32 @@ supercommander::call_bk(const QString &verb,
         return result;
     }
 
-    QDBusInterface helper_iface(
-        "org.beekeeper.Helper",
-        "/org/beekeeper/Helper",
-        "org.beekeeper.Helper",
-        QDBusConnection::systemBus()
-    );
+    QDBusInterface *iface = get_helper_interface();
 
-    if (!helper_iface.isValid()) {
-        DEBUG_LOG("[supercommander] helper DBus interface invalid:", helper_iface.lastError().message());
-        result.stderr_str = helper_iface.lastError().message().toStdString();
+    if (!iface) {
+        DEBUG_LOG("[supercommander] helper DBus interface is nullptr");
+        result.stderr_str = "DBus interface creation failed";
+        return result;
+    }
+
+    if (!iface->isValid()) {
+        DEBUG_LOG("[supercommander] helper DBus interface invalid: ", 
+                  iface->lastError().message().toStdString());
+        result.stdout_str = "";
+        result.stderr_str = iface->lastError().message().toStdString();
         return result;
     }
 
     // DEBUG_LOG("[supercommander] call_bk: before DBus call for verb ", verb.toStdString(), " :" , QDateTime::currentDateTime().toString().toStdString());
 
-    QDBusMessage reply_msg = helper_iface.call(QDBus::Block, "ExecuteCommand", verb, options, subjects);
+    QDBusMessage reply_msg = iface->call(QDBus::Block, "ExecuteCommand", verb, options, subjects);
     if (reply_msg.type() == QDBusMessage::ErrorMessage) {
         DEBUG_LOG("[supercommander] DBus call returned error: ", reply_msg.errorMessage());
         result.stderr_str = reply_msg.errorMessage().toStdString();
+        
+        // invalidate ONLY this thread's interface
+        thread_local_iface.reset();
+
         return result;
     }
 

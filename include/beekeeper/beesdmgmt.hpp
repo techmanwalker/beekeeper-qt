@@ -52,8 +52,7 @@ namespace beekeeper {
 
         // only one beesd process at a time: worker control planned
         pid_t grab_one_beesd_process_and_kill_the_rest(
-            const std::string &uuid,
-            bool act_against_the_worker_pids = false
+            const std::string &uuid
         );
 
         std::vector<pid_t> find_processes(const std::vector<std::string> &match_these_substrings); // generic
@@ -165,7 +164,7 @@ namespace beekeeper {
 
         // Start beesd daemon for specified UUID
         bool
-        beesstart (const std::string& uuid, bool enable_logging = false);
+        beesstart (const std::string& uuid);
 
         // Stop beesd daemon for specified UUID
         bool

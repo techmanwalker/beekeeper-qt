@@ -28,7 +28,7 @@ tablecheckers::info_for_row(const QModelIndex &idx, const fs_map &source_of_trut
 
     fs_info info = it->second;
 
-     #ifdef BEEKEEPER_DEBUG_LOGGING
+    /*#ifdef BEEKEEPER_DEBUG_LOGGING
     DEBUG_LOG("Filesystem info for uuid,", uuid_qstr, " according to fs_table_view: \n",
         "  uuid=", uuid_qstr, "\n",
         "  label=", info.label, "\n",
@@ -38,7 +38,7 @@ tablecheckers::info_for_row(const QModelIndex &idx, const fs_map &source_of_trut
         "  compressing=", info.compressing, "\n",
         "  autostart=", info.autostart, "\n"
     );
-    #endif
+    #endif*/
     return info;
 }
 

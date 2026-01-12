@@ -2,9 +2,11 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/util.hpp"
 
+#include <cstring>
 #include <filesystem>
 #include <iostream>
 #include <sys/wait.h>
+#include <thread>
 
 namespace fs = std::filesystem;
 
@@ -264,43 +266,121 @@ bk_mgmt::kill_pidfile_process(const std::string &pidfile, int sig, int wait_retr
 }
 
 /**
- * @brief Keep only one beesd process for a given UUID, killing the rest.
+ * @brief Get all lines of 'ps aux' output that contain both the process name and UUID
  *
- * This function ensures that for a given `uuid` there is at most one
- * active beesd process running (manager or worker). Running multiple
- * instances on the same UUID doesn't make sense because they operate
- * over the same underlying data and can waste CPU and memory resources.
+ * This imitates `ps aux | grep <process_name> | grep <uuid> | grep -v grep`.
  *
- * @param uuid The unique identifier for the beesd instance.
- * @param act_against_the_worker_pids If false, act on the manager process;
- *        if true, act on worker processes instead.
- * @return The PID of the first surviving process, or 0 if none exist.
- *
- * @note Current implementation simply kills all extra processes and keeps
- *       the first one. Future improvements could introduce threading and
- *       worker control as a "deduplication performance profile" preset.
+ * @param process_name The name of the process to search for (e.g., "bees")
+ * @param uuid The UUID string to match in the command line
+ * @return std::vector<std::string> Lines of 'ps aux' output matching both criteria
  */
-pid_t
-bk_mgmt::grab_one_beesd_process_and_kill_the_rest(
-    const std::string &uuid,
-    bool act_against_the_worker_pids
-)
+std::vector<std::string>
+bk_util::get_process_lines(const std::string &process_name, const std::string &uuid)
 {
-    auto pids = act_against_the_worker_pids
-                    ? find_beesd_processes(uuid, true)
-                    : find_beesd_processes(uuid);
+    std::vector<std::string> result;
 
-    DEBUG_LOG("Found pid for UUID ", uuid, ": ", bk_util::serialize_vector(pids));
+    // Execute 'ps aux'
+    command_streams streams = exec_command("ps", "aux");
+    std::string &output = streams.stdout_str;
 
-    if (pids.empty())
-        return 0;
+    if (output.empty())
+        return result;
 
-    // Keep the first PID, kill the rest
-    for (size_t i = 1; i < pids.size(); ++i)
+    size_t start = 0;
+    while (start < output.size())
     {
-        pid_t extra_pid = pids[i];
-        kill_process(extra_pid); // uses default signal/wait parameters
+        // Find next newline
+        size_t end = output.find('\n', start);
+        if (end == std::string::npos)
+            end = output.size();
+
+        std::string line = output.substr(start, end - start);
+
+        // Remove trailing \r if present
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+
+        // Check if line contains both process_name and uuid
+        if (line.find(process_name) != std::string::npos &&
+            line.find(uuid) != std::string::npos)
+        {
+            result.push_back(line);
+        }
+
+        start = end + 1; // move past newline
     }
 
-    return pids[0]; // return the surviving process PID
+    return result;
+}
+
+
+/**
+ * @brief Ensure only one bees process exists for a given UUID
+ *
+ * This function enumerates all running bees processes whose command line
+ * contains the specified UUID. It keeps the first process alive and kills
+ * all the other duplicates. This guarantees that at most one bees worker
+ * exists per UUID, imitating `ps aux | grep bees | grep -v grep | grep <uuid>`.
+ *
+ * @param uuid The UUID identifying the bees mount/process
+ * @return pid_t The PID of the process kept alive, or -1 if none found
+ */
+pid_t
+bk_mgmt::grab_one_beesd_process_and_kill_the_rest(const std::string &uuid)
+{
+    // Step 1: Get all lines of 'ps aux' output containing 'bees' but not 'grep'
+    std::vector<std::string> ps_lines = bk_util::get_process_lines("bees", uuid);
+
+    if (ps_lines.empty())
+    {
+        // No bees processes running for this UUID
+        DEBUG_LOG("No bees processes found for UUID ", uuid);
+        return -1; // indicate no process found
+    }
+
+    // Step 2: Iterate through each line, extract PID using bk_util helper
+    bool first = true;
+    pid_t kept_pid = -1;
+
+    for (const auto &line : ps_lines)
+    {
+        pid_t pid = std::stoll(bk_util::get_second_token(line)); // second token in ps aux is PID
+        if (pid <= 0)
+        {
+            DEBUG_LOG("Failed to parse PID from line: ", line);
+            continue;
+        }
+
+        if (first)
+        {
+            // Keep the first process alive
+            DEBUG_LOG("Keeping bees process alive for UUID ", uuid, ": PID ", pid);
+            kept_pid = pid;
+            first = false;
+            continue;
+        }
+
+        // Kill the rest
+        DEBUG_LOG("Killing duplicate bees process for UUID ", uuid, ": PID ", pid);
+        if (kill(pid, SIGTERM) != 0)
+        {
+            DEBUG_LOG("Failed to terminate PID ", pid, ": ", strerror(errno));
+        }
+        else
+        {
+            // Optional: wait a small moment and SIGKILL if still alive
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            if (kill(pid, 0) == 0) // process still exists
+            {
+                DEBUG_LOG("Process still alive, sending SIGKILL to PID ", pid);
+                kill(pid, SIGKILL);
+            }
+        }
+    }
+
+    // Step 3: Update GUI with started file info
+    if (kept_pid > 0)
+        bk_mgmt::create_started_with_n_gb_file(uuid);
+
+    return kept_pid;
 }

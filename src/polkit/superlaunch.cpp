@@ -20,6 +20,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMetaObject>
 #include <QProcess>
 #include <QString>
 #include <QStringList>
@@ -47,13 +48,6 @@ void registerMetaTypes()
     }
 }
 }
-
-// -------------------- destructor --------------------
-
-superlaunch::~superlaunch()
-{
-}
-
 // -------------------- public API --------------------
 
 bool
@@ -164,48 +158,15 @@ superlaunch::start_root_shell_unlocked()
 
     DEBUG_LOG("Helper service registered on DBus: ", service_name);
 
-    // Now ping the helper and trigger Polkit if needed
-    QDBusInterface helper_iface(
-        service_name,
-        QStringLiteral("/org/beekeeper/Helper"),
-        QStringLiteral("org.beekeeper.Helper"),
-        conn
+    // Test if it is alive
+    bool ok = false;
+    if (!root_thread) return false; // the root thread is created right at start, this should not happen
+    QMetaObject::invokeMethod(
+        root_thread,
+        [&]() { ok = root_thread->ping_helper(); },
+        Qt::BlockingQueuedConnection
     );
 
-    if (!helper_iface.isValid()) {
-        qWarning() << "Helper DBus interface invalid:" << helper_iface.lastError().message();
-        launcher->root_alive.store(false);
-        launcher->already_set_root_alive_status.store(true);
-        return false;
-    }
-
-    QDBusReply<QVariantMap> auth_reply =
-        helper_iface.call(QStringLiteral("whoami"));
-    if (!auth_reply.isValid()) {
-        qWarning() << "Polkit authorization call failed:"
-                << auth_reply.error().message();
-        launcher->root_alive.store(false);
-        launcher->already_set_root_alive_status.store(true);
-        return false;
-    }
-
-    QVariantMap reply_map = auth_reply.value();
-    QString stdout_val = reply_map.value("stdout").toString();
-    QString stderr_val = reply_map.value("stderr").toString();
-
-    // Use your DEBUG_LOG macro (assuming it takes QString or std::string)
-    DEBUG_LOG("whoami stdout: " + stdout_val.toStdString());
-    DEBUG_LOG("whoami stderr: " + stderr_val.toStdString());
-
-    if (!reply_map.value("stderr").toString().isEmpty()) {
-        qWarning() << "Polkit authorization denied:" << reply_map.value("stderr").toString()
-            << "; stdout: " << reply_map.value("stdout").toString();
-        launcher->root_alive.store(false);
-        launcher->already_set_root_alive_status.store(true);
-        return false;
-    }
-
-    DEBUG_LOG("Polkit authorization granted, helper alive");
 
     launcher->root_alive.store(true);
     launcher->already_set_root_alive_status.store(true);

@@ -1,7 +1,7 @@
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
-#include "../polkit/multicommander.hpp"
+#include "../polkit/_staticcommander.hpp"
 #include "refreshfilesystems_helpers.hpp"
 #include "tablecheckers.hpp"
 #include <QFuture>
@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 // So we can use the asynchronic versions as predicates
+
 namespace neokomander = beekeeper::privileged::_static;
 
 using namespace tablecheckers;
@@ -268,25 +269,25 @@ MainWindow::handle_transparentcompression_switch(bool pause)
 
     // toggle transparent compression
     auto predicate =
-        [this, pause, did_this_uuid_have_compression_running](const QString &uuid) -> QFuture<bool>
-        {
-            return QtConcurrent::run([this, uuid, pause, did_this_uuid_have_compression_running]() -> bool {
-                if (!did_this_uuid_have_compression_running.at(uuid.toStdString()) && !pause) {
-                    // wants to start
-                    return komander
-                        ->start_transparentcompression_for_uuid(uuid.toStdString());
-                }
+    [this, pause, did_this_uuid_have_compression_running](const QString &uuid) -> QFuture<bool>
+    {
+        if (!did_this_uuid_have_compression_running.at(uuid.toStdString()) && !pause) {
+            // wants to start
+            return komander->start_transparentcompression_for_uuid(uuid);
+        }
 
-                if (did_this_uuid_have_compression_running.at(uuid.toStdString()) && pause) {
-                    // wants to stop
-                    return komander
-                        ->pause_transparentcompression_for_uuid(uuid.toStdString());
-                }
+        if (did_this_uuid_have_compression_running.at(uuid.toStdString()) && pause) {
+            // wants to stop
+            return komander->pause_transparentcompression_for_uuid(uuid);
+        }
 
-                // no-op
-                return false;
-            });
-        };
+        // no-op: wrap a ready future with false
+        QPromise<bool> promise;
+        promise.start();
+        promise.addResult(false);
+        promise.finish();
+        return promise.future();
+    };
 
     futuristically_process_indices_with_predicate(
         predicate,

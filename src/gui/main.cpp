@@ -2,6 +2,8 @@
 #include "mainwindow.hpp"
 #include "rootshellthread.hpp"
 
+#include "../polkit/globals.hpp"
+
 #include "beekeeper/debug.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "beekeeper/cmakedependentvariables/translationsdir.hpp"
@@ -61,18 +63,7 @@ main(int argc, char *argv[])
     DEBUG_LOG("[main] MainWindow created, showing...");
     w.show();
 
-    root_shell_thread *rootThread = new root_shell_thread(*launcher);
-    w.set_root_thread(rootThread);
-
-    QObject::connect(&app, &QCoreApplication::aboutToQuit,
-                     rootThread, &QThread::quit);
-    QObject::connect(rootThread, &QThread::finished,
-                     rootThread, &QObject::deleteLater);
-    QObject::connect(rootThread, &QThread::started,
-                     rootThread, &root_shell_thread::init_root_shell);
-
     DEBUG_LOG("[main] Starting root_shell_thread...");
-    rootThread->start();
 
     int exitCode = app.exec();
 
@@ -80,19 +71,7 @@ main(int argc, char *argv[])
     w.hide();
     QCoreApplication::processEvents();
 
-    // --- Phase 2: stop privileged helper and threads ---
-    if (rootThread->isRunning()) {
-        DEBUG_LOG("[main] Asking rootThread to quit safely...");
-        rootThread->requestInterruption(); // cooperative shutdown
-        rootThread->quit();                  // exit event loop
-        if (!rootThread->wait(5000)) {
-            DEBUG_LOG("[main] rootThread didn't stop in time; forcing terminate");
-            rootThread->terminate();
-            rootThread->wait();
-        }
-    }
-
-    // --- Phase 3: teardown globals safely ---
+    // --- Phase 2: teardown globals safely ---
     shutdown_globals();
     DEBUG_LOG("[main] Globals cleaned up, exiting.");
     DEBUG_LOG("[main] QApplication exec returned, exit code:", exitCode);

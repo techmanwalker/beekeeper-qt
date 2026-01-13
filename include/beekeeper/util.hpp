@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <QVariant>
+
 using _internalaliases_dummy_anchor = beekeeper::_internalaliases_dummy::anchor;
 
 // Struct to hold command output streams
@@ -14,6 +16,8 @@ struct command_streams
     std::string stdout_str;
     std::string stderr_str;
 };
+
+Q_DECLARE_METATYPE(command_streams);
 
 namespace beekeeper {
     namespace __util__ {

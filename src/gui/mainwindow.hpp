@@ -1,6 +1,7 @@
 #pragma once
 
 #include "beekeeper/debug.hpp"
+#include "beekeeper/qt-debug.hpp"
 #include "beekeeper/internalaliases.hpp"
 #include "dedupstatusmanager.hpp"
 #include "keyboardnav.hpp"
@@ -18,6 +19,8 @@
 #include <QVBoxLayout>
 #include <string>
 
+#include "../polkit/globals.hpp"
+
 // Forward declarations
 class StatusDotDelegate;
 class UUIDColumnDelegate;
@@ -32,8 +35,14 @@ public:
     explicit
     MainWindow(QWidget *parent = nullptr);
 
+    ~MainWindow() {
+        root_thread->requestInterruption();
+        root_thread->quit();
+        root_thread->wait();
+    }
+
     // root operations
-    void set_root_thread(root_shell_thread *thread);
+    void set_root_thread(std::unique_ptr<root_shell_thread> thread);
 
     QString map_status_text(const QString &raw_status);
 
@@ -56,11 +65,14 @@ private:
     void connect_fs_table_handlers();
     void start_fs_table_refresh_cycle();
 
-    void connect_command_finished_signal();
+    void connect_ui_on_command_done_signal();
 
     void show_no_admin_rights_banner();
 
     void refresh_table(const bool fetch_data_from_daemon = false);
+    void quick_refresh(
+        std::unordered_map<std::string, std::string> the_status_table_is_showing_for_uuid
+    );
 
 
 
@@ -137,7 +149,7 @@ private:
                     DEBUG_LOG(std::to_string(*remaining) + " futures remaining.");
 
                     if (*remaining == 0) {
-                        emit command_finished();
+                        emit ui_on_command_done();
 
                         delete remaining;
                         delete success_count;
@@ -218,7 +230,7 @@ private:
 
             // Queue the async job
             // First argument is always the uuid
-            DEBUG_LOG("Processing uuid ", uuid.toStdString(), " with some predicate in a future...");
+            DEBUG_LOG("Processing uuid ", uuid, " with some predicate in a future...");
             futures->append(predicate(uuid, pred_args...));
         }
 
@@ -231,7 +243,7 @@ private:
 
     // --- Refresh filesystem table ---
 
-    std::atomic_bool is_being_refreshed{false}; // guard multiple refreshes
+    std::atomic_bool is_being_refreshed { false }; // guard multiple refreshes
 
     fs_map fs_snapshot;
     /* so we don't rely on the table itself anymore as a source of truth
@@ -250,6 +262,7 @@ private:
 
 
     std::vector<std::string> list_currently_displayed_filesystems(); // in the fs_table, direct mirror from the gui
+    std::string print_fs_view_state (); // for debugging purposes
 
 
     // real dumb render workers
@@ -264,7 +277,7 @@ private:
 
 
     // root operations
-    root_shell_thread* rootThread = nullptr;
+    std::unique_ptr<root_shell_thread> mw_root_thread = nullptr;
 
     QWidget *central_widget;
     QVBoxLayout *main_layout;
@@ -314,7 +327,10 @@ private slots:
     void update_button_states();
 
 signals:
-    void command_finished();
+    void ui_on_command_done();
     void root_shell_ready_signal();
     void status_updated(const QString &uuid, const QString &message);
+    void ask_the_table_to_quickly_refresh(
+        std::unordered_map<std::string, std::string> baseline
+    );
 };

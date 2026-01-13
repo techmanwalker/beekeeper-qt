@@ -1,4 +1,5 @@
 #pragma once
+#include "../gui/rootshellthread.hpp"
 
 /**
  * globals.hpp
@@ -18,6 +19,7 @@
 
 extern std::unique_ptr<superlaunch> launcher;
 extern std::unique_ptr<beekeeper::privileged::supercommander> komander;
+extern root_shell_thread *root_thread;   // non-owning observer
 
 void init_globals();  // to be called early in main()
 void shutdown_globals(); // safe teardown, komander and helpers closure and clean exit

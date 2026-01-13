@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <QDBusInterface>
 #include <sys/types.h> // for pid_t
 
 // forward-declare the supercommander type so we can return references without including its header
@@ -19,7 +20,7 @@ class superlaunch
 {
 public:
     superlaunch() = default;            // private constructor
-    ~superlaunch();
+    ~superlaunch() = default;
 
     superlaunch(const superlaunch&) = delete;
     superlaunch& operator=(const superlaunch&) = delete;

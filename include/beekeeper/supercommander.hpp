@@ -56,50 +56,39 @@ public:
     supercommander(const supercommander&) = delete;
     supercommander& operator=(const supercommander&) = delete;
 
-    QDBusInterface* get_helper_interface();
-
-    // call the helper to do something
-    command_streams
-    call_bk(const QString &verb,
-            const QVariantMap &options,
-            const QStringList &subjects);
-
-    // Fully asynchronous call to the DBus helper
+    // call the helper to do something: wrapper
     QFuture<command_streams>
-    call_bk_async(const QString &verb,
-                const QVariantMap &options,
-                const QStringList &subjects);
+    call_bk_future(const QString &verb,
+                               const QVariantMap &options,
+                               const QStringList &subjects);
                 
     bool do_i_have_root_permissions();
 
     // High-level wrappers...
-    fs_map btrfsls();
-    std::string beesstatus(const std::string &uuid);
-    bool beesstart(const std::string &uuid, bool enable_logging = false);
-    bool beesstop(const std::string &uuid);
-    bool beesrestart(const std::string &uuid);
-    std::string beeslog(const std::string &uuid);
-    bool beesclean(const std::string &uuid);
-    std::string beessetup(const std::string &uuid,
-                          size_t db_size = 0,
-                          bool return_success_bool_instead = false);
-    std::string beeslocate(const std::string &uuid);
-    bool beesremoveconfig(const std::string &uuid);
-    std::string btrfstat(const std::string &uuid, const std::string &mode = "");
+    QFuture<fs_map> btrfsls();
+    QFuture<std::string> beesstatus(const QString &uuid);
+    QFuture<bool> beesstart(const QString &uuid, bool enable_logging = false);
+    QFuture<bool> beesstop(const QString &uuid);
+    QFuture<bool> beesrestart(const QString &uuid);
+    QFuture<std::string> beeslog(const QString &uuid);
+    QFuture<bool> beesclean(const QString &uuid);
+    QFuture<std::string> beessetup(const QString &uuid,
+                                    size_t db_size = 0,
+                                    bool return_success_bool_instead = false);
+    QFuture<std::string> beeslocate(const QString &uuid);
+    QFuture<bool> beesremoveconfig(const QString &uuid);
+    QFuture<std::string> btrfstat(const QString &uuid, const QString &mode = "");
 
     // Autostart control
-    bool add_uuid_to_autostart(const std::string &uuid);
-    bool remove_uuid_from_autostart(const std::string &uuid);
+    QFuture<bool> add_uuid_to_autostart(const QString &uuid);
+    QFuture<bool> remove_uuid_from_autostart(const QString &uuid);
 
     // Transparent compression control
-    bool add_uuid_to_transparentcompression(const std::string &uuid, const std::string &compression_token = "compress=lzo");
-    bool remove_uuid_from_transparentcompression(const std::string &uuid);
+    QFuture<bool> add_uuid_to_transparentcompression(const QString &uuid, const QString &compression_token = "compress=lzo");
+    QFuture<bool> remove_uuid_from_transparentcompression(const QString &uuid);
 
-    bool start_transparentcompression_for_uuid(const std::string &uuid);
-    bool pause_transparentcompression_for_uuid(const std::string &uuid);
-
-    // Async wrapper submethods
-    std::unique_ptr<multicommander> async;
+    QFuture<bool> start_transparentcompression_for_uuid(const QString &uuid);
+    QFuture<bool> pause_transparentcompression_for_uuid(const QString &uuid);
 
 signals:
     void command_finished(const QString &cmd,

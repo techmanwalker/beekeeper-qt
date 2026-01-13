@@ -3,133 +3,133 @@
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
 #include "refreshfilesystems_helpers.hpp"
+#include <ostream>
 #include <qabstractitemmodel.h>
+#include <sstream>
+#include <string>
 
 // ----- Filesystem table builders -----
 
 void
 MainWindow::refresh_table(const bool fetch_data_from_daemon)
 {
-    // ------------------------------------------------------------------
-    // Guard against multiple concurrent refreshes
-    // ------------------------------------------------------------------
-    if (is_being_refreshed.exchange(true)) {
-        DEBUG_LOG("Was already refreshing. Discarding...");
+    if (is_being_refreshed.load()) {
+        DEBUG_LOG("Already refreshing. Discarding...");
+        return;
     }
 
-    // Immediate UI feedback
+    is_being_refreshed.store(true);
+
     update_button_states();
 
-    // ------------------------------------------------------------------
-    // Record what the table is currently rendering
-    // This is our "what the user is seeing right now" baseline
-    // ------------------------------------------------------------------
-    std::unordered_map<std::string, std::string> the_status_table_is_showing_for_uuid;
+    // Snapshot of what the user sees
+    std::unordered_map<std::string, std::string> baseline;
 
     if (fs_table) {
-        const int row_count = fs_table->rowCount();
-        the_status_table_is_showing_for_uuid.reserve(row_count);
+        for (int r = 0; r < fs_table->rowCount(); ++r) {
+            auto uuid = refresh_fs_helpers::fetch_user_role(
+                fs_table->model()->index(r, 0), 0);
+            auto status = refresh_fs_helpers::fetch_user_role(
+                fs_table->model()->index(r, 2), 2);
 
-        for (int row = 0; row < row_count; ++row) {
-            QModelIndex uuid_idx   = fs_table->model()->index(row, 0);
-            QModelIndex status_idx = fs_table->model()->index(row, 2);
-
-            QString uuid_qstr   = refresh_fs_helpers::fetch_user_role(uuid_idx, 0);
-            QString status_qstr = refresh_fs_helpers::fetch_user_role(status_idx, 2);
-
-            if (!uuid_qstr.isEmpty()) {
-                the_status_table_is_showing_for_uuid.emplace(
-                    uuid_qstr.toStdString(),
-                    status_qstr.toStdString()
+            if (!uuid.isEmpty()) {
+                baseline.emplace(
+                    uuid.toStdString(),
+                    status.toStdString()
                 );
             }
         }
     }
 
-    // ------------------------------------------------------------------
-    // Heavy work outside the GUI thread
-    // ------------------------------------------------------------------
-    (void) QtConcurrent::run(
-        [this, fetch_data_from_daemon, the_status_table_is_showing_for_uuid]() mutable {
+    DEBUG_LOG("Refresh snapshot recorded.");
 
-        fs_map fresh_data;
+    // Work outside of the GUI thread
+    (void) QtConcurrent::run([this, fetch_data_from_daemon, baseline]() mutable {
 
-        // ------------------------------------------------------------------
-        // Decide where "fresh_data" comes from
-        // ------------------------------------------------------------------
         if (fetch_data_from_daemon) {
-            // Full refresh: ask the daemon
-            fresh_data = komander->btrfsls();
+            DEBUG_LOG("Asking the daemon for data.");
+            auto future = komander->btrfsls();
+            fs_view_state = future.result();
 
-            // Now the GUI's optimistic state is reset to reality
-            fs_view_state = fresh_data;
-        } else {
-            // Soft refresh: trust what the GUI already believes
-            fresh_data = fs_view_state;
+            DEBUG_LOG("Data fetched. Will ask for refresh. Was:\n", print_fs_view_state());
+
         }
 
-        // ------------------------------------------------------------------
-        // Compute what changed, using what the table was showing as baseline
-        // ------------------------------------------------------------------
+        emit ask_the_table_to_quickly_refresh(baseline);
+    });
+}
+
+void
+MainWindow::quick_refresh(
+    std::unordered_map<std::string, std::string> the_status_table_is_showing_for_uuid
+)
+{
+    if (!is_being_refreshed.load()) return; // don't do anything
+
+    DEBUG_LOG("Quick refresh triggered.");
+    (void) QtConcurrent::run([this, the_status_table_is_showing_for_uuid]() mutable {
+
+        fs_map fresh_data = fs_view_state;
+
         fs_diff changes;
 
-        // 1) Changed or removed entries
+        // 1) Changed / removed
         for (const auto &[uuid, rendered_status] : the_status_table_is_showing_for_uuid) {
-
             auto it = fresh_data.find(uuid);
-
             if (it != fresh_data.end()) {
-                // Still exists → check if status changed
                 if (rendered_status != it->second.status) {
                     changes.just_changed.emplace(uuid, it->second);
                 }
             } else {
-                // Not present anymore → only allowed on full refresh
-                if (fetch_data_from_daemon) {
-                    changes.just_removed.emplace_back(uuid);
-                }
+                changes.just_removed.emplace_back(uuid);
             }
         }
 
-        // 2) Newly added entries (only on full refresh)
-        if (fetch_data_from_daemon) {
-            for (const auto &[uuid, info] : fresh_data) {
-                if (the_status_table_is_showing_for_uuid.find(uuid)
-                    == the_status_table_is_showing_for_uuid.end()) {
-                    changes.newly_added.emplace(uuid, info);
-                }
+        // 2) Newly added
+        for (const auto &[uuid, info] : fresh_data) {
+            if (the_status_table_is_showing_for_uuid.find(uuid) == the_status_table_is_showing_for_uuid.end()) {
+                changes.newly_added.emplace(uuid, info);
             }
         }
 
-        // ------------------------------------------------------------------
-        // Now go back to the GUI thread and apply the dumb renders
-        // ------------------------------------------------------------------
-        QMetaObject::invokeMethod(
-            this,
-            [this, changes]() mutable {
+        // ---- GUI thread ----
+        QMetaObject::invokeMethod(this, [this, changes]() mutable {
 
-                refresh_fs_helpers::status_text_mapper mapper;
+            refresh_fs_helpers::status_text_mapper mapper;
 
-                if (fs_table && fs_table->selectionModel()) {
-                    fs_table->selectionModel()->blockSignals(true);
-                }
+            DEBUG_LOG("Applying changes to table.");
 
-                apply_removed(changes.just_removed);
-                apply_added(changes.newly_added, mapper);
-                apply_changed(changes.just_changed, mapper);
+            if (fs_table && fs_table->selectionModel())
+                fs_table->selectionModel()->blockSignals(true);
 
-                if (fs_table && fs_table->selectionModel()) {
-                    fs_table->selectionModel()->blockSignals(false);
-                }
+            apply_removed(changes.just_removed);
+            apply_added(changes.newly_added, mapper);
+            apply_changed(changes.just_changed, mapper);
 
-                is_being_refreshed.store(false);
+            if (fs_table && fs_table->selectionModel())
+                fs_table->selectionModel()->blockSignals(false);
 
-                update_button_states();
-            },
-            Qt::QueuedConnection
-        );
+            is_being_refreshed.store(false);
+            update_button_states();
+
+        }, Qt::QueuedConnection);
     });
 }
+
+std::string
+MainWindow::print_fs_view_state ()
+{
+    std::ostringstream oss;
+
+    for (const auto &[uuid, info] : fs_view_state) {
+        oss
+        <<  "   Label: "  << info.label << std::endl
+        <<  "   Status: " << info.status << std::endl;
+    }
+
+    return oss.str();
+}
+
 
 /**
 * @brief Return the uuids of all the filesystems the table is showing..
@@ -163,6 +163,8 @@ MainWindow::list_currently_displayed_filesystems()
 void
 MainWindow::apply_added(const fs_map &added, refresh_fs_helpers::status_text_mapper &mapper)
 {
+    if (!is_being_refreshed.load()) return;
+
     for (const auto &[uuid, info] : added) {
         int row = fs_table->rowCount();
         fs_table->insertRow(row);
@@ -197,6 +199,8 @@ MainWindow::apply_added(const fs_map &added, refresh_fs_helpers::status_text_map
 void
 MainWindow::apply_removed(const std::vector<std::string> &removed)
 {
+    if (!is_being_refreshed.load()) return;
+
     for (const auto &uuid: removed) {
         for (int r = 0; r < fs_table->rowCount(); ++r) {
             auto *item = fs_table->item(r, 0);
@@ -215,6 +219,8 @@ MainWindow::apply_removed(const std::vector<std::string> &removed)
 void
 MainWindow::apply_changed(const fs_map &changed, refresh_fs_helpers::status_text_mapper &mapper)
 {
+    if (!is_being_refreshed.load()) return;
+    
     for (const auto &[uuid, info] : changed) {
         for (int r = 0; r < fs_table->rowCount(); ++r) {
             auto *uuid_item = fs_table->item(r, 0);

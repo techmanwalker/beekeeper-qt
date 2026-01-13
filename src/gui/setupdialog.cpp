@@ -19,7 +19,6 @@
 #include "mainwindow.hpp"
 #include "tablecheckers.hpp"
 #include "../polkit/globals.hpp" // launcher + komander
-#include "../polkit/multicommander.hpp"
 #include "setupdialog.hpp"
 
 #include <QLabel>
@@ -183,7 +182,7 @@ SetupDialog::on_text_changed(const QString & /*text*/)
 void
 SetupDialog::accept()
 {
-    if (!launcher->root_alive && !launcher->start_root_shell()) {
+    if (!launcher->root_alive) {
         QMessageBox::critical(this,
                               tr("Error"),
                               tr("Cannot start root shell. Exiting setup."));
@@ -215,11 +214,12 @@ SetupDialog::accept()
 
 
     // Collect async futures on heap so they can outlive this dialog
-    auto *futures = new QList<QFuture<bool>>();
+    auto *setup_futures = new QList<QFuture<std::string>>();
+    auto *tc_futures = new QList<QFuture<bool>>();
 
     // --- Beesd setup ---
     for (const QString &q : uuids_to_setup) {
-        futures->append(komander->async->beessetup(q, db_size));
+        setup_futures->append(komander->beessetup(q, db_size));
         // Render it as set up
         mw->fs_view_state[q.toStdString()].status = "stopped";
         mw->fs_view_state[q.toStdString()].config = "__DUMMY__";
@@ -233,13 +233,13 @@ SetupDialog::accept()
 
         for (const QString &q : uuids_to_setup) {
             // Add to transparent compression config
-            futures->append(
-                komander->async->add_uuid_to_transparentcompression(q, compress_token)
+            tc_futures->append(
+                komander->add_uuid_to_transparentcompression(q, compress_token)
             );
 
             // Attempt remount/start compression if mounted
-            futures->append(
-                komander->async->start_transparentcompression_for_uuid(q)
+            tc_futures->append(
+                komander->start_transparentcompression_for_uuid(q)
             );
 
             mw->fs_view_state[q.toStdString()].compressing = true;
@@ -251,9 +251,11 @@ SetupDialog::accept()
 
     // Hand over futures to the main window’s async processor
     if (MainWindow *mw = qobject_cast<MainWindow*>(parentWidget())) {
-        mw->refresh_after_these_futures_finish(futures);
+        mw->refresh_after_these_futures_finish(setup_futures);
+        mw->refresh_after_these_futures_finish(tc_futures);
     } else {
         // Fallback cleanup if no main window found
-        delete futures;
+        delete setup_futures;
+        delete tc_futures;
     }
 }

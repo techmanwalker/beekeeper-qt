@@ -19,143 +19,28 @@
 namespace beekeeper { namespace privileged {
 
 // thread-local storage: each thread has its own interface
-thread_local std::unique_ptr<QDBusInterface> thread_local_iface;
 
-QDBusInterface*
-supercommander::get_helper_interface()
-{
-    // no need for mutex - each thread has its own variable
-    
-    // if this thread has a valid interface, reuse it
-    if (thread_local_iface && thread_local_iface->isValid()) {
-        DEBUG_LOG("DBus interface still valid. Returning that one...");
-        return thread_local_iface.get();
-    }
-    
-    // create new interface fot THIS thread
-    thread_local_iface = std::make_unique<QDBusInterface>(
-        "org.beekeeper.Helper",
-        "/org/beekeeper/Helper",
-        "org.beekeeper.Helper",
-        QDBusConnection::systemBus()
-    );
-    
-    if (thread_local_iface->isValid()) {
-        thread_local_iface->setTimeout(120000); // 2 minutes
-        DEBUG_LOG("[supercommander] DBus interface (re)created for thread ",
-                  std::this_thread::get_id());
-    } else {
-        DEBUG_LOG("[supercommander] Failed to (re)create DBus interface: ",
-                  thread_local_iface->lastError().message());
-    }
-    
-    return thread_local_iface.get();
-}
 
 // Execute a command in the DBus helper
-command_streams
-supercommander::call_bk(const QString &verb,
-                        const QVariantMap &options,
-                        const QStringList &subjects)
-{
-    //*
-    // For debugging
-    #ifdef BEEKEEPER_DEBUG_LOGGING
-    // Serialize options into "key=value" pairs
-    QStringList opts_serialized;
-    for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
-        opts_serialized << QString("%1=%2").arg(it.key(), it.value().toString());
-    }
 
-    // Serialize subjects as space-separated list
-    QString subjects_serialized = subjects.join(" ");
-
-    DEBUG_LOG("Executing command in DBus root helper");
-    DEBUG_LOG("verb: ", verb.toStdString());
-    DEBUG_LOG("options: ", opts_serialized.join(", ").toStdString());
-    DEBUG_LOG("subjects: ", subjects_serialized.toStdString());
-    #endif
-    //*/
-
-    command_streams result;
-
-    if (!launcher->root_alive) {
-        DEBUG_LOG("[supercommander] helper not alive");
-        return result;
-    }
-
-    QDBusInterface *iface = get_helper_interface();
-
-    if (!iface) {
-        DEBUG_LOG("[supercommander] helper DBus interface is nullptr");
-        result.stderr_str = "DBus interface creation failed";
-        return result;
-    }
-
-    if (!iface->isValid()) {
-        DEBUG_LOG("[supercommander] helper DBus interface invalid: ", 
-                  iface->lastError().message().toStdString());
-        result.stdout_str = "";
-        result.stderr_str = iface->lastError().message().toStdString();
-        return result;
-    }
-
-    // DEBUG_LOG("[supercommander] call_bk: before DBus call for verb ", verb.toStdString(), " :" , QDateTime::currentDateTime().toString().toStdString());
-
-    QDBusMessage reply_msg = iface->call(QDBus::Block, "ExecuteCommand", verb, options, subjects);
-    if (reply_msg.type() == QDBusMessage::ErrorMessage) {
-        DEBUG_LOG("[supercommander] DBus call returned error: ", reply_msg.errorMessage());
-        result.stderr_str = reply_msg.errorMessage().toStdString();
-        
-        // invalidate ONLY this thread's interface
-        thread_local_iface.reset();
-
-        return result;
-    }
-
-    // DEBUG_LOG("[supercommander] call_bk: after DBus call for verb ", verb.toStdString(), " :" , QDateTime::currentDateTime().toString().toStdString());
-
-    if (reply_msg.arguments().isEmpty()) {
-        DEBUG_LOG("[supercommander] helper reply had no arguments");
-        return result;
-    }
-
-    QVariant arg = reply_msg.arguments().first();
-    QVariantMap out_map;
-    if (arg.canConvert<QVariantMap>()) {
-        // Directly a QVariantMap
-        out_map = arg.toMap();
-    } else if (arg.canConvert<QDBusArgument>()) {
-        // Wrapped as QDBusArgument → need to demarshal
-        QDBusArgument dbus_arg = arg.value<QDBusArgument>();
-        dbus_arg >> out_map;
-    } else {
-        DEBUG_LOG("[supercommander] helper reply in unexpected format, type=", arg.typeName());
-        return result;
-    }
-
-    result.stdout_str = out_map.value("stdout").toString().toStdString();
-    result.stderr_str = out_map.value("stderr").toString().toStdString();
-
-    /*
-    DEBUG_LOG("[supercommander] helper finished; stdout len=", result.stdout_str.size(),
-              " stderr len=", result.stderr_str.size());
-    */
-
-    return result;
-}
-
-// Fully asynchronous call to the DBus helper
 QFuture<command_streams>
-supercommander::call_bk_async(const QString &verb,
-                              const QVariantMap &options,
-                              const QStringList &subjects)
+supercommander::call_bk_future(const QString &verb,
+                               const QVariantMap &options,
+                               const QStringList &subjects)
 {
-    // QtConcurrent::run will execute call_bk in a separate thread
-    return QtConcurrent::run([this, verb, options, subjects]() -> command_streams {
-        return this->call_bk(verb, options, subjects);
-    });
-}
+    if (!root_thread)
+    {
+        QPromise<command_streams> p;
+        p.start();
+        command_streams r;
+        r.stderr_str = "root_shell_thread not running";
+        p.addResult(r);
+        p.finish();
+        return p.future();
+    }
+
+    return root_thread->call_bk_future(verb, options, subjects);
+};
 
 bool
 supercommander::do_i_have_root_permissions()
@@ -164,122 +49,122 @@ supercommander::do_i_have_root_permissions()
 }
 
 
-// ------------------ High-level beekeeperman wrappers ------------------
+// ------------------ High-level beekeeperman wrappers (async QFuture version) ------------------
 
-fs_map
+QFuture<fs_map>
 supercommander::btrfsls()
 {
     QVariantMap opts;
     opts.insert("json", "<default>");
 
-    command_streams res = call_bk("list", opts, QStringList{});
-    fs_map result;
+    return root_thread->call_bk_future("list", opts, QStringList{}).then([](command_streams res) {
+        fs_map result;
 
-    if (!res.stdout_str.empty()) {
-        DEBUG_LOG("RECEIVED BY btrfsls(): ", res.stdout_str);
-        QJsonParseError parseError;
-        QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(res.stdout_str), &parseError);
-        if (parseError.error != QJsonParseError::NoError) return result;
-        if (!doc.isArray()) return result;
+        if (!res.stdout_str.empty()) {
+            DEBUG_LOG("RECEIVED BY btrfsls(): ", res.stdout_str);
+            QJsonParseError parseError;
+            QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(res.stdout_str), &parseError);
+            if (parseError.error != QJsonParseError::NoError) return result;
+            if (!doc.isArray()) return result;
 
-        QJsonArray fsArray = doc.array();
-        for (const QJsonValue &val : fsArray) {
-            if (!val.isObject()) continue;
-            QJsonObject obj = val.toObject();
+            QJsonArray fsArray = doc.array();
+            for (const QJsonValue &val : fsArray) {
+                if (!val.isObject()) continue;
+                QJsonObject obj = val.toObject();
 
-            result.emplace(
-                obj.value("uuid").toString("").toStdString(),
-                fs_info {
-                    obj.value("label").toString("").toStdString(),
-                    obj.value("status").toString("unknown").trimmed().toStdString(),
-                    obj.value("devname").toString("unknown").trimmed().toStdString(),
-                    obj.value("config").toString("unknown").trimmed().toStdString(),
-                    obj.value("compressing").toBool(false),
-                    obj.value("autostart").toBool(false)
-                }
+                result.emplace(
+                    obj.value("uuid").toString("").toStdString(),
+                    fs_info {
+                        obj.value("label").toString("").toStdString(),
+                        obj.value("status").toString("unknown").trimmed().toStdString(),
+                        obj.value("devname").toString("unknown").trimmed().toStdString(),
+                        obj.value("config").toString("unknown").trimmed().toStdString(),
+                        obj.value("compressing").toBool(false),
+                        obj.value("autostart").toBool(false)
+                    }
+                );
+            }
+        }
+
+        #ifdef BEEKEEPER_DEBUG_LOGGING
+        DEBUG_LOG("Found filesystems: ");
+        for (const auto &[uuid, info]: result) {
+            DEBUG_LOG(
+                "FS: uuid=", uuid, "\n",
+                " label=", info.label, "\n",
+                " status=", info.status, "\n",
+                " devname=", info.devname, "\n",
+                " config=", info.config, "\n",
+                " compressing=", info.compressing, "\n",
+                " autostart=", info.autostart, "\n"
             );
         }
-    }
+        #endif
 
-    #ifdef BEEKEEPER_DEBUG_LOGGING
-    DEBUG_LOG("Found filesystems: ");
-    for (const auto &[uuid, info]: result) {
-        DEBUG_LOG(
-            "FS: uuid=", uuid, "\n",
-            " label=", info.label, "\n",
-            " status=", info.status, "\n",
-            " devname=", info.devname, "\n",
-            " config=", info.config, "\n",
-            " compressing=", info.compressing, "\n",
-            " autostart=", info.autostart, "\n"
-        );
-    }
-    #endif
-
-    return result;
+        return result;
+    });
 }
 
-std::string
-supercommander::beesstatus(const std::string &uuid)
+QFuture<std::string>
+supercommander::beesstatus(const QString &uuid)
 {
-    command_streams res = call_bk("status", QVariantMap{}, QStringList(QString::fromStdString(uuid)));
+    return root_thread->call_bk_future("status", QVariantMap{}, QStringList{uuid})
+        .then([](command_streams res) -> std::string {
+            std::string out = res.stdout_str;
 
-    // Only care about stdout, ignore stderr
-    std::string out = res.stdout_str;
+            auto pos = out.rfind(':');
+            if (pos != std::string::npos && pos + 1 < out.size()) {
+                out = out.substr(pos + 1);
+            }
 
-    // Find the last ':' and grab everything after it
-    auto pos = out.rfind(':');
-    if (pos != std::string::npos && pos + 1 < out.size()) {
-        out = out.substr(pos + 1);
-    }
-
-    // Trim leading/trailing whitespace
-    size_t first = out.find_first_not_of(" \t\n\r");
-    size_t last  = out.find_last_not_of(" \t\n\r");
-    if (first == std::string::npos) return "stopped"; // empty -> stopped
-    return out.substr(first, last - first + 1);
+            size_t first = out.find_first_not_of(" \t\n\r");
+            size_t last  = out.find_last_not_of(" \t\n\r");
+            if (first == std::string::npos) return "stopped";
+            return out.substr(first, last - first + 1);
+        });
 }
 
-bool
-supercommander::beesstart(const std::string &uuid, bool enable_logging)
+QFuture<bool>
+supercommander::beesstart(const QString &uuid, bool enable_logging)
 {
     QVariantMap opts;
-    if (enable_logging) opts.insert("enable-logging", "<default>");
+    if (enable_logging)
+        opts.insert("enable-logging", "<default>");
 
-    call_bk("start", opts, QStringList{QString::fromStdString(uuid)});
-    return true;
+    return root_thread->call_bk_future("start", opts, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-bool
-supercommander::beesstop(const std::string &uuid)
+QFuture<bool>
+supercommander::beesstop(const QString &uuid)
 {
-    call_bk("stop", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
-    return true;
+    return root_thread->call_bk_future("stop", QVariantMap{}, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-bool
-supercommander::beesrestart(const std::string &uuid)
+QFuture<bool>
+supercommander::beesrestart(const QString &uuid)
 {
-    call_bk("restart", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
-    return true;
+    return root_thread->call_bk_future("restart", QVariantMap{}, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-std::string
-supercommander::beeslog(const std::string &uuid)
+QFuture<std::string>
+supercommander::beeslog(const QString &uuid)
 {
-    command_streams res = call_bk("log", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
-    return res.stdout_str;
+    return root_thread->call_bk_future("log", QVariantMap{}, QStringList{uuid})
+        .then([](command_streams res) { return res.stdout_str; });
 }
 
-bool
-supercommander::beesclean(const std::string &uuid)
+QFuture<bool>
+supercommander::beesclean(const QString &uuid)
 {
-    call_bk("clean", QVariantMap{}, QStringList{QString::fromStdString(uuid)});
-    return true;
+    return root_thread->call_bk_future("clean", QVariantMap{}, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-std::string
-supercommander::beessetup(const std::string &uuid,
+QFuture<std::string>
+supercommander::beessetup(const QString &uuid,
                           size_t db_size,
                           bool return_success_bool_instead)
 {
@@ -287,190 +172,148 @@ supercommander::beessetup(const std::string &uuid,
     if (db_size) opts.insert("db_size", static_cast<qulonglong>(db_size));
     opts.insert("json", "<default>");
 
-    command_streams res = call_bk("setup", opts, QStringList{QString::fromStdString(uuid)});
+    return root_thread->call_bk_future("setup", opts, QStringList{uuid})
+        .then([return_success_bool_instead](command_streams res) -> std::string {
+            QJsonParseError err;
+            QJsonDocument doc = QJsonDocument::fromJson(
+                QByteArray::fromStdString(res.stdout_str), &err);
 
-    QJsonParseError err;
-    QJsonDocument doc = QJsonDocument::fromJson(
-        QByteArray::fromStdString(res.stdout_str), &err);
+            if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+                return return_success_bool_instead ? "0" : "Failed to parse JSON";
+            }
 
-    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-        return return_success_bool_instead ? "0" : "Failed to parse JSON";
-    }
+            QJsonObject obj = doc.object();
+            int success = obj.value("success").toInt();
+            QString message = obj.value("message").toString();
 
-    QJsonObject obj = doc.object();
-    int success = obj.value("success").toInt();
-    QString message = obj.value("message").toString();
-
-    if (return_success_bool_instead) {
-        return success ? "1" : "0";
-    } else {
-        return message.toStdString();
-    }
+            if (return_success_bool_instead) {
+                return success ? "1" : "0";
+            } else {
+                return message.toStdString();
+            }
+        });
 }
 
-std::string
-supercommander::beeslocate(const std::string &uuid)
+QFuture<std::string>
+supercommander::beeslocate(const QString &uuid)
 {
-    // No options needed
-    QVariantMap opts;
-
-    // Call the "locate" command
-    command_streams res = call_bk("locate", opts, QStringList{QString::fromStdString(uuid)});
-
-    if (!res.stdout_str.empty())
-        return res.stdout_str;
-
-    return "";  // return empty string if not mounted / not found
+    return root_thread->call_bk_future("locate", QVariantMap{}, QStringList{uuid})
+        .then([](command_streams res) {
+            return res.stdout_str.empty() ? "" : res.stdout_str;
+        });
 }
 
-
-bool
-supercommander::beesremoveconfig(const std::string &uuid)
+QFuture<bool>
+supercommander::beesremoveconfig(const QString &uuid)
 {
     QVariantMap opts;
     opts.insert("remove", "<default>");
 
-    command_streams res = call_bk("setup", opts, QStringList{QString::fromStdString(uuid)});
-
-    return !res.stdout_str.empty();
+    return root_thread->call_bk_future("setup", opts, QStringList{uuid})
+        .then([](command_streams) { return !command_streams{}.stdout_str.empty(); });
 }
 
-std::string
-supercommander::btrfstat(const std::string &uuid,
-                         const std::string &mode)
+QFuture<std::string>
+supercommander::btrfstat(const QString &uuid, const QString &mode)
 {
     QVariantMap opts;
-    if (!mode.empty()) {
-        opts.insert("storage", QString::fromStdString(mode));
-    }
+    if (!mode.isEmpty()) opts.insert("storage", mode);
     opts.insert("json", "<default>");
 
-    command_streams res = call_bk("stat", opts, QStringList{QString::fromStdString(uuid)});
+    return root_thread->call_bk_future("stat", opts, QStringList{uuid})
+        .then([mode](command_streams res) -> std::string {
+            if (res.stdout_str.empty()) return "";
 
-    if (res.stdout_str.empty()) {
-        return "";
-    }
+            QJsonParseError err;
+            QJsonDocument doc = QJsonDocument::fromJson(
+                QByteArray::fromStdString(res.stdout_str), &err);
 
-    QJsonParseError err;
-    QJsonDocument doc = QJsonDocument::fromJson(
-        QByteArray::fromStdString(res.stdout_str), &err);
+            if (err.error != QJsonParseError::NoError || !doc.isObject()) return "";
 
-    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-        return "";
-    }
+            QJsonObject obj = doc.object();
+            int success = obj.value("success").toInt();
 
-    QJsonObject obj = doc.object();
-    int success = obj.value("success").toInt();
+            auto qjsonvalue_to_string = [](const QJsonValue &v) -> std::string {
+                if (v.isString()) return v.toString().toStdString();
+                if (v.isDouble()) return std::to_string(static_cast<qint64>(v.toDouble()));
+                return "";
+            };
 
-    // Helper to safely convert a QJsonValue (string or number) to std::string
-    auto qjsonvalue_to_string = [](const QJsonValue &v) -> std::string {
-        if (v.isString()) {
-            return v.toString().toStdString();
-        } else if (v.isDouble()) {
-            // JSON numbers are double; cast to int64_t for byte counts
-            qint64 n = static_cast<qint64>(v.toDouble());
-            return std::to_string(n);
-        }
-        return "";
-    };
+            if (!mode.isEmpty()) {
+                if (success != 1) return "";
+                if (mode == "free") return qjsonvalue_to_string(obj.value("free"));
+                if (mode == "used") return qjsonvalue_to_string(obj.value("used"));
+                return "";
+            }
 
-    // If caller requested storage info, return "free" or "used" field (as string)
-    if (!mode.empty()) {
-        if (success != 1) {
+            QString config_path = obj.value("config_path").toString();
+            if (success == 1 && !config_path.isEmpty()) return config_path.toStdString();
             return "";
-        }
-        if (mode == "free") {
-            QJsonValue val = obj.value("free");
-            return qjsonvalue_to_string(val);
-        } else if (mode == "used") {
-            QJsonValue val = obj.value("used");
-            return qjsonvalue_to_string(val);
-        } else {
-            // mode unspecified/unknown: try to return a composite or empty
-            // (existing CLI outputs both free and used; keep behavior simple here)
-            return "";
-        }
-    }
-
-    // Old behaviour: config path check
-    QString config_path = obj.value("config_path").toString();
-    if (success == 1 && !config_path.isEmpty()) {
-        return config_path.toStdString();
-    }
-    return "";
+        });
 }
 
-
-bool
-supercommander::add_uuid_to_autostart(const std::string &uuid)
+QFuture<bool>
+supercommander::add_uuid_to_autostart(const QString &uuid)
 {
     QVariantMap opts;
     opts.insert("add", "<default>");
 
-    command_streams res = call_bk("autostartctl", opts, QStringList(QString::fromStdString(uuid)));
-    return true;
+    return root_thread->call_bk_future("autostartctl", opts, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-bool
-supercommander::remove_uuid_from_autostart(const std::string &uuid)
+QFuture<bool>
+supercommander::remove_uuid_from_autostart(const QString &uuid)
 {
     QVariantMap opts;
     opts.insert("remove", "<default>");
 
-    command_streams res = call_bk("autostartctl", opts, QStringList(QString::fromStdString(uuid)));
-    return true;
+    return root_thread->call_bk_future("autostartctl", opts, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-bool
-supercommander::add_uuid_to_transparentcompression(const std::string &uuid,
-                                                   const std::string &compression_level)
+QFuture<bool>
+supercommander::add_uuid_to_transparentcompression(const QString &uuid,
+                                                   const QString &compression_level)
 {
     QVariantMap opts;
     opts.insert("add", "<default>");
-    opts.insert("compression-level", QString::fromStdString(bk_util::to_lower(compression_level)));
+    opts.insert("compression-level", QString::fromStdString(compression_level.toLower().toStdString()));
 
-    command_streams res =
-        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
-
-    return true;
+    return root_thread->call_bk_future("compressctl", opts, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-
-bool
-supercommander::remove_uuid_from_transparentcompression(const std::string &uuid)
+QFuture<bool>
+supercommander::remove_uuid_from_transparentcompression(const QString &uuid)
 {
     QVariantMap opts;
     opts.insert("remove", "<default>");
 
-    command_streams res =
-        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
-
-    return true;
+    return root_thread->call_bk_future("compressctl", opts, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-bool
-supercommander::start_transparentcompression_for_uuid(const std::string &uuid)
+QFuture<bool>
+supercommander::start_transparentcompression_for_uuid(const QString &uuid)
 {
     QVariantMap opts;
     opts.insert("start", "<default>");
 
-    command_streams res =
-        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
-
-    return true;
+    return root_thread->call_bk_future("compressctl", opts, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
 
-bool
-supercommander::pause_transparentcompression_for_uuid(const std::string &uuid)
+QFuture<bool>
+supercommander::pause_transparentcompression_for_uuid(const QString &uuid)
 {
     QVariantMap opts;
     opts.insert("pause", "<default>");
 
-    command_streams res =
-        call_bk("compressctl", opts, QStringList(QString::fromStdString(uuid)));
-
-    return true;
+    return root_thread->call_bk_future("compressctl", opts, QStringList{uuid})
+        .then([](command_streams) { return true; });
 }
+
 
 
 } // namespace privileged

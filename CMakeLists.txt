@@ -134,6 +134,7 @@ set_target_properties(beekeeper PROPERTIES
 target_include_directories(beekeeper PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+target_link_libraries(beekeeper PUBLIC Qt6::Core)
 
 # ------------------------------
 # CLI executable
@@ -157,10 +158,9 @@ target_link_libraries(beekeeperman PRIVATE beekeeper)
 # --- Polkit sources (exclude thebeekeeper.cpp)
 file(GLOB POLKIT_SRCS
     include/beekeeper/supercommander.hpp
-    src/polkit/auth.cpp
     src/polkit/globals.*           # matches globals.cpp / globals.hpp if needed
-    src/polkit/multicommander.*   # matches multicommander.cpp / .hpp
-    src/polkit/super*             # matches super*.cpp / .hpp
+    src/polkit/super*              # matches super*.cpp / .hpp
+    src/polkit/_static*            # wrappers for super*
 )
 
 # --- GUI sources (exclude main.cpp)
@@ -196,7 +196,6 @@ target_link_libraries(beekeeper-qt PRIVATE
 # Helper executable
 # ------------------------------
 add_executable(thebeekeeper
-    ${POLKIT_SRCS}
     src/polkit/diskwait.cpp
     src/polkit/masterservice.cpp
     src/cli/commandregistry.cpp

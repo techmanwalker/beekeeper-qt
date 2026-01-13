@@ -8,6 +8,8 @@
 #include "beekeeper/qt-debug.hpp"
 
 #include "mainwindow.hpp"
+#include "../polkit/globals.hpp"
+#include "rootshellthread.hpp"
 #include "statusdotdelegate.hpp"
 #include "uuidcolumndelegate.hpp"
 
@@ -24,12 +26,19 @@
 #include <QMouseEvent>
 #include <QToolTip>
 #include <QVBoxLayout>
+#include <memory>
 
 using namespace beekeeper::privileged;
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
+    // create and root shell thread
+
+    this->set_root_thread(
+        std::make_unique<root_shell_thread>(*launcher)
+    );
+
     // create widgets / objects (same as before)
     fs_table    = new QTableWidget(this);
     refresh_btn = new QPushButton(QIcon::fromTheme("view-refresh"), "");
@@ -71,7 +80,7 @@ MainWindow::MainWindow(QWidget* parent)
     keyboardNav = new KeyboardNav(this);
     keyboardNav->init();
 
-    set_temporal_status_message(tr("Loading list..."), 5000);
+    set_temporal_status_message(tr("Loading list..."), 10000);
 
     // ----------------------------
     // Connect everything and start cycles at the very end
@@ -81,7 +90,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect_status_bar_handlers();
     connect_fs_table_handlers();
     start_fs_table_refresh_cycle();
-    connect_command_finished_signal();
+    connect_ui_on_command_done_signal();
 }
 
 // ---------------------------------------------------------------------
@@ -426,7 +435,7 @@ MainWindow::start_fs_table_refresh_cycle()
         }
     );
 
-    soft_refresh_timer->start(5000); // every 5s
+    soft_refresh_timer->start(10000); // every 5s
 
 
     // -----------------------------------------------------------------
@@ -447,10 +456,19 @@ MainWindow::start_fs_table_refresh_cycle()
 // ---------------------------------------------------------------------
 // Connect command finished signal to refresh and other housekeeping
 // ---------------------------------------------------------------------
-void MainWindow::connect_command_finished_signal()
+void MainWindow::connect_ui_on_command_done_signal()
 {
-    connect(this, &MainWindow::command_finished, this, [this]() {
+    connect(this, &MainWindow::ui_on_command_done, this, [this]() {
         DEBUG_LOG("[MainWindow] Root shell ready signal received!");
         refresh_table(false); // first refresh the buttons before doing the full refresh
     });
+
+    // so the refresh signal can actually... refresh
+    connect(
+        this,
+        &MainWindow::ask_the_table_to_quickly_refresh,
+        this,
+        &MainWindow::quick_refresh,
+        Qt::QueuedConnection
+    );
 }

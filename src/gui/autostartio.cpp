@@ -2,7 +2,6 @@
 #include "mainwindow.hpp"
 #include "tablecheckers.hpp"
 #include "../polkit/globals.hpp"
-#include "../polkit/multicommander.hpp"
 
 using namespace tablecheckers;
 
@@ -36,7 +35,7 @@ MainWindow::handle_add_to_autostart()
             uuid.toStdString()
         ].autostart = true;
 
-        futures->append(komander->async->add_uuid_to_autostart(uuid));
+        futures->append(komander->add_uuid_to_autostart(uuid));
     }
 
     refresh_after_these_futures_finish(futures);
@@ -71,7 +70,7 @@ MainWindow::handle_remove_from_autostart()
             uuid.toStdString()
         ].autostart = false;
 
-        futures->append(komander->async->remove_uuid_from_autostart(uuid));
+        futures->append(komander->remove_uuid_from_autostart(uuid));
     }
 
     if (!futures->isEmpty())

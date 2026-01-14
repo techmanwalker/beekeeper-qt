@@ -15,6 +15,7 @@ struct command_streams
 {
     std::string stdout_str;
     std::string stderr_str;
+    int errcode;
 };
 
 Q_DECLARE_METATYPE(command_streams);

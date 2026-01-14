@@ -3,110 +3,164 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "beekeeper/util.hpp"
-#include "commandmachine/parser.hpp"
-#include "commandregistry.hpp"
-#include "handlers.hpp"
+#include "beekeeper/commandregistry.hpp"
+#include "beekeeper/clauses.hpp"
 #include <filesystem> // for std::setw
-#include <iostream>
 #include <string>
+#include <sstream>
 
 namespace fs = std::filesystem;
+namespace clause = beekeeper::clause;
 
-// Command handler implementations
-int
-beekeeper::cli::handle_start(const std::map<std::string, std::string> &options, 
+// Ease early returns
+
+#define RETURN_COMMANDSTREAMS \
+    return command_streams { \
+        cout.str(), \
+        cerr.str(), \
+        errcode \
+    };
+
+// Clause handler implementations
+command_streams
+clause::start(const std::map<std::string, std::string> &options, 
                  const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+
     bool enable_logging = options.find("enable-logging") != options.end();
     
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesstart(uuid)) {
-            std::cout << "Started beesd for " << uuid;
+            cout << "Started beesd for " << uuid;
             if (enable_logging) {
-                std::cout << " with logging enabled";
+                cout << " with logging enabled";
             }
-            std::cout << std::endl;
+            cout << std::endl;
         } else {
-            std::cerr << "Failed to start beesd for " << uuid << std::endl;
-            return 1;
+            cerr << "Failed to start beesd for " << uuid << std::endl;
+            errcode = 1;
         }
     }
-    return 0;
+
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_stop(const std::map<std::string, std::string> &options, 
+command_streams
+clause::stop(const std::map<std::string, std::string> &options, 
                 const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesstop(uuid)) {
-            std::cout << "Stopped beesd for " << uuid << std::endl;
+            cout << "Stopped beesd for " << uuid << std::endl;
         } else {
-            std::cerr << "Failed to stop beesd for " << uuid << std::endl;
-            return 1;
+            cerr << "Failed to stop beesd for " << uuid << std::endl;
+            errcode = 1;
         }
     }
-    return 0;
+    
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_restart(const std::map<std::string, std::string> &options, 
+command_streams
+clause::restart(const std::map<std::string, std::string> &options, 
                    const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesrestart(uuid)) {
-            std::cout << "Restarted beesd for " << uuid << std::endl;
+            cout << "Restarted beesd for " << uuid << std::endl;
         } else {
-            std::cerr << "Failed to restart beesd for " << uuid << std::endl;
-            return 1;
+            cerr << "Failed to restart beesd for " << uuid << std::endl;
+            errcode = 1;
         }
     }
-    return 0;
+    
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_status(const std::map<std::string, std::string> &options, 
+command_streams
+clause::status(const std::map<std::string, std::string> &options, 
                   const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+
     for (const auto& uuid : subjects) {
-        std::cout << "Status for " << uuid << ": " << bk_mgmt::beesstatus(uuid) << std::endl;
+        cout << "Status for " << uuid << ": " << bk_mgmt::beesstatus(uuid) << std::endl;
     }
-    return 0;
+    
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_log(const std::map<std::string, std::string> &options, 
+command_streams
+clause::log(const std::map<std::string, std::string> &options, 
                const std::vector<std::string> &subjects)
 {
-    bk_mgmt::beeslog(subjects[0]);
-    return 0;
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
+    // Deactivated, may remove
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_clean(const std::map<std::string, std::string> &options, 
+command_streams
+clause::clean(const std::map<std::string, std::string> &options, 
                  const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+
+    if (subjects.empty()) {
+        cerr << "No UUID specified";
+        errcode = 1;
+        RETURN_COMMANDSTREAMS
+    }
+    
     bk_mgmt::beescleanlogfiles(subjects[0]);
-    std::cout << "Cleaned PID file for " << subjects[0] << std::endl;
-    return 0;
+
+    cout << "Cleaned PID file for " << subjects[0];
+    
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_help(const std::map<std::string, std::string> &options, 
+command_streams
+clause::help(const std::map<std::string, std::string> &options, 
                 const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
     // Help is handled by the parser
-    return 0;
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_setup(const std::map<std::string, std::string> &options, 
+command_streams
+clause::setup(const std::map<std::string, std::string> &options, 
                              const std::vector<std::string> &subjects) 
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
+
     bool json_mode = options.count("json") > 0;
 
     auto emit_json = [&](int success, const std::string &message) {
-        std::cout 
+        cout 
             << "{\n"
             << "  \"success\": " << success << ",\n"
             << "  \"message\": \"" << message << "\"\n"
@@ -122,13 +176,15 @@ beekeeper::cli::handle_setup(const std::map<std::string, std::string> &options,
             db_size = std::stoull(it->second);
             if (db_size == 0) {
                 if (json_mode) emit_json(0, "Error: db-size must be a positive integer.");
-                else std::cerr << "Error: db-size must be a positive integer.\n";
-                return 1;
+                else cerr << "Error: db-size must be a positive integer.\n";
+                errcode = 1;
+                RETURN_COMMANDSTREAMS
             }
         } catch (...) {
             if (json_mode) emit_json(0, "Error: Invalid db-size value. Must be a positive integer.");
-            else std::cerr << "Error: Invalid db-size value. Must be a positive integer.\n";
-            return 1;
+            else cerr << "Error: Invalid db-size value. Must be a positive integer.\n";
+            errcode = 1;
+            RETURN_COMMANDSTREAMS
         }
     }
 
@@ -140,87 +196,101 @@ beekeeper::cli::handle_setup(const std::map<std::string, std::string> &options,
         bool removed = fs::remove(path, ec);
         if (ec) {
             if (json_mode) emit_json(0, "Failed to remove " + path + ": " + ec.message());
-            else std::cerr << "Failed to remove " << path << ": " << ec.message() << "\n";
+            else cerr << "Failed to remove " << path << ": " << ec.message() << "\n";
         } else if (!removed) {
             if (json_mode) emit_json(0, "Nothing removed (file did not exist): " + path);
-            else std::cerr << "Nothing removed (file did not exist): " << path << "\n";
+            else cerr << "Nothing removed (file did not exist): " << path << "\n";
         } else {
             if (json_mode) emit_json(1, "Removed config: " + path);
-            else std::cout << "Removed config: " << path << "\n";
+            else cout << "Removed config: " << path << "\n";
         }
-        return 0;
+        errcode = 0;
+
+        RETURN_COMMANDSTREAMS
     }
 
     // Normal setup
     std::string config_path = bk_mgmt::beessetup(uuid, db_size);
     if (!config_path.empty()) {
         if (json_mode) emit_json(1, "Configuration created/updated: " + config_path);
-        else std::cout << "Configuration created/updated: " << config_path << "\n";
-        return 0;
+        else cout << "Configuration created/updated: " << config_path << "\n";
+        errcode = 0;
+        RETURN_COMMANDSTREAMS
     } else {
         if (json_mode) emit_json(0, "Error: Failed to create/update configuration");
-        else std::cerr << "Error: Failed to create/update configuration\n";
-        return 1;
+        else cerr << "Error: Failed to create/update configuration\n";
+        RETURN_COMMANDSTREAMS
     }
 }
 
-int
-beekeeper::cli::handle_locate(const std::map<std::string, std::string> &options,
+command_streams
+clause::locate(const std::map<std::string, std::string> &options,
                               const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
     bool json_output = options.find("json") != options.end();
 
     if (json_output) {
         // --- JSON output ---
-        std::cout << "{";
+        cout << "{";
 
         bool first_uuid = true;
         for (const auto &uuid : subjects) {
             std::vector<std::string> mountpoints = bk_mgmt::get_mount_paths(uuid);
 
             if (!first_uuid) {
-                std::cout << ", ";
+                cout << ", ";
             }
             first_uuid = false;
 
-            std::cout << "\"" << uuid << "\": [";
+            cout << "\"" << bk_util::json_escape(uuid) << "\": [";
 
             bool first_mp = true;
             for (const auto &mp : mountpoints) {
                 if (!first_mp) {
-                    std::cout << ", ";
+                    cout << ", ";
                 }
                 first_mp = false;
-                std::cout << "\"" << mp << "\"";
+                cout << "\"" << bk_util::json_escape(mp) << "\"";
             }
 
-            std::cout << "]";
+            cout << "]";
         }
 
-        std::cout << "}" << std::endl;
+        cout << "}" << std::endl;
     } else {
         // --- Pretty-printed human output ---
         for (const auto &uuid : subjects) {
             std::vector<std::string> mountpoints = bk_mgmt::get_mount_paths(uuid);
 
             if (!mountpoints.empty()) {
-                std::cout << "Points that " << uuid << " is mounted on:" << std::endl;
+                cout << "Points that " << uuid << " is mounted on:" << std::endl;
                 for (const auto &mp : mountpoints) {
-                    std::cout << "\t" << mp << std::endl;
+                    cout << "\t" << mp << std::endl;
                 }
             } else {
-                std::cerr << uuid << ": not mounted or not found" << std::endl;
+                cerr << uuid << ": not mounted or not found" << std::endl;
             }
         }
     }
 
-    return 0;
+    errcode = 0;
+
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_list(const std::map<std::string, std::string> &options,
+command_streams
+clause::list(const std::map<std::string, std::string> &options,
                             const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
+
     fs_map filesystems = bk_mgmt::btrfsls();
 
     bool want_json = (options.find("json") != options.end());
@@ -251,22 +321,24 @@ beekeeper::cli::handle_list(const std::map<std::string, std::string> &options,
             out << "\"status\":\""  << bk_util::json_escape(status)  << "\",";
             out << "\"devname\":\"" << bk_util::json_escape(devname) << "\",";
             out << "\"config\":\""  << bk_util::json_escape(config_path) << "\",";
-            out << "\"compressing\":" << bk_util::json_escape(compressing ? "true" : "false") << ",";
-            out << "\"autostart\":" << bk_util::json_escape(autostart ? "true" : "false") << "";
+            out << "\"compressing\":" << (compressing ? "true" : "false") << ",";
+            out << "\"autostart\":" << (autostart ? "true" : "false") << "";
             out << '}';
         }
 
         out << ']';
-        std::cout << out.str() << std::endl;
-        return 0;
+        cout << out.str() << std::endl;
+        errcode = 0;
+        RETURN_COMMANDSTREAMS
     }
 
     // -------------------------
     // Pretty-table (human readable)
     // -------------------------
     if (filesystems.empty()) {
-        std::cout << "No btrfs filesystems found.\n";
-        return 0;
+        cout << "No btrfs filesystems found.\n";
+        errcode = 0;
+        RETURN_COMMANDSTREAMS
     }
 
     // Precompute all status strings
@@ -303,14 +375,14 @@ beekeeper::cli::handle_list(const std::map<std::string, std::string> &options,
     status_width = std::min(std::max(status_width, MIN_STATUS_LEN), MAX_STATUS_LEN);
 
     // Table header
-    std::cout << std::left
+    cout << std::left
               << std::setw(uuid_width)  << "UUID"   << " "
               << std::setw(label_width) << "LABEL"  << " "
               << std::setw(status_width) << "STATUS"
               << "\n";
 
     // Separator line
-    std::cout << std::string(uuid_width, '-')  << " "
+    cout << std::string(uuid_width, '-')  << " "
               << std::string(label_width, '-') << " "
               << std::string(status_width, '-') << "\n";
 
@@ -336,27 +408,33 @@ beekeeper::cli::handle_list(const std::map<std::string, std::string> &options,
             status = status.substr(0, status_width - 3) + "...";
         }
 
-        std::cout << "\n";
+        cout << "\n";
 
-        std::cout << uuid << " "
+        cout << uuid << " "
                   << label << " "
                   << status;
     }
 
-    return 0;
+    errcode = 0;
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_stat(const std::map<std::string, std::string> &options,
+command_streams
+clause::stat(const std::map<std::string, std::string> &options,
                             const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
     if (subjects.empty()) {
-        std::cerr << "Error: UUID not specified" << std::endl;
-        return 1;
+        cerr << "Error: UUID not specified" << std::endl;
+        errcode = 1;
+        RETURN_COMMANDSTREAMS
     }
 
     auto emit_json = [&](bool success, const std::string &key, const std::string &val) {
-        std::cout << "{\n"
+        cout << "{\n"
                   << "  \"success\": " << (success ? 1 : 0) << ",\n"
                   << "  \"" << key << "\": \"" << val << "\"\n"
                   << "}\n";
@@ -380,24 +458,27 @@ beekeeper::cli::handle_stat(const std::map<std::string, std::string> &options,
 
         if (mode == "free") {
             if (json) emit_json(true, "free", std::to_string(free_val));
-            else std::cout << bk_util::auto_size_suffix(free_val) << std::endl;
-            return 0;
+            else cout << bk_util::auto_size_suffix(free_val) << std::endl;
+            errcode = 0;
+            RETURN_COMMANDSTREAMS
         } else if (mode == "used") {
             if (json) emit_json(true, "used", std::to_string(used_val));
-            else std::cout << bk_util::auto_size_suffix(used_val) << std::endl;
-            return 0;
+            else cout << bk_util::auto_size_suffix(used_val) << std::endl;
+            errcode = 0;
+            RETURN_COMMANDSTREAMS
         } else {
             if (json) {
-                std::cout << "{\n"
+                cout << "{\n"
                           << "  \"success\": 1,\n"
                           << "  \"free\": " << free_val << ",\n"
                           << "  \"used\": " << used_val << "\n"
                           << "}\n";
             } else {
-                std::cout << "Free space: " << bk_util::auto_size_suffix(free_val) << std::endl;
-                std::cout << "Used space: " << bk_util::auto_size_suffix(used_val) << std::endl;
+                cout << "Free space: " << bk_util::auto_size_suffix(free_val) << std::endl;
+                cout << "Used space: " << bk_util::auto_size_suffix(used_val) << std::endl;
             }
-            return 0;
+            errcode = 0;
+            RETURN_COMMANDSTREAMS
         }
     }
 
@@ -405,27 +486,35 @@ beekeeper::cli::handle_stat(const std::map<std::string, std::string> &options,
     std::string config_path = bk_mgmt::btrfstat(uuid);
     if (!config_path.empty()) {
         if (json) emit_json(true, "config_path", config_path);
-        else std::cout << "Configuration exists: " << config_path << std::endl;
-        return 0;
+        else cout << "Configuration exists: " << config_path << std::endl;
+        errcode = 0;
+        RETURN_COMMANDSTREAMS
     } else {
         if (json) emit_json(false, "config_path", "");
-        else std::cout << "No configuration found for " << uuid << std::endl;
-        return 1;
+        else cout << "No configuration found for " << uuid << std::endl;
+        errcode = 1;
+        RETURN_COMMANDSTREAMS;
     }
 }
 
-int
-beekeeper::cli::handle_autostartctl(const std::map<std::string, std::string> &options,
+command_streams
+clause::autostartctl(const std::map<std::string, std::string> &options,
                                     const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
     bool add = options.find("add") != options.end();
     bool remove = options.find("remove") != options.end();
 
+    /* WILL MOVE TO CXXOPTS
     if (add && remove) {
         commandmachine::command_parser_impl parser;
         parser.print_help(command_registry);
         return 1;
     }
+    */
 
     for (const std::string &uuid_str : subjects) {
         if (add)
@@ -434,13 +523,17 @@ beekeeper::cli::handle_autostartctl(const std::map<std::string, std::string> &op
             bk_mgmt::autostart::remove_uuid(uuid_str);
     }
 
-    return 0;
+    RETURN_COMMANDSTREAMS
 }
 
-int
-beekeeper::cli::handle_compressctl(const std::map<std::string, std::string> &options,
+command_streams
+clause::compressctl(const std::map<std::string, std::string> &options,
                                    const std::vector<std::string> &subjects)
 {
+    std::ostringstream cout;
+    std::ostringstream cerr;
+    int errcode = 0;
+    
     namespace tc = bk_mgmt::transparentcompression;
 
     bool start  = options.find("start")  != options.end() || options.find("s") != options.end();
@@ -452,12 +545,14 @@ beekeeper::cli::handle_compressctl(const std::map<std::string, std::string> &opt
     bool want_json = (options.find("json") != options.end()) || (options.find("j") != options.end());
 
     // Prevent conflicting options: only one action allowed at a time
+    /* WILL MOVE TO CXXOPTS
     int chosen = (start ? 1 : 0) + (pause ? 1 : 0) + (status ? 1 : 0) + (add ? 1 : 0) + (remove ? 1 : 0);
     if (chosen != 1) {
         commandmachine::command_parser_impl parser;
         parser.print_help(command_registry);
         return 1;
     }
+    */
 
     std::string algo;
     int level = 0;
@@ -522,7 +617,7 @@ beekeeper::cli::handle_compressctl(const std::map<std::string, std::string> &opt
     }
 
     if (status && want_json) {
-        std::cout << "[";
+        cout << "[";
     }
 
     bool first_json_item = true;
@@ -544,10 +639,10 @@ beekeeper::cli::handle_compressctl(const std::map<std::string, std::string> &opt
             auto [algorithm, level_str] = bk_mgmt::transparentcompression::get_current_compression_level(uuid_str);
 
             if (want_json) {
-                if (!first_json_item) std::cout << ",";
+                if (!first_json_item) cout << ",";
                 first_json_item = false;
 
-                std::cout << "\n  {"
+                cout << "\n  {"
                           << "\"uuid\":\"" << uuid_str << "\","
                           << "\"enabled\":" << (enabled ? "true" : "false") << ","
                           << "\"running\":" << (running ? "true" : "false") << ","
@@ -555,19 +650,19 @@ beekeeper::cli::handle_compressctl(const std::map<std::string, std::string> &opt
                           << "\"level\":\"" << level_str << "\""
                           << "}";
             } else {
-                std::cout << uuid_str << ": "
+                cout << uuid_str << ": "
                           << (enabled ? "Enabled to automatically compress at boot; "
                                       : "Disabled to automatically compress at boot; ")
                           << (running ? "compressing" : "paused, not running");
 
                 if (!algorithm.empty() && algorithm != "none") {
-                    std::cout << " with algorithm " << algorithm;
+                    cout << " with algorithm " << algorithm;
                     if (!level_str.empty() && level_str != "0") {
-                        std::cout << " at level " << level_str;
+                        cout << " at level " << level_str;
                     }
                 }
 
-                std::cout << std::endl;
+                cout << std::endl;
             }
         } else if (add) {
             DEBUG_LOG("[compressctl] add compression config for UUID ", uuid_str,
@@ -580,9 +675,10 @@ beekeeper::cli::handle_compressctl(const std::map<std::string, std::string> &opt
     }
 
     if (status && want_json) {
-        if (!first_json_item) std::cout << "\n";
-        std::cout << "]" << std::endl;
+        if (!first_json_item) cout << "\n";
+        cout << "]" << std::endl;
     }
 
-    return 0;
+    errcode = 0;
+    RETURN_COMMANDSTREAMS
 }

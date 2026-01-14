@@ -137,13 +137,14 @@ target_include_directories(beekeeper PUBLIC
 target_link_libraries(beekeeper PUBLIC Qt6::Core)
 
 # ------------------------------
-# CLI executable
+# CLI executable (DISABLED DUE TO LACK OF PORTABILITY, WILL REDO LATER)
 # ------------------------------
+#[[
 add_executable(beekeeperman
     src/cli/beekeeperman.cpp
     src/cli/commandmachine/parser.cpp
-    src/cli/commandregistry.cpp
-    src/cli/handlers.cpp
+    src/core/clauses/commandregistry.cpp
+    src/core/clauses/clauses.cpp
     ${UTIL_SRCS}
 )
 set_target_properties(beekeeperman PROPERTIES
@@ -151,6 +152,7 @@ set_target_properties(beekeeperman PROPERTIES
     INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
 )
 target_link_libraries(beekeeperman PRIVATE beekeeper)
+]]
 
 # ------------------------------
 # GUI sources
@@ -198,9 +200,8 @@ target_link_libraries(beekeeper-qt PRIVATE
 add_executable(thebeekeeper
     src/polkit/diskwait.cpp
     src/polkit/masterservice.cpp
-    src/cli/commandregistry.cpp
-    src/cli/commandmachine/parser.cpp
-    src/cli/handlers.cpp
+    src/core/clauses/commandregistry.cpp
+    src/core/clauses/clauses.cpp
 )
 
 target_include_directories(thebeekeeper PRIVATE
@@ -240,8 +241,10 @@ if(PkgConfig_FOUND)
         target_link_libraries(beekeeper PRIVATE ${LIBBLKID_LIBRARIES})
 
         # Include dirs & libraries for CLI executable
+        #[[
         target_include_directories(beekeeperman PRIVATE ${LIBBLKID_INCLUDE_DIRS})
         target_link_libraries(beekeeperman PRIVATE ${LIBBLKID_LIBRARIES})
+        ]]
 
         # Include dirs & libraries for helper executable
         target_include_directories(thebeekeeper PRIVATE ${LIBBLKID_INCLUDE_DIRS})
@@ -281,7 +284,7 @@ install(FILES ${QM_FILES} DESTINATION ${TRANSLATIONS_DIR})
 # ------------------------------
 if(ENABLE_BEEKEEPER_DEBUG)
     target_compile_definitions(beesdmgmt PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
-    target_compile_definitions(beekeeperman PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
+    # target_compile_definitions(beekeeperman PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
     target_compile_definitions(beekeeper-qt PRIVATE BEEKEEPER_DEBUG_LOGGING=1)
 endif()
 
@@ -297,9 +300,11 @@ install(TARGETS beekeeper
     LIBRARY DESTINATION ${BEEKEEPER_INSTALL_LIBDIR_REL}
 )
 
+#[[
 install(TARGETS beekeeperman
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+]]
 
 install(TARGETS beekeeper-qt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -379,7 +384,6 @@ if(BUILD_TESTS)
             ${TEST_NAME}
             ${TEST_FILE}
             ${POLKIT_SRCS}
-            src/cli/commandmachine/parser.cpp
         )
         target_link_libraries(${TEST_NAME} PRIVATE beekeeper Qt6::Core Qt6::Widgets Qt6::DBus ${POLKIT_LIBS})
         target_include_directories(${TEST_NAME} PRIVATE

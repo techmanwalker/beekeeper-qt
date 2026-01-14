@@ -112,8 +112,13 @@ root_shell_thread::call_bk_future(const QString &verb,
                                   const QVariantMap &options,
                                   const QStringList &subjects)
 {
+    DEBUG_LOG("Sending message to DBus: \n",
+    "   verb: ", verb,
+    "   options: ", options,
+    "   subjects:", subjects);
+
     auto promise = std::make_shared<QPromise<command_streams>>();
-    auto future = promise->future();
+    auto future  = promise->future();
 
     QMetaObject::invokeMethod(
         this,
@@ -121,56 +126,74 @@ root_shell_thread::call_bk_future(const QString &verb,
         {
             if (!ensure_iface()) {
                 command_streams r;
+                r.errcode = 1;
                 r.stderr_str = "DBus interface not available";
                 promise->addResult(r);
                 promise->finish();
                 return;
             }
 
-            // ASYNCHRONIC DBus Call
+            // Async DBus call (helper uses delayed reply)
             QDBusPendingCall call =
-                the_iface->asyncCall("ExecuteCommand", verb, options, subjects);
+                the_iface->asyncCall(
+                    "execute_clause",
+                    verb,
+                    options,
+                    subjects
+                );
 
             auto *watcher = new QDBusPendingCallWatcher(call, this);
 
-            connect(watcher, &QDBusPendingCallWatcher::finished,
-                    this,
-                    [this, watcher, promise, verb]()
-                    {
-                        QScopedPointer<QDBusPendingCallWatcher, QScopedPointerDeleteLater> w(watcher);
-                        command_streams result;
+            connect(
+                watcher,
+                &QDBusPendingCallWatcher::finished,
+                this,
+                [promise, watcher, verb, options, subjects]()
+                {
+                    QScopedPointer<QDBusPendingCallWatcher,
+                                   QScopedPointerDeleteLater> w(watcher);
 
-                        if (w->isError()) {
-                            result.stderr_str = w->error().message().toStdString();
+                    command_streams result;
+
+                    if (w->isError()) {
+                        result.errcode = 1;
+                        result.stderr_str =
+                            w->error().message().toStdString();
+                    } else {
+                        QDBusReply<QVariantMap> reply = *w;
+
+                        if (reply.isValid()) {
+                            QVariantMap m = reply.value();
+
+                            result.stdout_str =
+                                m.value("stdout_str").toString().toStdString();
+                            result.stderr_str =
+                                m.value("stderr_str").toString().toStdString();
+                            result.errcode =
+                                m.value("errcode").toInt();
                         } else {
-                            // <-- Aquí está la modificación principal
-                            QDBusReply<QVariantMap> reply = *w;  
-
-                            if (reply.isValid()) {
-                                QVariantMap out_map = reply.value();
-
-                                result.stdout_str = out_map.value("stdout").toString().toStdString();
-                                result.stderr_str = out_map.value("stderr").toString().toStdString();
-                            } else {
-                                result.stderr_str = reply.error().message().toStdString();
-                            }
+                            result.errcode = 1;
+                            result.stderr_str =
+                                reply.error().message().toStdString();
                         }
+                    }
 
-                        DEBUG_LOG("call to ", verb, "returned:\n",
-                                "   stdout: ", result.stdout_str, "\n",
-                                "   stderr: ", result.stderr_str);
+                    DEBUG_LOG("For message sent via DBus: \n",
+                    ">>>"
+                    "   verb: ", verb, "\n",
+                    "   options: ", options, "\n",
+                    "   subjects: ", subjects, "\n",
+                    "===", "\n",
+                    "   Received:", "\n",
+                    "===", "\n",
+                    "   stdout_str: ", result.stdout_str, "\n",
+                    "   stderr_str: ", result.stderr_str, "\n",
+                    );
 
-                        // Solve the future
-                        promise->addResult(result);
-                        promise->finish();
-
-                        // Emit refresh signal
-                        emit backend_command_finished(
-                            verb,
-                            QString::fromStdString(result.stdout_str),
-                            QString::fromStdString(result.stderr_str)
-                        );
-                    });
+                    promise->addResult(result);
+                    promise->finish();
+                }
+            );
         },
         Qt::QueuedConnection
     );

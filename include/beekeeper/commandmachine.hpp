@@ -1,6 +1,7 @@
 // commandmachine.hpp - Agnostic command parsing machinery
 #pragma once
 
+#include "beekeeper/util.hpp"
 #include <functional>
 #include <map>
 #include <string>
@@ -17,12 +18,11 @@ struct option_spec {
 };
 
 // command handler type
-using command_handler = std::function<int(const std::map<std::string, std::string>&, 
+using command_handler = std::function<command_streams(const std::map<std::string, std::string>&, 
                                          const std::vector<std::string>&)>;
 
 // command metadata structure
 struct command {
-    std::string name;
     command_handler handler;
     std::vector<option_spec> allowed_options;
     std::string subject_name;
@@ -30,21 +30,6 @@ struct command {
     int min_subjects = 1;
     int max_subjects = -1;
     bool disable_option_recognition = false;
-};
-
-// Parser interface
-class command_parser {
-public:
-    virtual ~command_parser() = default;
-    virtual int parse(const std::vector<command>& commands, 
-                      int argc, char* argv[]) = 0;
-                      
-    /**
-    * command_parser::create - Factory method for creating parser instances
-    * 
-    * @return Unique pointer to a new parser instance
-    */
-    static std::unique_ptr<command_parser> create();
 };
 
 } // namespace commandmachine

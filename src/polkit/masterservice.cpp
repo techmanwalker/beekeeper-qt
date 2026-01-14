@@ -1,7 +1,6 @@
 #include "masterservice.hpp"
-#include "../cli/handlers.hpp"
-#include "beekeeper/internalaliases.hpp"
-#include "../cli/commandregistry.hpp"
+
+#include "beekeeper/commandregistry.hpp"
 #include "beekeeper/debug.hpp"
 #include "beekeeper/util.hpp"
 #include "diskwait.hpp"
@@ -9,112 +8,153 @@
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
-#include <QString>
-#include <QStringList>
-#include <QVariantMap>
+#include <QDBusMessage>
+#include <QRunnable>
+
 #include <iostream>
 #include <map>
-#include <pwd.h>
 #include <string>
-#include <sstream>
-#include <sys/types.h>
-#include <unistd.h>
 #include <vector>
-#include <algorithm> // for find_if
+
+//
+// ---------- Utilities (pure, thread-safe) ----------
+//
+
+std::map<std::string, std::string>
+masterservice::convert_options(const QVariantMap &options)
+{
+    std::map<std::string, std::string> result;
+
+    for (const auto &[key, value] : options.asKeyValueRange()) {
+        result.emplace(key.toStdString(), value.toString().toStdString());
+    }
+
+    return result;
+}
+
+std::vector<std::string>
+masterservice::convert_subjects(const QStringList &subjects)
+{
+    std::vector<std::string> result;
+
+    for (const auto &subject : subjects) {
+        result.emplace_back(subject.toStdString());
+    }
+
+    return result;
+}
+
+//
+// ---------- Worker runnable ----------
+//
+
+struct clause_runnable : public QRunnable
+{
+    clause_runnable(const QDBusMessage &msg,
+                    const QString &verb,
+                    const QVariantMap &options,
+                    const QStringList &subjects)
+        : pending_msg(msg),
+          verb(verb),
+          options(options),
+          subjects(subjects)
+    {
+        setAutoDelete(true);
+    }
+
+    void run() override
+    {
+        command_streams reply;
+
+        auto it = command_registry.find(verb.toStdString());
+        if (it == command_registry.end()) {
+            reply.errcode = 1;
+            reply.stdout_str.clear();
+            reply.stderr_str = "Unknown clause: " + verb.toStdString();
+        } else {
+            cm::command &cmd = it->second;
+            reply = cmd.handler(
+                masterservice::convert_options(options),
+                masterservice::convert_subjects(subjects)
+            );
+        }
+
+        QVariantMap dbus_reply;
+        dbus_reply["stdout_str"] = QString::fromStdString(reply.stdout_str);
+        dbus_reply["stderr_str"] = QString::fromStdString(reply.stderr_str);
+        dbus_reply["errcode"]    = reply.errcode;
+
+        // Resolve the original DBus promise
+        QDBusConnection::systemBus().send(
+            pending_msg.createReply(dbus_reply)
+        );
+    }
+
+    QDBusMessage pending_msg;
+    QString verb;
+    QVariantMap options;
+    QStringList subjects;
+};
+
+//
+// ---------- masterservice ----------
+//
 
 masterservice::masterservice(QObject *parent)
     : QObject(parent)
 {
-    // No worker/thread here anymore — DBus calls are handled synchronously by this object.
+    worker_pool.setMaxThreadCount(QThread::idealThreadCount());
 }
 
-// No special destructor required
-masterservice::~masterservice()
-{
-}
+masterservice::~masterservice() = default;
 
-// Converts QVariantMap -> std::map<std::string, std::string>
-std::map<std::string, std::string>
-masterservice::convert_options(const QVariantMap &options)
+//
+// This is a private pure backend executor (never touches DBus)
+//
+command_streams
+masterservice::_internal_execute_clause(const QString &verb,
+                                        const QVariantMap &options,
+                                        const QStringList &subjects)
 {
-    std::map<std::string, std::string> out;
-    for (auto it = options.constBegin(); it != options.constEnd(); ++it) {
-        out[it.key().toStdString()] = it.value().toString().toStdString();
+    auto it = command_registry.find(verb.toStdString());
+    if (it == command_registry.end()) {
+        return {
+            "",
+            "Unknown clause: " + verb.toStdString(),
+            1
+        };
     }
-    return out;
+
+    return it->second.handler(
+        convert_options(options),
+        convert_subjects(subjects)
+    );
 }
 
-// Converts QStringList -> std::vector<std::string>
-std::vector<std::string>
-masterservice::convert_subjects(const QStringList &subjects)
-{
-    std::vector<std::string> out;
-    out.reserve(subjects.size());
-    for (const QString &s : subjects) {
-        out.push_back(s.toStdString());
-    }
-    return out;
-}
-
-// Synchronous DBus slot: find handler, capture stdout/stderr, run handler and return result map
+//
+// This is the DBus entrypoint
+//
 QVariantMap
-masterservice::ExecuteCommand(const QString &verb,
+masterservice::execute_clause(const QString &verb,
                               const QVariantMap &options,
                               const QStringList &subjects)
 {
-    QVariantMap reply_map;
-    reply_map.insert("stdout", QString());
-    reply_map.insert("stderr", QString());
+    // Capture the incoming DBus call
+    QDBusMessage msg = message();
 
-    DEBUG_LOG("[supercommander] call_bk: before DBus call for verb ",
-              verb.toStdString() + " :" + bk_util::current_timestamp());
+    // Tell Qt: do NOT auto-reply, we'll do it later
+    setDelayedReply(true);
 
-    std::string verb_std = verb.toStdString();
-    std::map<std::string, std::string> opts_std = convert_options(options);
-    std::vector<std::string> subs_std = convert_subjects(subjects);
+    // Fork into a worker thread
+    worker_pool.start(new clause_runnable(msg, verb, options, subjects));
 
-    // Find handler in registry
-    auto it = std::find_if(command_registry.begin(), command_registry.end(),
-                           [&verb_std](const cm::command &cmd) {
-                               return cmd.name == verb_std;
-                           });
-
-    if (it == command_registry.end()) {
-        std::string err = "Unknown command verb: " + verb_std;
-        DEBUG_LOG(err);
-        reply_map["stderr"] = QString::fromStdString(err);
-        DEBUG_LOG("[supercommander] call_bk: after DBus call for verb ",
-                  verb.toStdString() + " :" + bk_util::current_timestamp());
-        return reply_map;
-    }
-
-    // Capture stdout/stderr into buffers so the caller gets them in the QVariantMap
-    std::stringstream cout_buf, cerr_buf;
-    auto* old_cout = std::cout.rdbuf(cout_buf.rdbuf());
-    auto* old_cerr = std::cerr.rdbuf(cerr_buf.rdbuf());
-
-    // Execute the handler synchronously (same behavior as before)
-    int ret = it->handler(opts_std, subs_std);
-
-    // Restore original streams
-    std::cout.rdbuf(old_cout);
-    std::cerr.rdbuf(old_cerr);
-
-    // Fill reply_map with captured output
-    reply_map["stdout"] = QString::fromStdString(cout_buf.str());
-    reply_map["stderr"] = QString::fromStdString(cerr_buf.str());
-
-    if (ret != 0) {
-        QString current_err = reply_map["stderr"].toString();
-        current_err += QString("Handler returned non-zero exit code: %1\n").arg(ret);
-        reply_map["stderr"] = current_err;
-    }
-
-    DEBUG_LOG("[supercommander] call_bk: after DBus call for verb ",
-              verb.toStdString() + " :" + bk_util::current_timestamp());
-
-    return reply_map;
+    // Return nothing now — DBus reply will be sent from worker
+    return QVariantMap();
 }
+
+//
+// ---------- main ----------
+//
 
 int
 main(int argc, char **argv)
@@ -141,13 +181,12 @@ main(int argc, char **argv)
 
     masterservice helper;
     if (!bus.registerObject("/org/beekeeper/Helper", &helper,
-                            QDBusConnection::ExportAllSlots |
-                            QDBusConnection::ExportAllSignals)) {
+                            QDBusConnection::ExportAllSlots)) {
         std::cerr << "Failed to register DBus object /org/beekeeper/Helper\n";
         return 1;
     }
 
-    // Start diskwait thread after DBus registration (diskwait stays a separate QThread)
+    // diskwait is totally independent
     diskwait *disk_thread = new diskwait();
     disk_thread->start();
     DEBUG_LOG("[thebeekeeper] diskwait thread launched");

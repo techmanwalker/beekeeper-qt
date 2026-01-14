@@ -86,6 +86,7 @@ supercommander::btrfsls()
             }
         }
 
+        /*
         #ifdef BEEKEEPER_DEBUG_LOGGING
         DEBUG_LOG("Found filesystems: ");
         for (const auto &[uuid, info]: result) {
@@ -100,6 +101,7 @@ supercommander::btrfsls()
             );
         }
         #endif
+        */
 
         return result;
     });

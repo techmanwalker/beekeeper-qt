@@ -257,18 +257,19 @@ is_bees_worker_running(const std::string &uuid)
 
 // Wait up to timeout_ms for a bees worker to appear
 static bool
-wait_for_bees_worker(const std::string &uuid, int timeout_ms = 3000)
+wait_for_bees_worker(const std::string &uuid, const int retry_delay_ms = 3000, const int max_retries = 3)
 {
-    const int step_ms = 100;
-    int waited = 0;
+    int tried = 0; 
 
-    while (waited < timeout_ms) {
+    while (tried < max_retries) {
         if (is_bees_worker_running(uuid))
             return true;
 
-        usleep(step_ms * 1000);
-        waited += step_ms;
+        usleep(retry_delay_ms * 1000);
+        tried++;
     }
+
+    std::cerr << "Max retries reached. It failed." << std::endl;
 
     return false;
 }
@@ -341,16 +342,25 @@ bk_mgmt::beesstart(const std::string &uuid)
         }
 
         if (pid2 == 0) {
+            std::string beesd_path = bk_util::which("beesd");
+            if (beesd_path.empty()) {
+                std::cerr << "[beesstart] beesd not found in PATH\n";
+                _exit(127);
+            }
             // child #2 → this becomes beesd
             execl(
-                "/usr/lib/bees/beesd",
+                beesd_path.c_str(),
                 "beesd",
                 uuid.c_str(),
                 nullptr
             );
 
-            // If exec failed
-            _exit(1);
+            // only reached on failure
+            int err = errno;
+            std::cerr << "[beesstart] exec(beesd) failed: "
+                    << strerror(err)
+                    << " (errno=" << err << ")\n";
+            _exit(127);
         }
 
         // child #1 exits immediately

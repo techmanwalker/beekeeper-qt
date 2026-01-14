@@ -188,6 +188,8 @@ root_shell_thread::call_bk_future(const QString &verb,
                     "===", "\n",
                     "   stdout_str: ", result.stdout_str, "\n",
                     "   stderr_str: ", result.stderr_str, "\n",
+                    "   errcode: ", result.errcode, "\n",
+                    "<<<"
                     );
 
                     promise->addResult(result);

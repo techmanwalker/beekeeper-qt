@@ -55,7 +55,7 @@ jobs:
             libblkid-devel systemd-devel \
             gcc-c++ cmake ninja-build pkgconfig \
             rpm-build rpmdevtools make git m4 \
-            selinux-policy-devel
+            selinux-policy-devel cli11-devel
 
       - name: Configure (install prefix = /usr)
         run: cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
@@ -75,11 +75,11 @@ jobs:
           name: rpm-fedora
           path: build/*.rpm
 
-  # Job 1b: Build DEB on Ubuntu/Plucky container
+  # Job 1b: Build DEB on Ubuntu container
   cpack-build-ubuntu:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:25.04
+      image: ubuntu:25.10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -89,7 +89,7 @@ jobs:
           # update metadata and install required packages
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            qt6-base-dev qt6-tools-dev libpolkit-qt6-1-dev \
+            qt6-base-dev qt6-tools-dev libpolkit-qt6-1-dev libcli11-dev \
             libblkid-dev libudev-dev build-essential cmake ninja-build fakeroot dpkg-dev git pkgconf
 
       - name: Configure (install prefix = /usr)
@@ -121,7 +121,7 @@ jobs:
         run: |
           pacman -Syu --noconfirm
           pacman -S --noconfirm base-devel git cmake ninja qt6-base qt6-tools \
-            polkit-qt6 systemd btrfs-progs util-linux doxygen bees
+            polkit-qt6 systemd btrfs-progs util-linux doxygen bees cli11
 
       - name: Build Arch package
         run: |

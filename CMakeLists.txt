@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(beekeeper VERSION 1.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
@@ -137,14 +137,13 @@ target_include_directories(beekeeper PUBLIC
 target_link_libraries(beekeeper PUBLIC Qt6::Core)
 
 # ------------------------------
-# CLI executable (DISABLED DUE TO LACK OF PORTABILITY, WILL REDO LATER)
+# CLI executable
 # ------------------------------
-#[[
+#
 add_executable(beekeeperman
     src/cli/beekeeperman.cpp
-    src/cli/commandmachine/parser.cpp
-    src/core/clauses/commandregistry.cpp
     src/core/clauses/clauses.cpp
+    src/core/clauses/commandregistry.cpp
     ${UTIL_SRCS}
 )
 set_target_properties(beekeeperman PROPERTIES
@@ -152,7 +151,7 @@ set_target_properties(beekeeperman PROPERTIES
     INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
 )
 target_link_libraries(beekeeperman PRIVATE beekeeper)
-]]
+
 
 # ------------------------------
 # GUI sources
@@ -241,10 +240,8 @@ if(PkgConfig_FOUND)
         target_link_libraries(beekeeper PRIVATE ${LIBBLKID_LIBRARIES})
 
         # Include dirs & libraries for CLI executable
-        #[[
         target_include_directories(beekeeperman PRIVATE ${LIBBLKID_INCLUDE_DIRS})
         target_link_libraries(beekeeperman PRIVATE ${LIBBLKID_LIBRARIES})
-        ]]
 
         # Include dirs & libraries for helper executable
         target_include_directories(thebeekeeper PRIVATE ${LIBBLKID_INCLUDE_DIRS})
@@ -300,11 +297,9 @@ install(TARGETS beekeeper
     LIBRARY DESTINATION ${BEEKEEPER_INSTALL_LIBDIR_REL}
 )
 
-#[[
 install(TARGETS beekeeperman
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-]]
 
 install(TARGETS beekeeper-qt
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

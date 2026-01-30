@@ -111,44 +111,51 @@ bk_mgmt::btrfsls()
         return available_filesystems;
     }
 
-    blkid_probe_all(cache);
-
     blkid_dev dev;
     blkid_dev_iterate iter = blkid_dev_iterate_begin(cache);
 
     while (blkid_dev_next(iter, &dev) == 0) {
         const char *devname = blkid_dev_devname(dev);
 
-        char *type  = blkid_get_tag_value(cache, "TYPE", devname);
+        if (!blkid_dev_has_tag(dev, "TYPE", "btrfs"))
+            continue;
+
         char *uuid  = blkid_get_tag_value(cache, "UUID", devname);
         char *label = blkid_get_tag_value(cache, "LABEL", devname);
 
-        if (type && std::strcmp(type, "btrfs") == 0) {
-            std::pair<std::string, fs_info> entry;
+        std::pair<std::string, fs_info> entry;
 
-            if (uuid)    entry.first    = uuid;
-            if (devname) entry.second.devname = devname;
-            if (label)   entry.second.label   = label;
+        if (uuid)    entry.first    = uuid;
+        if (devname) entry.second.devname = devname;
+        if (label)   entry.second.label   = label;
 
-            // also fetch .status using beesstatus(uuid)
-            if (uuid) {
-                entry.second.status = bk_mgmt::beesstatus(uuid);
-                entry.second.config = bk_mgmt::btrfstat(uuid);
-                entry.second.compressing = bk_mgmt::transparentcompression::is_running(uuid);
-                entry.second.autostart = bk_mgmt::autostart::is_enabled_for(uuid);
-            } else {
-                entry.second.status = "unknown";
-                entry.second.config = "unknown";
-                entry.second.compressing = "unknown";
-                entry.second.autostart = "unknown";
-            }
-
-
-
-            available_filesystems.insert(std::move(entry));
+        // also fetch .status using beesstatus(uuid)
+        if (uuid) {
+            entry.second.status = bk_mgmt::beesstatus(uuid);
+            entry.second.config = bk_mgmt::btrfstat(uuid);
+            entry.second.compressing = bk_mgmt::transparentcompression::is_running(uuid);
+            entry.second.autostart = bk_mgmt::autostart::is_enabled_for(uuid);
+        } else {
+            entry.second.status = "unknown";
+            entry.second.config = "unknown";
+            entry.second.compressing = "unknown";
+            entry.second.autostart = "unknown";
         }
 
-        if (type)  free(type);
+        DEBUG_LOG("BLKID found fs: \n",
+        "    uuid: ", entry.first, "\n",
+        "    devname: ", entry.second.devname, "\n",
+        "    label: ", entry.second.label, "\n",
+        "    status: ", entry.second.status, "\n",
+        "    config: ", entry.second.config, "\n",
+        "    compressing: ", entry.second.compressing, "\n",
+        "    autostart: ", entry.second.autostart, "\n",
+        "");
+
+        // if uuid is empty, weird notation
+        if (uuid && *uuid)
+            available_filesystems.insert(std::move(entry));
+
         if (uuid)  free(uuid);
         if (label) free(label);
     }
@@ -168,11 +175,11 @@ bk_mgmt::btrfsls()
         DEBUG_LOG("blkid lines: ", bk_util::serialize_vector(btrfs_lines));
 
         for (const auto &line : btrfs_lines) {
-            std::pair<std::string, fs_info> this_filesystem;
-            this_filesystem.first   = "";
-            this_filesystem.second.label = "";
-            this_filesystem.second.status = "";
-            this_filesystem.second.devname = "";
+            std::pair<std::string, fs_info> entry;
+            entry.first   = "";
+            entry.second.label = "";
+            entry.second.status = "";
+            entry.second.devname = "";
 
             std::vector<std::string> fs_tokens = bk_util::tokenize(line, ' ');
             DEBUG_LOG("tokenized line: ", bk_util::serialize_vector(fs_tokens));
@@ -187,24 +194,35 @@ bk_mgmt::btrfsls()
                 }
             }
 
-            this_filesystem.first  = peeled_uuid;
-            this_filesystem.second.label = peeled_label;
+            entry.first  = peeled_uuid;
+            entry.second.label = peeled_label;
 
             if (!peeled_uuid.empty()) {
-                this_filesystem.second.status  = bk_mgmt::beesstatus(peeled_uuid);
-                this_filesystem.second.devname = bk_mgmt::get_real_device(peeled_uuid);
-                this_filesystem.second.config = bk_mgmt::btrfstat(uuid);
-                this_filesystem.second.compressing = bk_mgmt::transparentcompression::is_running(uuid);
-                this_filesystem.second.autostart = bk_mgmt::autostart::is_enabled_for(uuid);
+                entry.second.status  = bk_mgmt::beesstatus(peeled_uuid);
+                entry.second.devname = bk_mgmt::get_real_device(peeled_uuid);
+                entry.second.config = bk_mgmt::btrfstat(peeled_uuid);
+                entry.second.compressing = bk_mgmt::transparentcompression::is_running(peeled_uuid);
+                entry.second.autostart = bk_mgmt::autostart::is_enabled_for(peeled_uuid);
             } else {
-                this_filesystem.second.status  = "unknown";
-                this_filesystem.second.devname = "unknown";
-                this_filesystem.second.config = "unknown";
-                this_filesystem.second.compressing = "unknown";
-                this_filesystem.second.autostart = "unknown";
+                entry.second.status  = "unknown";
+                entry.second.devname = "unknown";
+                entry.second.config = "unknown";
+                entry.second.compressing = "unknown";
+                entry.second.autostart = "unknown";
             }
 
-            available_filesystems.insert(std::move(this_filesystem));
+            DEBUG_LOG("BLKID found fs: ",
+            "    uuid: ", entry.first, "\n",
+            "    devname: ", entry.second.devname, "\n",
+            "    label: ", entry.second.label, "\n",
+            "    status: ", entry.second.status, "\n",
+            "    config: ", entry.second.config, "\n",
+            "    compressing: ", entry.second.compressing, "\n",
+            "    autostart: ", entry.second.autostart, "\n",
+            "");
+
+            if (!peeled_uuid.empty())
+                available_filesystems.insert(std::move(entry));
         }
     }
 #endif

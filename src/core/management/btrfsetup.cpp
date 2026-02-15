@@ -20,6 +20,55 @@
 
 namespace fs = std::filesystem;
 
+// Helpers for btrfsls()
+namespace {
+
+bool iterate_btrfs_devices(blkid_cache cache, fs_map& out)
+{
+    bool found_any = false;
+
+    blkid_dev dev;
+    blkid_dev_iterate iter = blkid_dev_iterate_begin(cache);
+
+    while (blkid_dev_next(iter, &dev) == 0) {
+        const char* devname = blkid_dev_devname(dev);
+        if (!devname)
+            continue;
+
+        if (!blkid_dev_has_tag(dev, "TYPE", "btrfs"))
+            continue;
+
+        found_any = true;
+
+        char* uuid  = blkid_get_tag_value(cache, "UUID", devname);
+        char* label = blkid_get_tag_value(cache, "LABEL", devname);
+
+        std::pair<std::string, fs_info> entry;
+
+        if (uuid)    entry.first = uuid;
+        entry.second.devname = devname;
+        if (label)   entry.second.label = label;
+
+        if (uuid && *uuid) {
+            entry.second.status      = bk_mgmt::beesstatus(uuid);
+            entry.second.config      = bk_mgmt::btrfstat(uuid);
+            entry.second.compressing = bk_mgmt::transparentcompression::is_running(uuid);
+            entry.second.autostart   = bk_mgmt::autostart::is_enabled_for(uuid);
+
+            out.insert(std::move(entry));
+        }
+
+        if (uuid)  free(uuid);
+        if (label) free(label);
+    }
+
+    blkid_dev_iterate_end(iter);
+    return found_any;
+}
+
+} // anonymous namespace
+
+
 // Extract UUID value from config line
 static std::string
 extract_uuid (const std::string& line)
@@ -103,7 +152,6 @@ bk_mgmt::btrfsls()
     fs_map available_filesystems;
 
 #ifdef HAVE_LIBBLKID
-    DEBUG_LOG("If you can see this, libblkid was compiled into beekeeper-qt.");
 
     blkid_cache cache = nullptr;
     if (blkid_get_cache(&cache, nullptr) < 0) {
@@ -111,56 +159,19 @@ bk_mgmt::btrfsls()
         return available_filesystems;
     }
 
-    blkid_dev dev;
-    blkid_dev_iterate iter = blkid_dev_iterate_begin(cache);
+    bool found = iterate_btrfs_devices(cache, available_filesystems);
 
-    while (blkid_dev_next(iter, &dev) == 0) {
-        const char *devname = blkid_dev_devname(dev);
+    if (!found) {
+        DEBUG_LOG("blkid cache empty, probing devices...");
 
-        if (!blkid_dev_has_tag(dev, "TYPE", "btrfs"))
-            continue;
+        // Populate cache explicitly
+        blkid_probe_all(cache);
 
-        char *uuid  = blkid_get_tag_value(cache, "UUID", devname);
-        char *label = blkid_get_tag_value(cache, "LABEL", devname);
-
-        std::pair<std::string, fs_info> entry;
-
-        if (uuid)    entry.first    = uuid;
-        if (devname) entry.second.devname = devname;
-        if (label)   entry.second.label   = label;
-
-        // also fetch .status using beesstatus(uuid)
-        if (uuid) {
-            entry.second.status = bk_mgmt::beesstatus(uuid);
-            entry.second.config = bk_mgmt::btrfstat(uuid);
-            entry.second.compressing = bk_mgmt::transparentcompression::is_running(uuid);
-            entry.second.autostart = bk_mgmt::autostart::is_enabled_for(uuid);
-        } else {
-            entry.second.status = "unknown";
-            entry.second.config = "unknown";
-            entry.second.compressing = "unknown";
-            entry.second.autostart = "unknown";
-        }
-
-        DEBUG_LOG("BLKID found fs: \n",
-        "    uuid: ", entry.first, "\n",
-        "    devname: ", entry.second.devname, "\n",
-        "    label: ", entry.second.label, "\n",
-        "    status: ", entry.second.status, "\n",
-        "    config: ", entry.second.config, "\n",
-        "    compressing: ", entry.second.compressing, "\n",
-        "    autostart: ", entry.second.autostart, "\n",
-        "");
-
-        // if uuid is empty, weird notation
-        if (uuid && *uuid)
-            available_filesystems.insert(std::move(entry));
-
-        if (uuid)  free(uuid);
-        if (label) free(label);
+        // IMPORTANT: reset result container before retry
+        available_filesystems.clear();
+        iterate_btrfs_devices(cache, available_filesystems);
     }
 
-    blkid_dev_iterate_end(iter);
     blkid_put_cache(cache);
 
 #else

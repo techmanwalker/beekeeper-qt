@@ -6,9 +6,7 @@
 
 > Transparent compression is now fully supported on beekeeper-qt on all the algorithms and levels the *btrfs* driver supports. Set it up along with deduplication with the *Setup* button.
 
-![A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.](docs/ui.png)
-
-*A quick screenshot I took to the UI. The CPU meter shows the total CPU usage of the entire system, not just by beekeeper-qt.*
+![](docs/ui.png)
 
 **IMPORTANT:** beekeeper-qt works **exclusively** with the **btrfs** filesystem. It will **not** work with any other filesystem because the `bees` service by Zygo is only designed to work on *btrfs*.
 

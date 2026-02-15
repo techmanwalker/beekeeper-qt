@@ -111,7 +111,7 @@ MainWindow::quick_refresh(
 
             is_being_refreshed.store(false);
             update_button_states();
-
+            
         }, Qt::QueuedConnection);
     });
 }

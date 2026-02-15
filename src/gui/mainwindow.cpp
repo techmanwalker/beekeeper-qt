@@ -80,8 +80,6 @@ MainWindow::MainWindow(QWidget* parent)
     keyboardNav = new KeyboardNav(this);
     keyboardNav->init();
 
-    set_temporal_status_message(tr("Loading list..."), 10000);
-
     // ----------------------------
     // Connect everything and start cycles at the very end
     // ----------------------------

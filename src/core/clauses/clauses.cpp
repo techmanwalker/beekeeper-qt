@@ -3,7 +3,6 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "beekeeper/util.hpp"
-#include "beekeeper/commandregistry.hpp"
 #include "beekeeper/clauses.hpp"
 #include <filesystem> // for std::setw
 #include <string>

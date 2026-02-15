@@ -3,7 +3,6 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
-#include <regex>
 #include <unistd.h>
 #include <unordered_map>
 
@@ -175,11 +174,26 @@ bk_util::which(const std::string &program)
 bool
 bk_util::is_uuid(const std::string &s)
 {
-    static const std::regex uuid_pattern(
-        R"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
-    );
-    return std::regex_match(s, uuid_pattern);
+    if (s.size() != 36)
+        return false;
+
+    for (size_t i = 0; i < 36; ++i)
+    {
+        if (i == 8 || i == 13 || i == 18 || i == 23)
+        {
+            if (s[i] != '-')
+                return false;
+        }
+        else
+        {
+            if (!std::isxdigit(static_cast<unsigned char>(s[i])))
+                return false;
+        }
+    }
+
+    return true;
 }
+
 
 std::string
 bk_util::get_second_token (std::string line)

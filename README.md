@@ -189,6 +189,7 @@ For Gentoo, there's also an `.ebuild` file available under `packaging/`.
 * Works well both on regular desktops and on low-storage systems, and also useful for servers with repeated data patterns.
 
 **FAQ / Quick tips**
+- To make **Autostart at boot** work, run `sudo systemctl enable --now org.beekeeper.helper.service`.
 - First deduplication may take some time; CPU usage can spike temporarily.
 - Compression only applies to new files; run the one-time command for existing data (shown in Setup window).
 

@@ -13,55 +13,55 @@ json_escape (const std::string &s);
 namespace beekeeper { namespace clause {
 command_streams
 start(const std::map<std::string, std::string>& options, 
-                 const std::vector<std::string>& subjects);
+      const std::vector<std::string>& subjects);
 
 command_streams
 stop(const std::map<std::string, std::string>& options, 
-                const std::vector<std::string>& subjects);
+     const std::vector<std::string>& subjects);
 
 command_streams
 restart(const std::map<std::string, std::string>& options, 
-                   const std::vector<std::string>& subjects);
+        const std::vector<std::string>& subjects);
 
 command_streams
 status(const std::map<std::string, std::string>& options, 
-                  const std::vector<std::string>& subjects);
+       const std::vector<std::string>& subjects);
 
 command_streams
 log(const std::map<std::string, std::string>& options, 
-               const std::vector<std::string>& subjects);
+    const std::vector<std::string>& subjects);
 
 command_streams
 clean(const std::map<std::string, std::string>& options, 
-                 const std::vector<std::string>& subjects);
+      const std::vector<std::string>& subjects);
 
 command_streams
 help(const std::map<std::string, std::string>& options, 
-                const std::vector<std::string>& subjects);
+     const std::vector<std::string>& subjects);
 
 command_streams
 setup(const std::map<std::string, std::string>& options, 
-                 const std::vector<std::string>& subjects);
+      const std::vector<std::string>& subjects);
 
 command_streams
 list (const std::map<std::string, std::string>& options,
-                             const std::vector<std::string>& subjects);
+      const std::vector<std::string>& subjects);
 
 command_streams
 stat(const std::map<std::string, std::string>& options, 
-                const std::vector<std::string>& subjects);
+     const std::vector<std::string>& subjects);
 
 command_streams
 locate(const std::map<std::string, std::string>& options,
-              const std::vector<std::string>& subjects);
+       const std::vector<std::string>& subjects);
 
 command_streams
 autostartctl(const std::map<std::string, std::string> &options,
-                    const std::vector<std::string> &subjects);
+             const std::vector<std::string> &subjects);
 
 command_streams
 compressctl(const std::map<std::string, std::string> &options,
-                   const std::vector<std::string> &subjects);
+            const std::vector<std::string> &subjects);
 
 
 } // namespace cli

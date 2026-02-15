@@ -23,7 +23,7 @@ namespace clause = beekeeper::clause;
 // Clause handler implementations
 command_streams
 clause::start(const std::map<std::string, std::string> &options, 
-                 const std::vector<std::string> &subjects)
+              const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -49,7 +49,7 @@ clause::start(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::stop(const std::map<std::string, std::string> &options, 
-                const std::vector<std::string> &subjects)
+             const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -69,7 +69,7 @@ clause::stop(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::restart(const std::map<std::string, std::string> &options, 
-                   const std::vector<std::string> &subjects)
+                const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -89,7 +89,7 @@ clause::restart(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::status(const std::map<std::string, std::string> &options, 
-                  const std::vector<std::string> &subjects)
+               const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -104,7 +104,7 @@ clause::status(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::log(const std::map<std::string, std::string> &options, 
-               const std::vector<std::string> &subjects)
+            const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -116,7 +116,7 @@ clause::log(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::clean(const std::map<std::string, std::string> &options, 
-                 const std::vector<std::string> &subjects)
+              const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -137,7 +137,7 @@ clause::clean(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::help(const std::map<std::string, std::string> &options, 
-                const std::vector<std::string> &subjects)
+             const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -149,7 +149,7 @@ clause::help(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::setup(const std::map<std::string, std::string> &options, 
-                             const std::vector<std::string> &subjects) 
+              const std::vector<std::string> &subjects) 
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -224,7 +224,7 @@ clause::setup(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::locate(const std::map<std::string, std::string> &options,
-                              const std::vector<std::string> &subjects)
+               const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -283,7 +283,7 @@ clause::locate(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::list(const std::map<std::string, std::string> &options,
-                            const std::vector<std::string> &subjects)
+             const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -420,7 +420,7 @@ clause::list(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::stat(const std::map<std::string, std::string> &options,
-                            const std::vector<std::string> &subjects)
+             const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -498,7 +498,7 @@ clause::stat(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::autostartctl(const std::map<std::string, std::string> &options,
-                                    const std::vector<std::string> &subjects)
+                     const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -506,14 +506,6 @@ clause::autostartctl(const std::map<std::string, std::string> &options,
     
     bool add = options.find("add") != options.end();
     bool remove = options.find("remove") != options.end();
-
-    /* WILL MOVE TO CXXOPTS
-    if (add && remove) {
-        commandmachine::command_parser_impl parser;
-        parser.print_help(command_registry);
-        return 1;
-    }
-    */
 
     for (const std::string &uuid_str : subjects) {
         if (add)
@@ -527,7 +519,7 @@ clause::autostartctl(const std::map<std::string, std::string> &options,
 
 command_streams
 clause::compressctl(const std::map<std::string, std::string> &options,
-                                   const std::vector<std::string> &subjects)
+                    const std::vector<std::string> &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -542,16 +534,6 @@ clause::compressctl(const std::map<std::string, std::string> &options,
     bool remove = options.find("remove") != options.end() || options.find("r") != options.end();
 
     bool want_json = (options.find("json") != options.end()) || (options.find("j") != options.end());
-
-    // Prevent conflicting options: only one action allowed at a time
-    /* WILL MOVE TO CXXOPTS
-    int chosen = (start ? 1 : 0) + (pause ? 1 : 0) + (status ? 1 : 0) + (add ? 1 : 0) + (remove ? 1 : 0);
-    if (chosen != 1) {
-        commandmachine::command_parser_impl parser;
-        parser.print_help(command_registry);
-        return 1;
-    }
-    */
 
     std::string algo;
     int level = 0;

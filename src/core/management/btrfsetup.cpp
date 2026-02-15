@@ -43,6 +43,8 @@ bool iterate_btrfs_devices(blkid_cache cache, fs_map& out)
         char* uuid  = blkid_get_tag_value(cache, "UUID", devname);
         char* label = blkid_get_tag_value(cache, "LABEL", devname);
 
+        DEBUG_LOG("btrfsls: found a btrfs with uuid ", uuid, " and label ", label);
+
         std::pair<std::string, fs_info> entry;
 
         if (uuid)    entry.first = uuid;
@@ -153,6 +155,8 @@ bk_mgmt::btrfsls()
 
 #ifdef HAVE_LIBBLKID
 
+    DEBUG_LOG("btrfsls: using built-in libblkid…");
+
     blkid_cache cache = nullptr;
     if (blkid_get_cache(&cache, nullptr) < 0) {
         DEBUG_LOG("blkid_get_cache() failed.");
@@ -175,6 +179,8 @@ bk_mgmt::btrfsls()
     blkid_put_cache(cache);
 
 #else
+
+    DEBUG_LOG("btrfsls: falling back to shell blkid…");
 
     // Fallback: shell out to blkid and parse lines
     {

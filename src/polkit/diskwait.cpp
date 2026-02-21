@@ -19,7 +19,6 @@
 #include <QFuture>
 
 #ifdef HAVE_LIBBLKID
-  #include <cstring>
   extern "C" {
     #include <blkid/blkid.h>
   }

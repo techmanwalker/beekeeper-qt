@@ -56,12 +56,15 @@ MainWindow::set_temporal_status_message(const QString message, qint64 duration_i
 void
 MainWindow::handle_cpu_timer()
 {
-    if (!is_any_not(running, fs_table, fs_view_state)) {
-        cpu_label->setVisible(false); // hide if no beesd is running
-        return;
-    }
+    bool is_any_beesd_running = is_any(running, fs_table, fs_view_state);
 
-    cpu_label->setVisible(true); // only show if any running
+    // hide if no beesd is running
+    // only show if any is running
+    cpu_label->setVisible(
+        is_any_beesd_running
+    );
+
+    if (!is_any_beesd_running) return;
 
     auto future = QtConcurrent::run([]() -> double {
         return bk_util::current_cpu_usage(1);

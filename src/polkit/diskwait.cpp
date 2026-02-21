@@ -49,6 +49,30 @@ std::condition_variable_any worker_cv;
 std::atomic_uint64_t refresh_generation{0};
 std::atomic_bool refresh_worker_running{false};
 
+// NEW: Resolve UUID directly from a device node using libblkid
+std::string uuid_from_devnode(const char *devnode)
+{
+    if (!devnode)
+        return {};
+
+#ifdef HAVE_LIBBLKID
+    blkid_cache cache = nullptr;
+
+    if (blkid_get_cache(&cache, nullptr) < 0 || !cache)
+        return {};
+
+    const char *uuid_cstr = blkid_get_tag_value(cache, "UUID", devnode);
+
+    std::string uuid = uuid_cstr ? uuid_cstr : "";
+
+    blkid_put_cache(cache);
+
+    return uuid;
+#else
+    return {};
+#endif
+}
+
 // Helper: refresh the libblkid cache when asked to
 void fully_refresh_libblkid_cache() {
 
@@ -71,30 +95,6 @@ void fully_refresh_libblkid_cache() {
 
 #else
     bk_util::exec_command("blkid");
-#endif
-}
-
-// NEW: Resolve UUID directly from a device node using libblkid
-std::string uuid_from_devnode(const char *devnode)
-{
-    if (!devnode)
-        return {};
-
-#ifdef HAVE_LIBBLKID
-    blkid_cache cache = nullptr;
-
-    if (blkid_get_cache(&cache, nullptr) < 0 || !cache)
-        return {};
-
-    const char *uuid_cstr = blkid_get_tag_value(cache, "UUID", devnode);
-
-    std::string uuid = uuid_cstr ? uuid_cstr : "";
-
-    blkid_put_cache(cache);
-
-    return uuid;
-#else
-    return {};
 #endif
 }
 
@@ -132,8 +132,7 @@ void async_refresh_libblkid_cache()
     });
 }
 
-
-// Helper: push uuid into queue iff not already present
+// Helper: push uuid into queue if not already present
 void push_uuid_to_queue(const std::string &uuid)
 {
     if (uuid.empty()) return;
@@ -169,6 +168,10 @@ std::vector<std::string> snapshot_queue()
 void process_existing_mounts()
 {
     namespace fs = std::filesystem;
+
+    // Before attempting anything else
+    // do it synchronously to avoid any wrongdoing
+    fully_refresh_libblkid_cache();
 
     const fs::path by_uuid_dir{"/dev/disk/by-uuid"};
     if (!fs::exists(by_uuid_dir) || !fs::is_directory(by_uuid_dir)) {

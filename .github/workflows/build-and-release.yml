@@ -2,6 +2,8 @@ name: Build and Release beekeeper-qt
 
 on:
   push:
+    branches:
+      - master
     tags:
       - "v*.*.*"
   workflow_dispatch:

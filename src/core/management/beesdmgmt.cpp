@@ -347,6 +347,22 @@ bk_mgmt::beesstart(const std::string &uuid)
                 std::cerr << "[beesstart] beesd not found in PATH\n";
                 _exit(127);
             }
+            
+            // Become session leader
+            if (setsid() < 0) {
+                _exit(1);
+            }
+
+            // Redirect stdin, stdout, stderr to /dev/null
+            int devnull = open("/dev/null", O_RDWR);
+            if (devnull >= 0) {
+                dup2(devnull, STDIN_FILENO);
+                dup2(devnull, STDOUT_FILENO);
+                dup2(devnull, STDERR_FILENO);
+                if (devnull > STDERR_FILENO)
+                    close(devnull);
+            }
+
             // child #2 → this becomes beesd
             execl(
                 beesd_path.c_str(),

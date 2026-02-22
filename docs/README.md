@@ -4,30 +4,28 @@ Welcome, dear user or coder. This is my very first public coding project, which 
 
 ## Overview
 
-The project is oriented toward the Linux desktop in general, but I also noted in the README.md that it can be useful on servers that handle a large amount of data with repeating patterns, and on systems that have very little available space (like systems with less than 64 GB of storage) to improve their performance and reduce their I/O operations.
+The project is oriented toward the Linux desktop in general, but I also noted in the README.md its usefulness on servers that handle a large amount of data with repeating patterns, and on systems that have very little available space (like systems with less than 64 GB of storage) to improve their performance and reduce their I/O operations.
 
 ## Architecture Components
 
 Currently, its structure is divided into **three main components**, each with its own specific purpose:
 
+### **beekeeper-qt** - Graphical Interface
+This is the graphical interface itself, made in Qt as its name suggests (screenshot available in [the repo](ui.png)) that's designed to be simple and only put the most basic functionality at sight, so full setup is just a matter of clicking Configure, Play and + icons. This is what controls the **bees** daemon (which is the one that does the actual deduplication and I don't include it as another part of my project because it's an external dependency). Hover over the toolbar buttons or click _Help_ on the global menu for more information.
+
 ### **beekeeperman** - Command Line Interface
-The command-line utility that provides an interface prepared for those who prefer not to use a graphical interface and instead use a command line. Previously, it was the bridge between privileged space (root) and the graphical interface so the latter could function, but now these are independent since the creation of the next component.
+The command-line utility that provides an interface prepared for those who prefer not to use a graphical interface and instead want a command line interface. Previously, it was the sole bridge between privileged space (root) and the graphical interface so the latter could function, but now these are independent after the consolidation of the _clauses_ architecture, which all three components now rely on for communication.
 
 ### **thebeekeeper** - Privileged Daemon
-This is the other side of the graphical interface - the side you don't see. It's an executable that is launched through a systemd DBus-type service, so yes, it communicates with the graphical interface through DBus calls that serve to obtain privileged data and execute actions that otherwise couldn't be done, since privileges are needed to interact with the filesystem structure at a low level. Being it a DBus service, it doesn't ask you for your password when you launch beekeeper-qt as systemd *trusts* in the executable.
-
-### **beekeeper-qt** - Graphical Interface
-This is the graphical interface itself, made in Qt as its name suggests (screenshot available in my repo) that's designed to be simple and only put what's needed at hand. This is what controls the daemon called **bees** (which is the one that does the actual deduplication and I don't include it as another part of my project because I didn't write it), which additionally includes the functionality to start file deduplication at system boot and will include in the future the functionality to control the transparent compression settings offered by the BTRFS filesystem to increase the space-freeing capabilities of beekeeper-qt.
+This is a daemon decoupled from the GUI and CLI. It's an executable that is launched through a systemd DBus-type service, so yes: it communicates with the graphical interface through DBus calls that serve to obtain privileged data and execute actions that couldn't be done without superuser permissions, since privileges are needed to interact with the filesystem structure at a low level. Being it a DBus service, it doesn't ask you for your password when you launch beekeeper-qt as systemd *trusts* in the executable.
 
 ## Code Organization
 
-As additional information about the architecture, **the code from all three parts is unified in the handlers.cpp file**, which is always the bridge between the heart of operations (which doesn't exist as a separate executable but rather as the source code itself, which would be **beesdmgmt.cpp** and **btrfsetup.cpp**) and all the points where it's presented to the user, such as:
+### The internal Clause protocol
 
-- The DBus helper and messenger (**thebeekeeper**, which you interact with through:)
-- The graphical interface (**beekeeper-qt**)  
-- The terminal interface (**beekeeperman**, this one *does* need sudo to work)
+Since v1.3.3, the process inter and internal communication is now fully unified as what's internally called the **Clause** protocol, which serves as an API that allows the GUI (**beekeeper-qt**) to send and receive information to/from the daemon (**thebeekeeper**) for safe privilege escalation.
 
-The last are the two ways in which the program is presented to the user.
+
 
 ## Programming Philosophy
 

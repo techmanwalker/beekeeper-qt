@@ -3,13 +3,13 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "beekeeper/util.hpp"
-#include "beekeeper/clauses.hpp"
+#include "bk-clauses.hpp"
 #include <filesystem> // for std::setw
 #include <string>
 #include <sstream>
 
 namespace fs = std::filesystem;
-namespace clause = beekeeper::clause;
+namespace clauses = beekeeper::clauses;
 
 // Ease early returns
 
@@ -22,8 +22,8 @@ namespace clause = beekeeper::clause;
 
 // Clause handler implementations
 command_streams
-clause::start(const std::map<std::string, std::string> &options, 
-              const std::vector<std::string> &subjects)
+clauses::start(const clause_options &options, 
+               const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -48,8 +48,8 @@ clause::start(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::stop(const std::map<std::string, std::string> &options, 
-             const std::vector<std::string> &subjects)
+clauses::stop(const clause_options &options, 
+              const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -68,8 +68,8 @@ clause::stop(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::restart(const std::map<std::string, std::string> &options, 
-                const std::vector<std::string> &subjects)
+clauses::restart(const clause_options &options, 
+                 const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -88,8 +88,8 @@ clause::restart(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::status(const std::map<std::string, std::string> &options, 
-               const std::vector<std::string> &subjects)
+clauses::status(const clause_options &options, 
+                const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -103,8 +103,8 @@ clause::status(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::log(const std::map<std::string, std::string> &options, 
-            const std::vector<std::string> &subjects)
+clauses::log(const clause_options &options, 
+             const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -115,8 +115,8 @@ clause::log(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::clean(const std::map<std::string, std::string> &options, 
-              const std::vector<std::string> &subjects)
+clauses::clean(const clause_options &options, 
+               const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -136,8 +136,8 @@ clause::clean(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::help(const std::map<std::string, std::string> &options, 
-             const std::vector<std::string> &subjects)
+clauses::help(const clause_options &options, 
+              const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -148,8 +148,8 @@ clause::help(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::setup(const std::map<std::string, std::string> &options, 
-              const std::vector<std::string> &subjects) 
+clauses::setup(const clause_options &options, 
+               const clause_subjects &subjects) 
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -223,8 +223,8 @@ clause::setup(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::locate(const std::map<std::string, std::string> &options,
-               const std::vector<std::string> &subjects)
+clauses::locate(const clause_options &options,
+                const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -238,7 +238,7 @@ clause::locate(const std::map<std::string, std::string> &options,
 
         bool first_uuid = true;
         for (const auto &uuid : subjects) {
-            std::vector<std::string> mountpoints = bk_mgmt::get_mount_paths(uuid);
+            clause_subjects mountpoints = bk_mgmt::get_mount_paths(uuid);
 
             if (!first_uuid) {
                 cout << ", ";
@@ -263,7 +263,7 @@ clause::locate(const std::map<std::string, std::string> &options,
     } else {
         // --- Pretty-printed human output ---
         for (const auto &uuid : subjects) {
-            std::vector<std::string> mountpoints = bk_mgmt::get_mount_paths(uuid);
+            clause_subjects mountpoints = bk_mgmt::get_mount_paths(uuid);
 
             if (!mountpoints.empty()) {
                 cout << "Points that " << uuid << " is mounted on:" << std::endl;
@@ -282,8 +282,8 @@ clause::locate(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::list(const std::map<std::string, std::string> &options,
-             const std::vector<std::string> &subjects)
+clauses::list(const clause_options &options,
+              const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -341,7 +341,7 @@ clause::list(const std::map<std::string, std::string> &options,
     }
 
     // Precompute all status strings
-    std::vector<std::string> status_lines;
+    clause_subjects status_lines;
     size_t status_width = 7; // "STATUS" header length
 
     for (const auto &[uuid, info] : filesystems) {
@@ -419,8 +419,8 @@ clause::list(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::stat(const std::map<std::string, std::string> &options,
-             const std::vector<std::string> &subjects)
+clauses::stat(const clause_options &options,
+              const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -497,8 +497,8 @@ clause::stat(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::autostartctl(const std::map<std::string, std::string> &options,
-                     const std::vector<std::string> &subjects)
+clauses::autostartctl(const clause_options &options,
+                      const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;
@@ -518,8 +518,8 @@ clause::autostartctl(const std::map<std::string, std::string> &options,
 }
 
 command_streams
-clause::compressctl(const std::map<std::string, std::string> &options,
-                    const std::vector<std::string> &subjects)
+clauses::compressctl(const clause_options &options,
+                     const clause_subjects &subjects)
 {
     std::ostringstream cout;
     std::ostringstream cerr;

@@ -1,4 +1,4 @@
-#include "beekeeper/commandregistry.hpp"
+#include "../core/clauses/bk-clauses.hpp"
 
 #include <CLI/CLI.hpp>
 #include <iostream>
@@ -20,7 +20,7 @@ main (int argc, char **argv)
     std::vector<std::string> subjects;
 
     // Register each of the verbs dynamically
-    for (const auto &[verb_name, meta] : command_registry) {
+    for (const auto &[verb_name, meta] : clauses_registry) {
         // Register the verb and associate with its handler
         // verb.handleBy(meta.handler);
 
@@ -93,7 +93,7 @@ main (int argc, char **argv)
     // Hence, the call trivially becomes:
 
     command_streams execution_result =
-        command_registry.at(verb).handler(options, subjects);
+        clauses_registry.at(verb).handler(options, subjects);
 
     // And spit it out to the terminal, in this order: stderr, stdout and finally return with exit code.
 

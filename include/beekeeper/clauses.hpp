@@ -1,68 +1,33 @@
+/* Reusable clauses header for any program. */
+
 #pragma once
 #include <map>
 #include <vector>
 #include <string>
 #include "util.hpp"
 
-// Helper: escape string for safe embedding into a JSON string value.
-// Minimal escaping for JSON string values: backslash, quote and control chars.
-std::string
-json_escape (const std::string &s);
+// Simplify typing
+using clause_options  = std::map<std::string, std::string>;
+using clause_subjects = std::vector<std::string>;
 
-// Clause handler implementations
-namespace beekeeper { namespace clause {
-command_streams
-start(const std::map<std::string, std::string>& options, 
-      const std::vector<std::string>& subjects);
+// Option specification structure
+struct option_spec {
+    std::string long_name;   // e.g. "enable-logging"
+    std::string short_name;  // e.g. "l" (empty if no short form)
+    bool requires_value;     // Does this option require a value?
+};
 
-command_streams
-stop(const std::map<std::string, std::string>& options, 
-     const std::vector<std::string>& subjects);
+// command handler type
+using clause_handler = std::function<command_streams(const clause_options&, 
+                                                     const clause_subjects&)>;
 
-command_streams
-restart(const std::map<std::string, std::string>& options, 
-        const std::vector<std::string>& subjects);
-
-command_streams
-status(const std::map<std::string, std::string>& options, 
-       const std::vector<std::string>& subjects);
-
-command_streams
-log(const std::map<std::string, std::string>& options, 
-    const std::vector<std::string>& subjects);
-
-command_streams
-clean(const std::map<std::string, std::string>& options, 
-      const std::vector<std::string>& subjects);
-
-command_streams
-help(const std::map<std::string, std::string>& options, 
-     const std::vector<std::string>& subjects);
-
-command_streams
-setup(const std::map<std::string, std::string>& options, 
-      const std::vector<std::string>& subjects);
-
-command_streams
-list (const std::map<std::string, std::string>& options,
-      const std::vector<std::string>& subjects);
-
-command_streams
-stat(const std::map<std::string, std::string>& options, 
-     const std::vector<std::string>& subjects);
-
-command_streams
-locate(const std::map<std::string, std::string>& options,
-       const std::vector<std::string>& subjects);
-
-command_streams
-autostartctl(const std::map<std::string, std::string> &options,
-             const std::vector<std::string> &subjects);
-
-command_streams
-compressctl(const std::map<std::string, std::string> &options,
-            const std::vector<std::string> &subjects);
-
-
-} // namespace cli
-} // namespace beekeeper
+// clause structure
+struct clause {
+    clause_handler handler;
+    std::vector<option_spec> allowed_options;
+    std::string subject_name;
+    std::string description;
+    int min_subjects = 1;
+    int max_subjects = -1;
+    bool hidden = false;
+};

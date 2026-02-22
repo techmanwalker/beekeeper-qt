@@ -1,12 +1,12 @@
-#include "beekeeper/commandregistry.hpp"
+#include "bk-clauses.hpp"
 
-namespace clause = beekeeper::clause;
+namespace clauses = beekeeper::clauses;
 
-std::unordered_map<std::string, cm::command> command_registry = {
+std::unordered_map<std::string, clause> clauses_registry = {
     {
         "start",
         { 
-            clause::start,
+            clauses::start,
             {
                 {"enable-logging", "l", false}  // long, short, requires_value
             },
@@ -18,7 +18,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "stop", 
         { 
-            clause::stop,
+            clauses::stop,
             {},
             "UUID",
             "Stop beesd daemon",
@@ -28,7 +28,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "restart",
         {
-            clause::restart,
+            clauses::restart,
             {},
             "UUID",
             "Restart beesd daemon",
@@ -38,7 +38,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "status",
         {
-            clause::status,
+            clauses::status,
             {},
             "UUID",
             "Check beesd status",
@@ -48,7 +48,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "log", 
         {
-            clause::log,
+            clauses::log,
             {},
             "UUID",
             "Show log file",
@@ -58,7 +58,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "clean", 
         {
-            clause::clean,
+            clauses::clean,
             {},
             "UUID",
             "Clean PID file",
@@ -68,7 +68,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "setup",
         {
-            clause::setup,
+            clauses::setup,
             {
                 {"db-size", "d", true},  // Requires value (size in bytes)
                 {"remove", "r", false},
@@ -82,7 +82,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "locate",
         {
-            clause::locate,
+            clauses::locate,
             {
                 {"json", "j", false} // for machine readability
             },
@@ -94,7 +94,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "list",
         {
-            clause::list,
+            clauses::list,
             { {"json", "j", false} }, // <-- support -j / --json
             "",
             "List available btrfs filesystems",
@@ -104,7 +104,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "stat",
         {
-            clause::stat,
+            clauses::stat,
             { {"storage", "s", true}, {"json", "j", false} }, // <-- support -s / --storage <value>
             "UUID",
             "Check if a btrfs filesystem has a configuration",
@@ -114,7 +114,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "autostartctl",
         {
-            clause::autostartctl,
+            clauses::autostartctl,
             { {"add", "a", false}, {"remove", "r", false} }, // support --add / --remove
             "",
             "Add or remove filesystems from the autostart file",
@@ -124,7 +124,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
 {
         "compressctl",
         {
-            clause::compressctl,
+            clauses::compressctl,
             {
                 {"start", "s", false},
                 {"pause", "p", false},
@@ -145,7 +145,7 @@ std::unordered_map<std::string, cm::command> command_registry = {
     {
         "help",
         {
-            clause::help,
+            clauses::help,
             {},
             "",
             "Show help information",

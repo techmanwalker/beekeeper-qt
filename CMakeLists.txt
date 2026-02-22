@@ -123,6 +123,8 @@ file(GLOB MGMT_SRCS
 file(GLOB UTIL_SRCS
     src/core/utils/*
 )
+file(GLOB BK_CLAUSES
+    src/core/clauses/bk-*.cpp)
 add_library(beekeeper SHARED
     ${MGMT_SRCS}
     ${UTIL_SRCS}
@@ -142,8 +144,7 @@ target_link_libraries(beekeeper PUBLIC Qt6::Core)
 #
 add_executable(beekeeperman
     src/cli/beekeeperman.cpp
-    src/core/clauses/clauses.cpp
-    src/core/clauses/commandregistry.cpp
+    ${BK_CLAUSES}
     ${UTIL_SRCS}
 )
 set_target_properties(beekeeperman PROPERTIES
@@ -199,8 +200,7 @@ target_link_libraries(beekeeper-qt PRIVATE
 add_executable(thebeekeeper
     src/polkit/diskwait.cpp
     src/polkit/masterservice.cpp
-    src/core/clauses/commandregistry.cpp
-    src/core/clauses/clauses.cpp
+    ${BK_CLAUSES}
 )
 
 target_include_directories(thebeekeeper PRIVATE

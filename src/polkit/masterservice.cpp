@@ -1,6 +1,6 @@
 #include "masterservice.hpp"
 
-#include "beekeeper/commandregistry.hpp"
+#include "../core/clauses/bk-clauses.hpp"
 #include "beekeeper/debug.hpp"
 #include "beekeeper/util.hpp"
 #include "diskwait.hpp"
@@ -66,13 +66,13 @@ struct clause_runnable : public QRunnable
     {
         command_streams reply;
 
-        auto it = command_registry.find(verb.toStdString());
-        if (it == command_registry.end()) {
+        auto it = clauses_registry.find(verb.toStdString());
+        if (it == clauses_registry.end()) {
             reply.errcode = 1;
             reply.stdout_str.clear();
             reply.stderr_str = "Unknown clause: " + verb.toStdString();
         } else {
-            cm::command &cmd = it->second;
+            clause &cmd = it->second;
             reply = cmd.handler(
                 masterservice::convert_options(options),
                 masterservice::convert_subjects(subjects)
@@ -116,8 +116,8 @@ masterservice::_internal_execute_clause(const QString &verb,
                                         const QVariantMap &options,
                                         const QStringList &subjects)
 {
-    auto it = command_registry.find(verb.toStdString());
-    if (it == command_registry.end()) {
+    auto it = clauses_registry.find(verb.toStdString());
+    if (it == clauses_registry.end()) {
         return {
             "",
             "Unknown clause: " + verb.toStdString(),

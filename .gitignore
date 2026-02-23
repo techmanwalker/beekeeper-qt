@@ -14,3 +14,4 @@ packaging/beekeeper-qt-*.pkg.tar.zst
 *.swo
 *.DS_Store
 *~
+.vscode

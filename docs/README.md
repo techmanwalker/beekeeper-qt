@@ -21,9 +21,9 @@ This is a daemon decoupled from the GUI and CLI. It's an executable that is laun
 
 ## Code Organization
 
-### The internal Clause protocol
+### The internal clause protocol
 
-Since v1.3.3, the process inter and internal communication is now fully unified as what's internally called the **Clause** protocol, which serves as an API that allows the GUI (**beekeeper-qt**) to send and receive information to/from the daemon (**thebeekeeper**) for safe privilege escalation.
+Since v1.3.3, the process inter and internal communication is now fully unified as what's internally called the **clause** protocol, which serves as an API that allows the GUI (**beekeeper-qt**) to send and receive information to/from the daemon (**thebeekeeper**) for safe privilege escalation.
 
 
 

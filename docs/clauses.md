@@ -1,4 +1,4 @@
-# The internal Clause protocol
+# The internal clause protocol
 
 Since v1.3.3, the process inter and internal communication is now fully unified as what's internally called the **clauses** protocol.
 
@@ -35,7 +35,7 @@ Ensuring full feature parity and easy inter-intra-process communication are fund
 
 # Formal documentation
 
-## Clause (entity)
+## clause (entity)
 
 A _clause_ is defined as an action or sentence, similar to a function prepared for inter-process communication, following a DBus-inspired fashion. A clause consists on:
 
@@ -83,7 +83,7 @@ std::unordered_map<std::string, clause> clauses_registry = {
 You can read the [beekeeperman](../src/cli/beekeeperman.cpp) and [beekeeper-qt's clauses](../src/cli/clauses.cpp) code as a referennce on how you can use the clauses architecture to make a simple command line app by using _dynamic registration_.
 
 
-## Clause call
+## clause call
 
 A _clause call_ is a sentence, an action, which consists on
 
@@ -236,14 +236,14 @@ This may be added as a compilable example in the future.
 
 _(if you'd like to use this architecture for your own project and adjust it to its own needs)..._
 
-Clause calls parameters:
+clause calls parameters:
 
 ```c++
 using clause_options  = std::map<std::string, std::string>;
 using clause_subjects = std::vector<std::string>;
 ```
 
-Clause handler:
+clause handler:
 
 ```c++
 using clause_handler = std::function<return_type(const clause_options&, 
@@ -260,7 +260,7 @@ struct option_spec {
 };
 ```
 
-Clause entity structure
+clause entity structure:
 
 ```c++
 struct clause {

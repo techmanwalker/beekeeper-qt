@@ -20,7 +20,7 @@ namespace clauses = beekeeper::clauses;
         errcode \
     };
 
-// Clause handler implementations
+// clause handler implementations
 command_streams
 clauses::start(const clause_options &options, 
                const clause_subjects &subjects)

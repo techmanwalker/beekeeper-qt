@@ -3,7 +3,7 @@
 // command registry
 extern std::unordered_map<std::string, clause> clauses_registry;
 
-// Clause handler implementations
+// clause handler implementations
 namespace beekeeper { namespace clauses {
 command_streams
 start(const clause_options& options, 

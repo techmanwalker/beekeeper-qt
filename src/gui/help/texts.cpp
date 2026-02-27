@@ -50,7 +50,7 @@ helptexts::what_is_beekeeper_qt()
              "At first, your free space may temporarily decrease because the hash table ``beesd`` uses for deduplication has to be refreshed. "
              "When transparent compression is implemented, a warning will inform you that CPU usage will increase depending on your current disk usage, but during normal use, CPU usage will be minimal—unless you move large amounts of data frequently, in which case, it is recommended to deduplicate only when not actively using your system.") + "\n\n"
         + tr("Press the **+** button to have beekeeper-qt start deduplicating your filesystems on system boot.") + "\n\n"
-        + tr("__\"Storage is cheap in the big 2025, they say... Pfft.\"__");
+        + tr("__\"Storage is cheap in the big 2025, they say… Pfft.\"__");
 }
 
 QString

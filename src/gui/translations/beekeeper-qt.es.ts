@@ -221,32 +221,31 @@
         <translation>No comenzar a deduplicar archivos al arrancar el sistema</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="83"/>
         <source>Loading list...</source>
-        <translation>Cargando...</translation>
+        <translation type="vanished">Cargando...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="257"/>
+        <location filename="../mainwindow.cpp" line="255"/>
         <source>Start with logging enabled</source>
         <translation>Iniciar con el registro activado</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="260"/>
+        <location filename="../mainwindow.cpp" line="258"/>
         <source>Logging the Beesd deduplication is very resource intensive and takes a lot of disk space because Beesd logs are massive and only intended for debugging purposes.</source>
         <translation>Activar el registro de la deduplicación de datos Beesd consume demasiados recursos y ocupa demasiado espacio en disco porque los registros de Beesd son muy grandes y solo se debe realizar con fines de depuración.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="261"/>
+        <location filename="../mainwindow.cpp" line="259"/>
         <source>It is discouraged to enable it by the normal user, hence that&apos;s why this is only visible in the Debug release of beekeeper-qt.</source>
         <translation>No se recomienda para nada al usuario común activarlo. Esta es la razón por la que esta opción solo es visible en el modo de depuración de beekeeper-qt.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="262"/>
+        <location filename="../mainwindow.cpp" line="260"/>
         <source>If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much free space you had before and how much you have free now.</source>
         <translation>Si solamente quieres saber cuánto espacio en disco has liberado desde que iniciaste el servicio, solo pasa el cursor sobre un sistema de archivos o selecciónalo, lo que te mostrará cuánto espacio libre tenías antes de comenzar y cuánto tienes ahora.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="264"/>
+        <location filename="../mainwindow.cpp" line="262"/>
         <source>Are you sure you want to continue?</source>
         <translation>¿Estás seguro de que quieres continuar?</translation>
     </message>
@@ -255,7 +254,7 @@
         <translation type="vanished">Si solamente quieres saber cuánto espacio en disco has liberado desde que iniciaste el servicio, solo pasa el cursor sobre un sistema de archivos o selecciónalo, lo que te mostrará cuánto espacio libre tenías antes de comenzar y cuánto tienes ahora.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="263"/>
+        <location filename="../mainwindow.cpp" line="261"/>
         <source>Again, this is purely for debugging purposes and otherwise discouraged to enable.</source>
         <translation>Repito, esto es puramente para propósitos de depuración y se desaconseja habilitarlo para el uso cotidiano.</translation>
     </message>
@@ -265,22 +264,22 @@
         <translation>¿Estás seguro de que quieres continuar?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="268"/>
+        <location filename="../mainwindow.cpp" line="266"/>
         <source>Warning</source>
         <translation>Advertencia</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="335"/>
+        <location filename="../mainwindow.cpp" line="333"/>
         <source>UUID</source>
         <translation>UUID</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="335"/>
+        <location filename="../mainwindow.cpp" line="333"/>
         <source>Name</source>
         <translation>Nombre</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="335"/>
+        <location filename="../mainwindow.cpp" line="333"/>
         <source>Dedup status</source>
         <translation>Estado de deduplicación</translation>
     </message>
@@ -408,7 +407,7 @@
         <translation type="vanished">Estado de deduplicación</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="101"/>
+        <location filename="../mainwindow.cpp" line="99"/>
         <source>&amp;File</source>
         <translation>&amp;Archivo</translation>
     </message>
@@ -417,35 +416,35 @@
         <translation type="vanished">Abrir registro de depuración</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="105"/>
+        <location filename="../mainwindow.cpp" line="103"/>
         <source>Quit</source>
         <translation>Cerrar</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="109"/>
+        <location filename="../mainwindow.cpp" line="107"/>
         <source>&amp;Help</source>
         <translation>&amp;Ayuda</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="114"/>
+        <location filename="../mainwindow.cpp" line="112"/>
         <source>Keyboard navigation</source>
         <translation>Navegación por teclado</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="126"/>
-        <location filename="../mainwindow.cpp" line="149"/>
-        <location filename="../mainwindow.cpp" line="169"/>
+        <location filename="../mainwindow.cpp" line="124"/>
+        <location filename="../mainwindow.cpp" line="147"/>
+        <location filename="../mainwindow.cpp" line="167"/>
         <source>About beekeeper-qt</source>
         <translation>Acerca de beekeeper-qt</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="120"/>
-        <location filename="../mainwindow.cpp" line="159"/>
+        <location filename="../mainwindow.cpp" line="118"/>
+        <location filename="../mainwindow.cpp" line="157"/>
         <source>Transparent compression and deduplication</source>
         <translation>Compresión transparente y deduplicación</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="284"/>
+        <location filename="../mainwindow.cpp" line="282"/>
         <source>Remove configuration file</source>
         <translation>Eliminar archivo de configuración</translation>
     </message>
@@ -846,8 +845,12 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
     </message>
     <message>
         <location filename="../help/texts.cpp" line="53"/>
+        <source>__&quot;Storage is cheap in the big 2025, they say… Pfft.&quot;__</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>__&quot;Storage is cheap in the big 2025, they say... Pfft.&quot;__</source>
-        <translation>__&quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&quot;__</translation>
+        <translation type="vanished">__&quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&quot;__</translation>
     </message>
     <message>
         <location filename="../help/texts.cpp" line="59"/>

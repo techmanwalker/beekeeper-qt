@@ -31,10 +31,10 @@ main(int argc, char *argv[])
 
     // Load correct localization file
     QString locale = QLocale::system().name(); // ej: "es_MX"
-    QString qm_file = QString("beekeeper-%1.qm").arg(locale.left(2)); // solo "es"
+    QString qm_file = QString("beekeeper-qt.%1.qm").arg(locale.left(2)); // solo "es"
     QTranslator translator;
 
-    if (translator.load("beekeeper-" + locale.left(2), TRANSLATIONS_DIR)) {
+    if (translator.load("beekeeper-qt." + locale.left(2), TRANSLATIONS_DIR)) {
         app.installTranslator(&translator);
         DEBUG_LOG("[main] Translator loaded:", qm_file);
     } else {

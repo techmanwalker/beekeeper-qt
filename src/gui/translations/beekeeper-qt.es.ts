@@ -247,7 +247,7 @@
     <message>
         <location filename="../mainwindow.cpp" line="262"/>
         <source>Are you sure you want to continue?</source>
-        <translation>¿Estás seguro de que quieres continuar?</translation>
+        <translation>¿Quieres continuar?</translation>
     </message>
     <message>
         <source>If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much you had before and how much you have now.</source>
@@ -520,27 +520,27 @@ Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</transl
     <message>
         <location filename="../setupdialog.cpp" line="98"/>
         <source>16 MiB</source>
-        <translation></translation>
+        <translation>16 MiB</translation>
     </message>
     <message>
         <location filename="../setupdialog.cpp" line="99"/>
         <source>128 MiB</source>
-        <translation></translation>
+        <translation>128 MiB</translation>
     </message>
     <message>
         <location filename="../setupdialog.cpp" line="100"/>
         <source>256 MiB</source>
-        <translation></translation>
+        <translation>256 MiB</translation>
     </message>
     <message>
         <location filename="../setupdialog.cpp" line="101"/>
         <source>1 GiB</source>
-        <translation></translation>
+        <translation>1 GiB</translation>
     </message>
     <message>
         <location filename="../setupdialog.cpp" line="102"/>
         <source>4 GiB</source>
-        <translation></translation>
+        <translation>4 GiB</translation>
     </message>
     <message>
         <location filename="../setupdialog.cpp" line="123"/>
@@ -736,7 +736,7 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
     <message>
         <location filename="../help/texts.cpp" line="18"/>
         <source>- Navigate between toolbar buttons using **→** / **Tab** and **←** / **Shift+Tab**. Navigation wraps around cyclically, skipping disabled buttons.</source>
-        <translation>- Navega por la barra de herramientas usando las flechas **→**  **←** y los tabuladores **Tab** y **Shift+Tab**. La navegación es cíclica y se salta los botones desactivados.</translation>
+        <translation>- Navega por la barra de herramientas usando las flechas **→** **←** y los tabuladores **Tab** y **Shift+Tab**. La navegación es cíclica y se salta los botones desactivados.</translation>
     </message>
     <message>
         <location filename="../help/texts.cpp" line="19"/>

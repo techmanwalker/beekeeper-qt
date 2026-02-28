@@ -846,7 +846,7 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
     <message>
         <location filename="../help/texts.cpp" line="53"/>
         <source>__&quot;Storage is cheap in the big 2025, they say… Pfft.&quot;__</source>
-        <translation type="unfinished"></translation>
+        <translation>__&amp;quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&amp;quot;__</translation>
     </message>
     <message>
         <source>__&quot;Storage is cheap in the big 2025, they say... Pfft.&quot;__</source>

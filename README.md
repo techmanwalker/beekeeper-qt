@@ -208,7 +208,7 @@ Once permissive, the helper will operate normally. You can re-enable enforcing a
 
 ## Contributions, License & Credits
 
-* [https://github.com/necrose99](necrose99) for the `.ebuild` file!
+* [necrose99](https://github.com/necrose99) for the `.ebuild` file!
 
 * Pull requests are welcome. Please follow the current coding style and describe your changes clearly. Documentation is in [`docs/`](docs/).
 * Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)

@@ -118,8 +118,6 @@ MainWindow::handle_start (bool enable_logging)
     if (!komander->do_i_have_root_permissions())
         return;
 
-    set_temporal_status_message(tr("Starting") + "...", 3000);
-
     // Decide which rows to process
     // No selection → consider all rows
     const QModelIndexList selected = list_of_selected_rows(fs_table, true);
@@ -171,8 +169,6 @@ MainWindow::handle_stop()
 {
     if (!komander->do_i_have_root_permissions())
         return;
-
-    set_temporal_status_message(tr("Stopping") + "...", 3000);
 
     const QModelIndexList selected = list_of_selected_rows(fs_table, true);
 

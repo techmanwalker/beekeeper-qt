@@ -29,10 +29,6 @@ void KeyboardNav::init()
         mainWindow->fs_table->setFocusPolicy(Qt::StrongFocus);
         mainWindow->fs_table->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-        // Show initial keyboard hint once
-        QString startup_msg = tr("To access the toolbar with the keyboard, select a filesystem and click Enter or Space. More info on Help > Keyboard navigation.");
-        mainWindow->statusBar->showMessage(startup_msg);
-
     }
 }
 
@@ -128,8 +124,6 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
             if (sel->hasSelection()) {
                 sel->clearSelection();
                 last_selected_row = -1;
-                update_status_bar();
-                mainWindow->statusBar->showMessage(tr("Press Esc again to exit beekeeper-qt."));
             } else {
                 // No selection or already cleared → close app
                 QApplication::closeAllWindows(); // Alt+F4 behavior
@@ -189,7 +183,6 @@ KeyboardNav::eventFilter(QObject *obj, QEvent *event)
                     if (sel->hasSelection()) {
                         sel->clearSelection();
                         last_selected_row = -1;
-                        update_status_bar();
                     }
                 }
                 exitToolbar();
@@ -289,15 +282,6 @@ void KeyboardNav::moveHover(int delta)
 
     // Update visual hover & notify MainWindow
     highlightRow(new_row);
-    update_status_bar();
-
-    // Only show toolbar hint if more than 1 row exists
-    if (hit_edge && rowCount > 1) {
-        mainWindow->set_temporal_status_message(
-            tr("Do you want to access the toolbar? Press Enter or Space."),
-            2000
-        );
-    }
 }
 
 //---------------------------------------------------------
@@ -345,28 +329,12 @@ void KeyboardNav::selectHover(bool shift, bool ctrl)
             // Set current hovered uuid in the main window (so other code can use it)
             mainWindow->current_hovered_uuid = uuid;
 
-            // Fast-path update for single UUID (same as mouse hover path)
-            refresh_fs_helpers::update_status_manager_one_uuid(
-                table,
-                mainWindow->statusManager,
-                uuid
-            );
-
-            // Get and display the status
-            QString status = mainWindow->statusManager.get_status(uuid);
-            if (!status.isEmpty()) {
-                mainWindow->statusBar->showMessage(status);
-            } else {
-                // fallback: clear message if no status
-                mainWindow->statusBar->clearMessage();
-            }
             return;
         }
     }
 
     // If multiple selected or nothing to show, use the normal selection-based status update
     mainWindow->current_hovered_uuid.clear();
-    update_status_bar();
 }
 
 // Highlight keyboard hovered row
@@ -463,7 +431,6 @@ void KeyboardNav::selectAll()
 
     table->selectAll();
     last_selected_row = keyboard_hover_row;
-    update_status_bar();
 }
 
 //---------------------------------------------------------
@@ -506,17 +473,6 @@ void KeyboardNav::copyUUIDs()
     }
 
     QApplication::clipboard()->setText(uuids.join("\n"));
-    mainWindow->statusBar->showMessage(tr("UUID(s) copied to clipboard."));
-}
-
-//---------------------------------------------------------
-// Wrapper to update status bar in MainWindow
-//---------------------------------------------------------
-void KeyboardNav::update_status_bar()
-{
-    if (!mainWindow) return;
-
-    mainWindow->update_status_bar();
 }
 
 //---------------------------------------------------------

@@ -8,10 +8,3 @@ MainWindow::on_root_shell_ready() {
     launcher->root_alive = true;
     refresh_table(true); // now safe to enable root-only controls
 }
-
-void
-MainWindow::handle_status_updated(const QString &message)
-{
-    statusBar->showMessage(message);
-    statusBar->setToolTip(message);
-}

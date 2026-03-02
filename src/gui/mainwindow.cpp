@@ -27,6 +27,7 @@
 #include <QToolTip>
 #include <QVBoxLayout>
 #include <memory>
+#include <qstatusbar.h>
 
 using namespace beekeeper::privileged;
 
@@ -40,6 +41,7 @@ MainWindow::MainWindow(QWidget* parent)
     );
 
     // create widgets / objects (same as before)
+    status_bar  = new QStatusBar(this);
     fs_table    = new QTableWidget(this);
     refresh_btn = new QPushButton(QIcon::fromTheme("view-refresh"), "");
     start_btn   = new QPushButton(QIcon::fromTheme("media-playback-start"), "");
@@ -285,42 +287,18 @@ void MainWindow::connect_button_toolbar_handlers()
 }
 
 // ---------------------------------------------------------------------
-// Stage 5: status bar setup (no connects)
+// Stage 5: create the status bar (no connects, just construction)
 // ---------------------------------------------------------------------
+
 void MainWindow::setup_status_bar()
 {
-    statusBar = new QStatusBar(this);
-    setStatusBar(statusBar);
-
-    // Mouse hover event for the status bar
-    statusBar->setMouseTracking(true);
-    statusBar->installEventFilter(this);
-
-    // CPU usage meter on the status bar
-    cpu_label = new QLabel("CPU: --%", this);
-    cpu_label->setVisible(false);
-    statusBar->addPermanentWidget(cpu_label, 0);
-
-    // CPU timer setup
-    cpu_timer = new QTimer(this);
-    connect(cpu_timer, &QTimer::timeout, this, &MainWindow::handle_cpu_timer);
-    cpu_timer->start(500);
+    setStatusBar(status_bar);
 }
 
-
-// ---------------------------------------------------------------------
-// status bar connects
-// ---------------------------------------------------------------------
+// connects
 void MainWindow::connect_status_bar_handlers()
 {
-    connect(&statusManager, &DedupStatusManager::status_updated,
-            this, &MainWindow::handle_status_updated);
 
-    connect(this, &MainWindow::status_updated,
-            this, &MainWindow::handle_status_updated);
-
-    connect(fs_table->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &MainWindow::update_status_bar);
 }
 
 // ---------------------------------------------------------------------
@@ -378,9 +356,7 @@ void MainWindow::setup_fs_table()
     }
 }
 
-// ---------------------------------------------------------------------
-// filesystem table connects
-// ---------------------------------------------------------------------
+
 // ---------------------------------------------------------------------
 // filesystem table connects
 // ---------------------------------------------------------------------
@@ -397,13 +373,6 @@ MainWindow::connect_fs_table_handlers()
                 QMetaObject::invokeMethod(
                     this,
                     &MainWindow::update_button_states,
-                    Qt::QueuedConnection
-                );
-
-                // Heavier / derived state after event loop settles
-                QMetaObject::invokeMethod(
-                    this,
-                    &MainWindow::update_status_bar,
                     Qt::QueuedConnection
                 );
             });

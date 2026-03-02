@@ -1,8 +1,5 @@
-#include "beekeeper/btrfsetup.hpp"
-#include "dedupstatusmanager.hpp"
 #include "refreshfilesystems_helpers.hpp"
 #include "beekeeper/util.hpp"
-#include "../polkit/globals.hpp"
 #include <filesystem>
 #include <fstream>
 #include <QList>
@@ -18,7 +15,8 @@ using mapper = refresh_fs_helpers::status_text_mapper;
 namespace refresh_fs_helpers {
 
 // Unified start-file path used everywhere
-static fs::path startfile_for_uuid(const QString &uuid) {
+static fs::path
+startfile_for_uuid(const QString &uuid) {
     return fs::path("/tmp") / ".beekeeper" / uuid.toStdString() / "startingfreespace";
 }
 
@@ -99,86 +97,8 @@ status_text_mapper::map_status_manager_text(const qint64 starting_free, const qi
 }
 
 // -------------------------
-void update_status_manager(QTableWidget *fs_table,
-                           DedupStatusManager &statusManager)
-{
-    if (!fs_table) return;
-
-    for (int row = 0; row < fs_table->rowCount(); ++row) {
-        auto *item_uuid = fs_table->item(row, 0);
-        auto *item_status_raw = fs_table->item(row, 2);
-        if (!item_uuid) continue;
-
-        QString uuid = item_uuid->data(Qt::UserRole).toString();
-        if (uuid.isEmpty()) continue;
-
-        // Query current free space using provided callable
-        std::string free_str;
-        try {
-            free_str = bk_mgmt::get_space::free(uuid.toStdString());
-        } catch (...) {
-            free_str.clear();
-        }
-        qint64 free_bytes = parse_free_bytes_from_btrfstat(free_str);
-
-        // Read starting free (if present)
-        qint64 starting_free = read_starting_free_space(uuid);
-
-        // Build the status line
-        QString line;
-        if (starting_free > 0) {
-            line = status_text_mapper().map_status_manager_text(starting_free, free_bytes);
-        } else {
-            line = status_text_mapper().map_status_manager_text(0, free_bytes);
-        }
-
-        statusManager.set_status(uuid, line);
-    }
-}
-
-// -------------------------
-// Fast path: only update the single hovered uuid so UI can show fresh info quickly
-void update_status_manager_one_uuid(QTableWidget *fs_table,
-                                    DedupStatusManager &statusManager,
-                                    const QString &uuid)
-{
-    if (!fs_table || uuid.isEmpty()) return;
-
-    // find the row for this uuid (cheap; usually small table)
-    int row_found = -1;
-    for (int row = 0; row < fs_table->rowCount(); ++row) {
-        QTableWidgetItem *it = fs_table->item(row, 0);
-        if (!it) continue;
-        if (it->data(Qt::UserRole).toString() == uuid) {
-            row_found = row;
-            break;
-        }
-    }
-    if (row_found < 0) return;
-
-    // Query current free using callable
-    std::string free_str;
-    try {
-        free_str = bk_mgmt::get_space::free(uuid.toStdString());
-    } catch (...) {
-        free_str.clear();
-    }
-    qint64 free_bytes = parse_free_bytes_from_btrfstat(free_str);
-
-    qint64 starting_free = read_starting_free_space(uuid);
-
-    QString line;
-    if (starting_free > 0) {
-        line = status_text_mapper().map_status_manager_text(starting_free, free_bytes);
-    } else {
-        line = status_text_mapper().map_status_manager_text(0, free_bytes);
-    }
-
-    statusManager.set_status(uuid, line);
-}
-
-// -------------------------
-qint64 read_starting_free_space(const QString &uuid)
+qint64
+read_starting_free_space(const QString &uuid)
 {
     fs::path start_file = startfile_for_uuid(uuid);
     if (!fs::exists(start_file)) return 0;

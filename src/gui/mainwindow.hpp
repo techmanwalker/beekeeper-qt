@@ -3,7 +3,6 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "beekeeper/internalaliases.hpp"
-#include "dedupstatusmanager.hpp"
 #include "keyboardnav.hpp"
 #include "refreshfilesystems_helpers.hpp"
 #include "rootshellthread.hpp"
@@ -46,9 +45,6 @@ public:
 
     QString map_status_text(const QString &raw_status);
 
-    // Set a temporal message on the status bar for an amount of time
-    void set_temporal_status_message(const QString message, qint64 duration_in_ms);
-
     friend class SetupDialog;
 
 private:
@@ -87,8 +83,6 @@ private:
     void handle_transparentcompression_switch(bool pause);
     void handle_remove_button();
     void handle_cpu_timer();
-    void update_statuses();
-    void update_status_bar();
 
     // ----- Add or remove your filesystems from autostart -----
 
@@ -309,9 +303,9 @@ private:
 
     QStringList selected_configured_filesystems() const;
 
-    DedupStatusManager statusManager;
-    QStatusBar *statusBar;
     QString current_hovered_uuid;
+
+    QStatusBar *status_bar;
 
     KeyboardNav *keyboardNav = nullptr;
 
@@ -321,7 +315,6 @@ public slots:
     void on_root_shell_ready();
 
 private slots:
-    void handle_status_updated(const QString &message);
     // Show a log file automatically scrolled, like tail -f
     void showLog(const QString &logpath, const QString &customTitle = QStringLiteral());
     void update_button_states();

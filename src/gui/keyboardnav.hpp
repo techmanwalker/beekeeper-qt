@@ -43,7 +43,6 @@ private:
     void selectAll();
     void activateToolbar();
     void copyUUIDs();
-    void update_status_bar();             // Wrapper to call MainWindow::update_status_bar() properly
 
     QList<QWidget*> toolbarButtons();   // Convenience for navigating buttons
 };

@@ -182,6 +182,7 @@ add_executable(beekeeper-qt
 )
 target_include_directories(beekeeper-qt PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_BINARY_SOURCE_DIR}/include
     ${BUILD_INCLUDE_DIR}
     ${POLKIT_INCLUDES}
 )
@@ -252,29 +253,46 @@ if(PkgConfig_FOUND)
 endif()
 
 # ------------------------------
-# Translations
+# Global translations
 # ------------------------------
-set(TRANSLATION_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/gui/translations")
+set(TRANSLATION_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/translations")
 file(GLOB TRANSLATION_FILES "${TRANSLATION_SRC_DIR}/*.ts")
 
 # Configure translationsdir.hpp
-set(TRANSLATIONS_DIR "${CMAKE_INSTALL_FULL_DATADIR}/beekeeper/translations")
+set(TRANSLATIONS_DIR "${CMAKE_INSTALL_FULL_DATADIR}/locale")
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/include/beekeeper/cmakedependentvariables/translationsdir.hpp.in"
-    "${BUILD_INCLUDE_DIR}/beekeeper/cmakedependentvariables/translationsdir.hpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/translationsdir.hpp"
     @ONLY
 )
 
 # Generate .qm files immediately without creating target dependencies
 qt_add_translations(
-    TARGETS beekeeper-qt            # Target that will use the .qm files
+    TARGETS ${PROJECT_NAME}            # Target that will use the .qm files
     TS_FILES ${TRANSLATION_FILES}   # Explicit .ts files
     QM_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/translations"
     QM_FILES_OUTPUT_VARIABLE QM_FILES
 )
 
-# Install the .qm files
-install(FILES ${QM_FILES} DESTINATION ${TRANSLATIONS_DIR})
+# Install each .qm into locale/<lang>/LC_MESSAGES/
+foreach(qm_file ${QM_FILES})
+    get_filename_component(qm_name "${qm_file}" NAME)
+    string(REGEX REPLACE "\\.qm$" "" qm_name "${qm_name}")
+
+    string(REPLACE "beekeeper-qt." "" lang "${qm_name}")
+
+    if(lang STREQUAL "${qm_name}")
+        set(lang "en")
+    endif()
+
+    install(
+        FILES "${qm_file}"
+        DESTINATION "${TRANSLATIONS_DIR}/${lang}/LC_MESSAGES"
+        RENAME "beekeeper-qt.qm"
+    )
+endforeach()
+
+# -----
 
 # ------------------------------
 # Enable debugging

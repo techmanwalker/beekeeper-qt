@@ -6,12 +6,13 @@
 
 #include "beekeeper/debug.hpp"
 #include "beekeeper/qt-debug.hpp"
-#include "beekeeper/cmakedependentvariables/translationsdir.hpp"
+#include "translationsdir.hpp"
 #include "beekeeper/util.hpp"
 #include <QApplication>
 #include <QLocale>
 #include <QMessageBox>
 #include <QObject>
+#include <QString>
 #include <QTranslator>
 #include <csignal>
 
@@ -30,15 +31,41 @@ main(int argc, char *argv[])
     DEBUG_LOG("[main] QApplication started, argc:", argc);
 
     // Load correct localization file
-    QString locale = QLocale::system().name(); // ej: "es_MX"
-    QString qm_file = QString("beekeeper-qt.%1.qm").arg(locale.left(2)); // solo "es"
-    QTranslator translator;
+    QString baseDir = QStringLiteral(TRANSLATIONS_DIR);
+    QString fullLocale = QLocale::system().name();     // ex. "es_MX"
+    QString langOnly = fullLocale.left(2);             // ex: "es"
 
-    if (translator.load("beekeeper-qt." + locale.left(2), TRANSLATIONS_DIR)) {
-        app.installTranslator(&translator);
-        DEBUG_LOG("[main] Translator loaded:", qm_file);
-    } else {
-        DEBUG_LOG("[main] Translator not found for:", qm_file);
+    QTranslator* translator = new QTranslator(&app);
+
+    auto tryLoad = [&](const QString& localeDir) -> bool {
+        QString path = baseDir + "/" + localeDir + "/LC_MESSAGES/";
+        return translator->load("beekeeper-qt", path);
+    };
+
+    // Using es_MX code for explanation
+
+    // Try full locale (es_MX)
+    if (tryLoad(fullLocale)) {
+        app.installTranslator(translator);
+    }
+    // Try language only (es)
+    else if (tryLoad(langOnly)) {
+        app.installTranslator(translator);
+    }
+    // Search for any directory beginning with es_ ...
+    else {
+        QDir dir(baseDir);
+        QStringList candidates = dir.entryList(
+            QStringList() << (langOnly + "_*"),
+            QDir::Dirs | QDir::NoDotAndDotDot
+        );
+
+        for (const QString& candidate : candidates) {
+            if (tryLoad(candidate)) {
+                app.installTranslator(translator);
+                break;
+            }
+        }
     }
 
     // --- Check if beesd exists ---

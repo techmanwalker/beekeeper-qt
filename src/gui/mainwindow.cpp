@@ -10,8 +10,8 @@
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
 #include "rootshellthread.hpp"
-#include "statusdotdelegate.hpp"
-#include "uuidcolumndelegate.hpp"
+#include "delegates/statusdot.hpp"
+#include "delegates/uuidcolumn.hpp"
 
 #include "help/helpdialog.hpp"
 #include "help/texts.hpp"

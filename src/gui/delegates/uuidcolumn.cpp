@@ -1,4 +1,4 @@
-#include "uuidcolumndelegate.hpp"
+#include "uuidcolumn.hpp"
 #include <QPainter>
 #include <QApplication>
 #include <QClipboard>

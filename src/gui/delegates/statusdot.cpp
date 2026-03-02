@@ -1,4 +1,4 @@
-#include "statusdotdelegate.hpp"
+#include "statusdot.hpp"
 #include <QApplication>
 #include <QFontMetrics>
 #include <QPainter>

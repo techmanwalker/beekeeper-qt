@@ -345,7 +345,7 @@ endif()
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/helper.service"
     DESTINATION "${SYSTEMD_DIR}"
-    RENAME org.beekeeper.helper.service
+    RENAME beekeeper-qt.service
 )
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/helper.dbus.service"

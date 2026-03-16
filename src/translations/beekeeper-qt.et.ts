@@ -107,12 +107,12 @@
     <message>
         <location filename="../gui/mainwindow.cpp" line="62"/>
         <source>Start</source>
-        <translation type="unfinished"></translation>
+        <translation>Käivita</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="63"/>
         <source>Stop</source>
-        <translation type="unfinished"></translation>
+        <translation>Lõpeta</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="64"/>

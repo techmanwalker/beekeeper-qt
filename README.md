@@ -211,6 +211,7 @@ Once permissive, the helper will operate normally. You can re-enable enforcing a
 * [necrose99](https://github.com/necrose99) for the `.ebuild` file!
 
 * Pull requests are welcome. Please follow the current coding style and describe your changes clearly. Documentation is in [`docs/`](docs/).
+* Translations are done using Weblate. More information in the [docs](docs/CONTRIBUTING.md#translations).
 * Licensed under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
 * Special thanks to Zygo, for helping bring this project to life by creating [bees](https://github.com/Zygo/bees)!
 * beekeeper-qt by itself is original work by [techmanwalker](https://github.com/techmanwalker).

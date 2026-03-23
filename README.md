@@ -1,5 +1,9 @@
 # beekeeper-qt
 
+<a href="https://hosted.weblate.org/engage/beekeeper-qt/">
+<img src="https://hosted.weblate.org/widget/beekeeper-qt/svg-badge.svg" alt="Estado de la traducción" />
+</a>
+
 **Deduplicate redundant data in your disk and save space**    
 
 **beekeeper-qt** lets you free up disk space by removing redundant block-level data, both inside files and across multiple files. This is done by **compression** and **deduplication** techniques which are discussed more in deep down below. This is a simple graphical interface to configure and run it without hassle.

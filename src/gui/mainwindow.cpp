@@ -10,6 +10,7 @@
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
 #include "rootshellthread.hpp"
+#include "delegates/cpuusagemeter.hpp"
 #include "delegates/statusdot.hpp"
 #include "delegates/uuidcolumn.hpp"
 
@@ -293,12 +294,15 @@ void MainWindow::connect_button_toolbar_handlers()
 void MainWindow::setup_status_bar()
 {
     setStatusBar(status_bar);
+
+    cpumeter = new CpuUsageMeter(status_bar);
+    status_bar->addPermanentWidget(cpumeter);
 }
 
 // connects
 void MainWindow::connect_status_bar_handlers()
 {
-
+    cpumeter->refresh_timer->start();
 }
 
 // ---------------------------------------------------------------------

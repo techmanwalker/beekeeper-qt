@@ -2,4 +2,4 @@
 Name=org.beekeeper.Helper
 Exec=@BEEKEEPER_INSTALL_LIBDIR@/bin/thebeekeeper
 User=root
-SystemdService=org.beekeeper.helper.service
+SystemdService=beekeeper-qt.service

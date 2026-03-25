@@ -3,6 +3,7 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "beekeeper/internalaliases.hpp"
+#include "delegates/cpuusagemeter.hpp"
 #include "keyboardnav.hpp"
 #include "refreshfilesystems_helpers.hpp"
 #include "rootshellthread.hpp"
@@ -298,14 +299,12 @@ private:
     QTimer *soft_refresh_timer = nullptr;
     QTimer *full_refresh_timer = nullptr;
 
-    QLabel* cpu_label = nullptr;
-    QTimer* cpu_timer = nullptr;
-
     QStringList selected_configured_filesystems() const;
 
     QString current_hovered_uuid;
 
     QStatusBar *status_bar;
+    CpuUsageMeter *cpumeter;
 
     KeyboardNav *keyboardNav = nullptr;
 

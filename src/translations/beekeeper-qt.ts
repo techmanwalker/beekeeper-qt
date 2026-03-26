@@ -2,6 +2,14 @@
 <!DOCTYPE TS>
 <TS version="2.1">
 <context>
+    <name>CpuUsageMeter</name>
+    <message>
+        <location filename="../gui/delegates/cpuusagemeter.cpp" line="17"/>
+        <source>CPU: %1%</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>MainWindow</name>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="106"/>

@@ -2,6 +2,14 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
+    <name>CpuUsageMeter</name>
+    <message>
+        <location filename="../gui/delegates/cpuusagemeter.cpp" line="17"/>
+        <source>CPU: %1%</source>
+        <translation type="unfinished">CPU: %1%</translation>
+    </message>
+</context>
+<context>
     <name>KeyboardNav</name>
     <message>
         <source># Keyboard navigation in beekeeper-qt</source>
@@ -440,7 +448,7 @@
         <location filename="../gui/mainwindow.cpp" line="98"/>
         <location filename="../gui/mainwindow.cpp" line="459"/>
         <source>Loading…</source>
-        <translation type="unfinished">Cargando…</translation>
+        <translation>Cargando…</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="289"/>

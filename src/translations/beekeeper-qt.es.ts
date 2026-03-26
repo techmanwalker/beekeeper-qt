@@ -6,7 +6,7 @@
     <message>
         <location filename="../gui/delegates/cpuusagemeter.cpp" line="17"/>
         <source>CPU: %1%</source>
-        <translation type="unfinished">CPU: %1%</translation>
+        <translation>CPU: %1%</translation>
     </message>
 </context>
 <context>

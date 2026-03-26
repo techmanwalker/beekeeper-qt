@@ -7,8 +7,35 @@
 #include <qabstractitemmodel.h>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 // ----- Filesystem table builders -----
+
+// Snapshot of what the user sees
+std::unordered_map<std::string, std::string>
+MainWindow::get_baseline ()
+{
+    // Snapshot of what the user sees
+    std::unordered_map<std::string, std::string> baseline;
+
+    if (!fs_table) return baseline; 
+    
+    for (int r = 0; r < fs_table->rowCount(); ++r) {
+        auto uuid = refresh_fs_helpers::fetch_user_role(
+            fs_table->model()->index(r, 0), 0);
+        auto status = refresh_fs_helpers::fetch_user_role(
+            fs_table->model()->index(r, 2), 2);
+
+        if (!uuid.isEmpty()) {
+            baseline.emplace(
+                uuid.toStdString(),
+                status.toStdString()
+            );
+        }
+    }
+
+    return baseline;
+}
 
 void
 MainWindow::refresh_table(const bool fetch_data_from_daemon)
@@ -23,23 +50,7 @@ MainWindow::refresh_table(const bool fetch_data_from_daemon)
     update_button_states();
 
     // Snapshot of what the user sees
-    std::unordered_map<std::string, std::string> baseline;
-
-    if (fs_table) {
-        for (int r = 0; r < fs_table->rowCount(); ++r) {
-            auto uuid = refresh_fs_helpers::fetch_user_role(
-                fs_table->model()->index(r, 0), 0);
-            auto status = refresh_fs_helpers::fetch_user_role(
-                fs_table->model()->index(r, 2), 2);
-
-            if (!uuid.isEmpty()) {
-                baseline.emplace(
-                    uuid.toStdString(),
-                    status.toStdString()
-                );
-            }
-        }
-    }
+    std::unordered_map<std::string, std::string> baseline = get_baseline();
 
     DEBUG_LOG("Refresh snapshot recorded.");
 
@@ -95,7 +106,7 @@ MainWindow::quick_refresh(
         // ---- GUI thread ----
         QMetaObject::invokeMethod(this, [this, changes]() mutable {
 
-            refresh_fs_helpers::status_text_mapper mapper;
+            if (mapper == nullptr) mapper = new refresh_fs_helpers::status_text_mapper ();
 
             DEBUG_LOG("Applying changes to table.");
 
@@ -103,8 +114,8 @@ MainWindow::quick_refresh(
                 fs_table->selectionModel()->blockSignals(true);
 
             apply_removed(changes.just_removed);
-            apply_added(changes.newly_added, mapper);
-            apply_changed(changes.just_changed, mapper);
+            apply_added(changes.newly_added, *mapper);
+            apply_changed(changes.just_changed, *mapper);
 
             if (fs_table && fs_table->selectionModel())
                 fs_table->selectionModel()->blockSignals(false);

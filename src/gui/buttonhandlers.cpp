@@ -1,3 +1,4 @@
+#include "beekeeper/internalaliases.hpp"
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
@@ -9,6 +10,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <qabstractitemmodel.h>
+#include <string>
 #include <unordered_map>
 
 // So we can use the asynchronic versions as predicates
@@ -111,6 +113,45 @@ MainWindow::update_button_states()
     }
 }
 
+/**
+* @brief Immediately reflect a set of changes in the table GUI for faster perceived responsiveness.
+*/
+void
+MainWindow::optimistically_update(QModelIndexList items, auto member, auto value_or_callable)
+{
+    std::unordered_map<std::string, std::string> baseline = get_baseline();
+    fs_map optimistically_changed;
+
+    for (const auto &idx : items) {
+        std::string uuid = refresh_fs_helpers::fetch_user_role(idx, 0).toStdString();
+        
+        if constexpr (std::is_invocable_v<decltype(value_or_callable), const std::string&>) {
+            // Callable taking uuid: invoke it
+            (fs_view_state[uuid].*member) = value_or_callable(uuid);
+        } else if constexpr (requires { value_or_callable.at(uuid); }) {
+            // Map-like container: lookup the uuid (use .at() for const-correctness)
+            (fs_view_state[uuid].*member) = value_or_callable.at(uuid);
+        } else {
+            // Plain value: assign directly
+            (fs_view_state[uuid].*member) = value_or_callable;
+        }
+        
+        optimistically_changed[uuid] = fs_view_state[uuid];
+        
+        DEBUG_LOG("Requested optimistic field change for ", uuid, " to ", (optimistically_changed[uuid].*member));
+    }
+
+    if (!is_being_refreshed.exchange(true)) {
+        try {
+            apply_changed(optimistically_changed, *mapper);
+        } catch (...) {
+            is_being_refreshed.store(false);
+            throw;  // Re-throw after cleanup
+        }
+        is_being_refreshed.store(false);
+    }
+}
+
 
 void
 MainWindow::handle_start (bool enable_logging)
@@ -154,14 +195,7 @@ MainWindow::handle_start (bool enable_logging)
     * 5 seconds later.
     * This holds true for all of the following functions.
     */
-    for (const auto &idx : selected) {
-        fs_view_state[
-            // for this UUID...
-            refresh_fs_helpers::fetch_user_role(idx, 0).toStdString()
-
-            // change status of something to...
-        ].status = "running";
-    }
+    optimistically_update(selected, &fs_info::status, "running");
 }
 
 void
@@ -186,14 +220,7 @@ MainWindow::handle_stop()
         selected
     );
 
-    for (const auto &idx : selected) {
-        fs_view_state[
-            // for this UUID...
-            refresh_fs_helpers::fetch_user_role(idx, 0).toStdString()
-
-            // change status of something to...
-        ].status = "stopped";
-    }
+    optimistically_update(selected, &fs_info::status, "stopped");
 }
 
 void
@@ -291,18 +318,9 @@ MainWindow::handle_transparentcompression_switch(bool pause)
         selected
     );
 
-    // change visible status on table
-    for (const auto &idx : selected) {
-        // what uuid?
-        std::string uuid = refresh_fs_helpers::fetch_user_role(idx, 0).toStdString();
-
-        fs_view_state[
-            // for this UUID...
-            uuid
-
-            // change status of something to...
-        ].compressing = !did_this_uuid_have_compression_running.at(uuid);
-    }
+    optimistically_update(selected, &fs_info::compressing, [did_this_uuid_have_compression_running](const std::string& uuid) {
+        return !did_this_uuid_have_compression_running.at(uuid);
+    });
 }
 
 
@@ -353,17 +371,6 @@ MainWindow::handle_remove_button()
         selected
     );
 
-    // mark it as unconfigured and empty the config path
-    for (const auto &idx : selected) {
-        std::string uuid = refresh_fs_helpers::fetch_user_role(idx, 0).toStdString();
-        fs_view_state[
-            // for this UUID...
-            uuid
-
-            // change status of something to...
-        ].status = "unconfigured";
-        fs_view_state[
-            uuid
-        ].config = "";
-    }
+    optimistically_update(selected, &fs_info::status, "unconfigured");
+    optimistically_update(selected, &fs_info::config, "");
 }

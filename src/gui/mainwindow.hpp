@@ -67,10 +67,14 @@ private:
 
     void show_no_admin_rights_banner();
 
+    std::unordered_map<std::string, std::string> get_baseline();
     void refresh_table(const bool fetch_data_from_daemon = false);
     void quick_refresh(
         std::unordered_map<std::string, std::string> the_status_table_is_showing_for_uuid
     );
+    void optimistically_update(QModelIndexList items, auto member, auto value_or_callable);
+
+    refresh_fs_helpers::status_text_mapper *mapper;
 
 
 

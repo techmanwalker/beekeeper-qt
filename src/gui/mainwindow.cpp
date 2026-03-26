@@ -73,6 +73,9 @@ MainWindow::MainWindow(QWidget* parent)
     showlog_btn->setToolTip(tr("Show logs"));
     #endif
 
+    // status text translations mapper
+    if (mapper == nullptr) mapper = new refresh_fs_helpers::status_text_mapper ();
+
     // ----------------------------
     // SETUP STAGES (only setup, no connections)
     // ----------------------------

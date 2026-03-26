@@ -3,9 +3,8 @@
 #include <QDateTime>
 #include <qobject.h>
 
-CpuUsageMeter::CpuUsageMeter(QWidget *parent, quint16 refresh_interval)
+CpuUsageMeter::CpuUsageMeter(QWidget *parent, quint16 refresh_interval) : QLabel(parent)
 {
-    this->setParent(parent);
     refresh_timer = new QTimer(this);
     if (refresh_interval != 0) refresh_timer->setInterval(refresh_interval);
     refresh_timer->callOnTimeout([this]() {poll ();});

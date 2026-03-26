@@ -111,6 +111,9 @@ MainWindow::quick_refresh(
 
             is_being_refreshed.store(false);
             update_button_states();
+
+            // In the end...
+            emit table_refresh_finished();
             
         }, Qt::QueuedConnection);
     });

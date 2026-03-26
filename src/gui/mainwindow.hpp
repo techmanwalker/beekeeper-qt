@@ -3,6 +3,7 @@
 #include "beekeeper/debug.hpp"
 #include "beekeeper/qt-debug.hpp"
 #include "beekeeper/internalaliases.hpp"
+#include "delegates/barmessage.hpp"
 #include "delegates/cpuusagemeter.hpp"
 #include "keyboardnav.hpp"
 #include "refreshfilesystems_helpers.hpp"
@@ -305,6 +306,7 @@ private:
 
     QStatusBar *status_bar;
     CpuUsageMeter *cpumeter;
+    BarMessage *barmessage;
 
     KeyboardNav *keyboardNav = nullptr;
 
@@ -325,4 +327,5 @@ signals:
     void ask_the_table_to_quickly_refresh(
         std::unordered_map<std::string, std::string> baseline
     );
+    void table_refresh_finished();
 };

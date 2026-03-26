@@ -9,6 +9,7 @@
 
 #include "mainwindow.hpp"
 #include "../polkit/globals.hpp"
+#include "delegates/barmessage.hpp"
 #include "rootshellthread.hpp"
 #include "delegates/cpuusagemeter.hpp"
 #include "delegates/statusdot.hpp"
@@ -28,6 +29,7 @@
 #include <QToolTip>
 #include <QVBoxLayout>
 #include <memory>
+#include <qnamespace.h>
 #include <qstatusbar.h>
 
 using namespace beekeeper::privileged;
@@ -92,6 +94,8 @@ MainWindow::MainWindow(QWidget* parent)
     connect_fs_table_handlers();
     start_fs_table_refresh_cycle();
     connect_ui_on_command_done_signal();
+
+    barmessage->print(tr("Loading…"), 7000);
 }
 
 // ---------------------------------------------------------------------
@@ -297,6 +301,9 @@ void MainWindow::setup_status_bar()
 
     cpumeter = new CpuUsageMeter(status_bar);
     status_bar->addPermanentWidget(cpumeter);
+
+    barmessage = new BarMessage(status_bar);
+    status_bar->addWidget(barmessage);
 }
 
 // connects
@@ -441,5 +448,18 @@ void MainWindow::connect_ui_on_command_done_signal()
         this,
         &MainWindow::quick_refresh,
         Qt::QueuedConnection
+    );
+
+    // clear the "Loading…" message only after first refresh
+    connect(
+        this,
+        &MainWindow::table_refresh_finished,
+        this,
+        [this]() {
+            if (barmessage->text() == tr("Loading…")) barmessage->clear();
+
+            // undo the disconnect so it doesn't execute every time
+        },
+        Qt::SingleShotConnection
     );
 }

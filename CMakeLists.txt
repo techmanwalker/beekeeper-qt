@@ -10,8 +10,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto=auto -DNDEBUG"
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g -fno-omit-frame-pointer -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
     "qt6-base (>= 6.5), qt6-tools (>= 6.5), libpolkit-qt6-1-1, libblkid, libudev")
 

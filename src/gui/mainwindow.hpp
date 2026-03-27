@@ -314,8 +314,6 @@ private:
 
     KeyboardNav *keyboardNav = nullptr;
 
-    bool eventFilter(QObject *obj, QEvent *event);
-
 public slots:
     void on_root_shell_ready();
 

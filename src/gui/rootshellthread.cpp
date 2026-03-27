@@ -69,9 +69,9 @@ root_shell_thread::ensure_iface()
         DEBUG_LOG("[supercommander] creating DBus interface");
 
         the_iface.reset(new QDBusInterface(
-            "org.beekeeper.Helper",
-            "/org/beekeeper/Helper",
-            "org.beekeeper.Helper",
+            "org.beekeeper.dbush",
+            "/org/beekeeper/dbush",
+            "org.beekeeper.dbush",
             QDBusConnection::systemBus()
         ));
 

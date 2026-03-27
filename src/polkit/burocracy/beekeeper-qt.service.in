@@ -7,7 +7,7 @@ Wants=local-fs.target
 
 [Service]
 Type=dbus
-BusName=org.beekeeper.Helper
+BusName=org.beekeeper.dbush
 ExecStart=@BEEKEEPER_INSTALL_LIBDIR@/bin/thebeekeeper
 Restart=on-failure
 

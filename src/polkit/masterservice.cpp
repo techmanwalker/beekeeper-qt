@@ -167,22 +167,22 @@ main(int argc, char **argv)
         return 1;
     }
 
-    if (bus.interface()->isServiceRegistered("org.beekeeper.Helper")) {
+    if (bus.interface()->isServiceRegistered("org.beekeeper.dbush")) {
         DEBUG_LOG("DBus name already owned, exiting cleanly");
         return 0;
     }
 
-    if (!bus.registerService("org.beekeeper.Helper")) {
-        std::cerr << "Failed to claim DBus name org.beekeeper.Helper\n";
+    if (!bus.registerService("org.beekeeper.dbush")) {
+        std::cerr << "Failed to claim DBus name org.beekeeper.dbush\n";
         return 2;
     }
 
-    DEBUG_LOG("[thebeekeeper] registered service org.beekeeper.Helper");
+    DEBUG_LOG("[thebeekeeper] registered service org.beekeeper.dbush");
 
     masterservice helper;
-    if (!bus.registerObject("/org/beekeeper/Helper", &helper,
+    if (!bus.registerObject("/org/beekeeper/dbush", &helper,
                             QDBusConnection::ExportAllSlots)) {
-        std::cerr << "Failed to register DBus object /org/beekeeper/Helper\n";
+        std::cerr << "Failed to register DBus object /org/beekeeper/dbush\n";
         return 1;
     }
 

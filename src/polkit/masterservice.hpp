@@ -13,7 +13,7 @@
 class masterservice : public QObject, protected QDBusContext
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "org.beekeeper.Helper")
+    Q_CLASSINFO("D-Bus Interface", "org.beekeeper.dbush")
 
 public:
     explicit masterservice(QObject *parent = nullptr);

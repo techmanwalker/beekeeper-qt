@@ -96,12 +96,12 @@ file(MAKE_DIRECTORY ${BUILD_INCLUDE_DIR})
 
 # Configure systemd & DBus services (these .in files must reference @BEEKEEPER_INSTALL_LIBDIR@)
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/helper.service.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/helper.service" @ONLY
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/beekeeper-qt.service.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper-qt.service" @ONLY
 )
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/dbus.service.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/helper.dbus.service" @ONLY
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polkit/burocracy/dbush.service.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/org.beekeeper.dbush.service" @ONLY
 )
 
 # Configure policy file
@@ -345,14 +345,12 @@ else()
 endif()
 
 install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/helper.service"
+    "${CMAKE_CURRENT_BINARY_DIR}/beekeeper-qt.service"
     DESTINATION "${SYSTEMD_DIR}"
-    RENAME beekeeper-qt.service
 )
 install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/helper.dbus.service"
+    "${CMAKE_CURRENT_BINARY_DIR}/org.beekeeper.dbush.service"
     DESTINATION "${DBUS_DIR}"
-    RENAME org.beekeeper.Helper.service
 )
 
 # policy file

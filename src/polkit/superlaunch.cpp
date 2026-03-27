@@ -74,7 +74,7 @@ superlaunch::start_root_shell_unlocked()
         return true; // Already running
     }
 
-    const QString service_name = QStringLiteral("org.beekeeper.Helper");
+    const QString service_name = QStringLiteral("org.beekeeper.dbush");
     QDBusConnection conn = QDBusConnection::systemBus();
 
     if (!conn.isConnected()) {

@@ -150,6 +150,9 @@ MainWindow::optimistically_update(QModelIndexList items, auto member, auto value
         }
         is_being_refreshed.store(false);
     }
+
+    // Optimistically update the buttons as well, backend will ignore redundant operations
+    update_button_states();
 }
 
 

@@ -79,7 +79,7 @@ bk_mgmt::remove_pidfile_path(const std::string &pidfile_path)
 std::string
 bk_mgmt::get_pid_path (const std::string& uuid)
 {
-    return "/var/run/beesd-" + uuid + ".pid";
+    return "/run/bees/beesd-" + uuid + ".pid";
 }
 
 // Helper: Clean up PID file for UUID

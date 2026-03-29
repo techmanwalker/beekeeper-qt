@@ -1,5 +1,6 @@
 #include "refreshfilesystems_helpers.hpp"
-#include "beekeeper/util.hpp"
+#include "beekeeper/beesdmgmt.hpp"
+#include "beekeeper/internalaliases.hpp"
 #include <filesystem>
 #include <fstream>
 #include <QList>
@@ -13,12 +14,6 @@ namespace fs = std::filesystem;
 using mapper = refresh_fs_helpers::status_text_mapper;
 
 namespace refresh_fs_helpers {
-
-// Unified start-file path used everywhere
-static fs::path
-startfile_for_uuid(const QString &uuid) {
-    return fs::path("/tmp") / ".beekeeper" / uuid.toStdString() / "startingfreespace";
-}
 
 // -------------------------
 // Internal helper: parse btrfstat output (robust)
@@ -100,7 +95,7 @@ status_text_mapper::map_status_manager_text(const qint64 starting_free, const qi
 qint64
 read_starting_free_space(const QString &uuid)
 {
-    fs::path start_file = startfile_for_uuid(uuid);
+    fs::path start_file = bk_mgmt::started_with_n_gb_file_path(uuid.toStdString());
     if (!fs::exists(start_file)) return 0;
 
     std::ifstream ifs(start_file);

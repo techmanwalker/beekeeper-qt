@@ -3,6 +3,7 @@
 #include "beekeeper/debug.hpp"
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 namespace fs = std::filesystem;
 
@@ -57,6 +58,12 @@ bk_mgmt::clear_log_file_for_uuid(const std::string &uuid)
     }
 }
 
+std::string
+bk_mgmt::started_with_n_gb_file_path (const std::string &uuid)
+{
+    return fs::path("/run/bees/beekeeper-qt/") / uuid / "startingfreespace";
+}
+
 void
 bk_mgmt::create_started_with_n_gb_file (const std::string &uuid)
 {
@@ -64,7 +71,7 @@ bk_mgmt::create_started_with_n_gb_file (const std::string &uuid)
 
     DEBUG_LOG(uuid, " FREE BYTES: ", std::to_string(free_bytes));
 
-    fs::path start_file = fs::path("/tmp") / ".beekeeper" / uuid / "startingfreespace";
+    fs::path start_file = started_with_n_gb_file_path(uuid);
 
     // Create parent directories if needed
     fs::create_directories(start_file.parent_path());

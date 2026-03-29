@@ -53,7 +53,7 @@ inline std::ofstream& debug_log_file() {
     static std::ofstream ofs;
     static bool init = false;
     if (!init) {
-        ofs.open("/tmp/beekeeper-debug.log", std::ios::out | std::ios::app);
+        ofs.open("/run/bees/beekeeper-qt/debug.log", std::ios::out | std::ios::app);
         init = true;
     }
     return ofs;

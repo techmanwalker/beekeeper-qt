@@ -30,6 +30,8 @@ public:
                 std::cerr << "Run `tail -f " << daemon_debug_log_path() << " to view daemon debug logs." << std::endl;
                 return true;
             #endif
+
+            std::cerr << "Run `tail -f " << daemon_debug_log_path() << " to view daemon debug logs." << std::endl;
             
             return false;
         }();

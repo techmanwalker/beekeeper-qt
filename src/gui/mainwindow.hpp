@@ -76,7 +76,7 @@ private:
 
     refresh_fs_helpers::status_text_mapper *mapper;
 
-
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 
 

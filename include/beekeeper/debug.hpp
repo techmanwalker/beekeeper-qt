@@ -8,6 +8,11 @@
 #include <type_traits>
 #include <utility>
 
+static std::string
+daemon_debug_log_path () {
+    return "/run/bees/beekeeper-qt/debug.log";
+}
+
 // Runtime debug logging control
 class DebugLogger {
 public:
@@ -15,12 +20,14 @@ public:
         static bool enabled = [](){
             const char* env = std::getenv("BEEKEEPER_DEBUG");
             if (env && env[0] == '1') {
-                std::cerr << "Debug logging enabled via environment variable" << std::endl;
+                std::cerr << "Debug logging enabled via environment variable." << std::endl;
+                std::cerr << "Run `tail -f " << daemon_debug_log_path() << " to view daemon debug logs." << std::endl;
                 return true;
             }
             
             #if defined(BEEKEEPER_DEBUG_LOGGING)
-                std::cerr << "Debug logging enabled via compile flag" << std::endl;
+                std::cerr << "Debug logging enabled via compile flag." << std::endl;
+                std::cerr << "Run `tail -f " << daemon_debug_log_path() << " to view daemon debug logs." << std::endl;
                 return true;
             #endif
             
@@ -49,16 +56,22 @@ void _debug_print_helper(std::ostream& os, T&& first, Args&&... rest) {
 }
 
 // Global log file accessor
-inline std::ofstream& debug_log_file() {
+inline std::ostream& debug_log_file() {
     static std::ofstream ofs;
-    static bool init = false;
-    if (!init) {
-        ofs.open("/run/bees/beekeeper-qt/debug.log", std::ios::out | std::ios::app);
-        init = true;
+    static std::ostream* stream = nullptr;
+    
+    if (!stream) {
+        ofs.open(daemon_debug_log_path(), std::ios::out | std::ios::app);
+        
+        if (ofs.is_open()) {
+            stream = &ofs;
+        } else {
+            stream = &std::cerr;  // Fallback to stderr
+        }
     }
-    return ofs;
+    
+    return *stream;
 }
-
 // Compile-time path stripper
 constexpr const char* shorten_path(const char* path) {
     const char* last_slash = path;
@@ -109,10 +122,14 @@ inline void debug_print(std::ostream& os, const std::thread::id& tid) {
         debug_oss << "[" << __SHORT_FILE__ << ":" << __LINE__ << "] "; \
         _debug_print_helper(debug_oss, __VA_ARGS__); \
         std::string msg = debug_oss.str(); \
-        std::cerr << msg << std::endl; \
         debug_log_file() << msg << std::endl; \
     } \
 } while(0) // <- NO backslash here, file ends naturally
+
+/* No std::cerr printing. From now on, for daemon debugging one must run:
+
+   tail -f /run/bees/beekeeper-qt/debug.log
+*/
 
 #else // !BEEKEEPER_DEBUG_LOGGING
 

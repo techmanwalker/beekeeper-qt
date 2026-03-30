@@ -204,7 +204,7 @@
     <message>
         <location filename="../gui/eventfilter.cpp" line="68"/>
         <source>Deduplicating files. Started with %1 free, now you have %2 free.</source>
-        <translation type="unfinished">Mendeduplikasi berkas. Dimulai dengan %1 bebas, sekarang Anda memiliki %2 bebas.</translation>
+        <translation>Mendeduplikasi berkas. Dimulai dengan %1 bebas, sekarang Anda memiliki %2 bebas.</translation>
     </message>
 </context>
 <context>

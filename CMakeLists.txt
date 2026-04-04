@@ -131,6 +131,7 @@ file(GLOB BK_CLAUSES
 add_library(beekeeper SHARED
     ${MGMT_SRCS}
     ${UTIL_SRCS}
+    ${BK_CLAUSES}
 )
 set_target_properties(beekeeper PROPERTIES
     VERSION ${PROJECT_VERSION}
@@ -147,8 +148,6 @@ target_link_libraries(beekeeper PUBLIC Qt6::Core)
 #
 add_executable(beekeeperman
     src/cli/beekeeperman.cpp
-    ${BK_CLAUSES}
-    ${UTIL_SRCS}
 )
 set_target_properties(beekeeperman PROPERTIES
     BUILD_RPATH "${BEEKEEPER_BUILD_LIBDIR}"
@@ -208,7 +207,6 @@ target_link_options(beekeeper-qt PRIVATE
 add_executable(thebeekeeper
     src/polkit/diskwait.cpp
     src/polkit/masterservice.cpp
-    ${BK_CLAUSES}
 )
 
 target_include_directories(thebeekeeper PRIVATE

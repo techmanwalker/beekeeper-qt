@@ -6,9 +6,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto=auto -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto=auto -fdata-sections -ffunction-sections -DNDEBUG -s -fmerge-all-constants -fno-ident")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g -fno-omit-frame-pointer -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections -Wl,-O3 -Wl,--as-needed")
 
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
     "qt6-base (>= 6.5), qt6-tools (>= 6.5), libpolkit-qt6-1-1, libblkid, libudev")
@@ -197,6 +198,10 @@ target_link_libraries(beekeeper-qt PRIVATE
     beekeeper ${POLKIT_LIBS}
 )
 
+target_link_options(beekeeper-qt PRIVATE
+    -Wl,--as-needed
+)
+
 # ------------------------------
 # Helper executable
 # ------------------------------
@@ -224,6 +229,10 @@ set_target_properties(thebeekeeper PROPERTIES
     INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
     INSTALL_RPATH_USE_LINK_PATH TRUE
     SKIP_BUILD_RPATH FALSE
+)
+
+target_link_options(thebeekeeper PRIVATE
+    -Wl,--as-needed
 )
 
 # ------------------------------

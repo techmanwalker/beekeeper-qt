@@ -18,8 +18,7 @@ struct option_spec {
 };
 
 // command handler type
-using clause_handler = std::function<command_streams(const clause_options&, 
-                                                     const clause_subjects&)>;
+using clause_handler = command_streams (*)(const clause_options&, const clause_subjects&);
 
 // clause structure
 struct clause {

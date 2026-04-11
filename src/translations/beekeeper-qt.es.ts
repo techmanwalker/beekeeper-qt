@@ -10,176 +10,6 @@
     </message>
 </context>
 <context>
-    <name>KeyboardNav</name>
-    <message>
-        <source># Keyboard navigation in beekeeper-qt</source>
-        <translation type="vanished"># Navegar con el teclado en beekeeper-qt</translation>
-    </message>
-    <message>
-        <source>## 1. Table navigation</source>
-        <translation type="vanished">## 1. Navegar por la tabla</translation>
-    </message>
-    <message>
-        <source>- Move the highlight between filesystems using **↑** and **↓** arrows. This moves the visual hover without selecting.</source>
-        <translation type="vanished">- Mover el resaltado entre los sistemas de archivos usando las flechas **↑** y **↓**. Esto mueve el enfoque visual sin seleccionarlo.</translation>
-    </message>
-    <message>
-        <source>- Press **Enter** or **Space** to select the highlighted filesystem (remarque).</source>
-        <translation type="vanished">- Presiona **Intro** o **Espacio** para seleccionar el sistema enfocado.</translation>
-    </message>
-    <message>
-        <source>- To select multiple rows:</source>
-        <translation type="vanished">- Para seleccionar múltiples líneas:</translation>
-    </message>
-    <message>
-        <source>add only the currently highlighted row to the selection.</source>
-        <translation type="vanished">solo agregar el sistema de archivos enfocado a la selección.</translation>
-    </message>
-    <message>
-        <source>select from the last selected row to the currently highlighted row. If no previous selection, select from the first row.</source>
-        <translation type="vanished">seleccionar el intervalo desde la última línea seleccionada hasta la línea enfocada. Si ninguno estaba seleccionado, seleccionar desde la primera línea hasta la enfocada.</translation>
-    </message>
-    <message>
-        <source>select all filesystems.</source>
-        <translation type="vanished">seleccionar todos los sistemas de archivos.</translation>
-    </message>
-    <message>
-        <source>copy UUIDs of selected filesystems, in sequential order, separated by \n. If none selected, copy the highlighted one.</source>
-        <translation type="vanished">copiar las UUID de los sistemas de archivos seleccionados, en orden secuencial, separados línea por línea. Si ninguno estaba seleccionado, solo copiar el del sistema de archios enfocado.</translation>
-    </message>
-    <message>
-        <source>- Press **Enter** or **Space** to select the highlighted filesystem.</source>
-        <translation type="vanished">- Presiona **Intro** o **Espacio** para seleccionar el sistema enfocado.</translation>
-    </message>
-    <message>
-        <source>select from the last selected row to the currently highlighted row. If none was selected, select from the first row to the highlighted row.</source>
-        <translation type="vanished">seleccionar el intervalo desde la última línea seleccionada hasta la línea enfocada. Si ninguno estaba seleccionado, seleccionar desde la primera línea hasta la enfocada.</translation>
-    </message>
-    <message>
-        <source>copy UUIDs of selected filesystems, in sequential order, separated line by line. If none selected, copy the highlighted one.</source>
-        <translation type="vanished">copiar las UUID de los sistemas de archivos seleccionados, en orden secuencial, separados línea por línea. Si ninguno estaba seleccionado, solo copiar el del sistema de archios enfocado.</translation>
-    </message>
-    <message>
-        <source>## 2. Toolbar navigation</source>
-        <translation type="vanished">## 2. Navegación por la barra de herramientas/botones</translation>
-    </message>
-    <message>
-        <source>- After highlighting a filesystem, press **Enter** or **Space** to focus the toolbar and highlight the first enabled button.</source>
-        <translation type="vanished">- Después de seleccionar tus sistemas de archivos, presiona **Intro** o **Espacio** para enfocar la barra de herramientas.</translation>
-    </message>
-    <message>
-        <source>- Navigate between toolbar buttons using **→** / **Tab** and **←** / **Shift+Tab**. Navigation wraps around cyclically, skipping disabled buttons.</source>
-        <translation type="vanished">- Navega por la barra de herramientas usando las flechas **→**  **←** y los tabuladores **Tab** y **Shift+Tab**. La navegación es cíclica y se salta los botones desactivados.</translation>
-    </message>
-    <message>
-        <source>- **↑** has no effect in the toolbar context.</source>
-        <translation type="vanished">- **↑** no hace nada en la barra de herramientas.</translation>
-    </message>
-    <message>
-        <source>- You can escape with both **↓** and **Esc**.</source>
-        <translation type="vanished">- Puedes salir con la flecha hacia abajo **↓** y con **Esc**.</translation>
-    </message>
-    <message>
-        <source>- **Tab** does not change selection in the table; it only changes the highlighted filesystem.</source>
-        <translation type="vanished">- **Tab** no cambia la selección de la tabla, solo cambia el sistema de archivos enfocado.</translation>
-    </message>
-    <message>
-        <source>- You can escape with both **↓** and like **Esc**.</source>
-        <translation type="vanished">- Puedes salir con la flecha hacia abajo **↓** y con **Esc**.</translation>
-    </message>
-    <message>
-        <source>- **Tab** / **Shift+Tab** moves the highlight between toolbar buttons when the toolbar is focused.</source>
-        <translation type="vanished">- **Tab** / **Shift+Tab** cambia el botón enfocado cuando la barra de herramientas está enfocada.</translation>
-    </message>
-    <message>
-        <source>- **Tab** does not change selection in the table; it only changes the visual highlight.</source>
-        <translation type="vanished">- **Tab** no cambia la selección de la tabla, solo cambia el sistema de archivos enfocado.</translation>
-    </message>
-    <message>
-        <source>- **↓** acts like **Esc**: deselect all, transfer focus back to the table, and restore the last highlighted row.</source>
-        <translation type="vanished">- Puedes salir con **↓** y con **Esc**.</translation>
-    </message>
-    <message>
-        <source>- Press **Enter** or **Space** to activate the highlighted toolbar button.</source>
-        <translation type="vanished">- Presiona **Intro** o **Espacio** para activar el botón seleccionado.</translation>
-    </message>
-    <message>
-        <source>## 3. Escape and exit</source>
-        <translation type="vanished">## 3. Escape y salida</translation>
-    </message>
-    <message>
-        <source>- Press **Esc** in the toolbar → return focus to the table, clearing any temporary highlight in the toolbar.</source>
-        <translation type="vanished">- Presiona **Esc** en la barra de herramientas → regresa el enfoque a la tabla.</translation>
-    </message>
-    <message>
-        <source>- Press **Esc** in the table:</source>
-        <translation type="vanished">- Presionando **Esc** en la tabla:</translation>
-    </message>
-    <message>
-        <source>If there is a selection → clear selection.</source>
-        <translation type="vanished">Si alguna línea está seleccionada → limpiar selección.</translation>
-    </message>
-    <message>
-        <source>If nothing is selected → close the application (**Alt + F4**).</source>
-        <translation type="vanished">Si nada estaba seleccionado → cierra el programa (**Alt + F4**).</translation>
-    </message>
-    <message>
-        <source>## 4. Tab behavior</source>
-        <translation type="vanished">## 4. Comportamiento del tabulador (Tab)</translation>
-    </message>
-    <message>
-        <source>- **Tab** / **Shift+Tab** moves the highlight between toolbar buttons when the toolbar is active.</source>
-        <translation type="vanished">- **Tab** / **Shift+Tab** cambia el botón enfocado cuando la barra de herramientas está enfocada.</translation>
-    </message>
-    <message>
-        <source>- **Tab** does not change selection in the table; it only changes the visual highlight (remarque).</source>
-        <translation type="vanished">- **Tab** no cambia la selección de la tabla, solo cambia el sistema de archivos enfocado.</translation>
-    </message>
-    <message>
-        <source>## 5. Cyclical navigation</source>
-        <translation type="vanished">## 5. Navegación cíclica</translation>
-    </message>
-    <message>
-        <source>- Arrow navigation (**↑**/**↓** in table, **→**/**←** in toolbar) wraps around when reaching the first or last item.</source>
-        <translation type="vanished">- Navegación con flechas (**↑**/**↓** en la tabla, **→**/**←** en la barra de herramientas) da la vuelta al llegar al primer o último elemento.</translation>
-    </message>
-    <message>
-        <source>- Disabled toolbar buttons are skipped during cyclic navigation.</source>
-        <translation type="vanished">- Los botones desactivados son saltados en la navegación cíclica.</translation>
-    </message>
-    <message>
-        <source>Summary: The keyboard navigation system separates highlight (hover-like visual feedback) from selection. The table handles moving the highlight and selecting filesystems, while the toolbar handles button activation and cyclic navigation. Tab consolidates horizontal toolbar movement without affecting table selection.</source>
-        <translation type="vanished">En resumen: El sistema de navegación por teclado separa el resaltado (feedback visual similar al hover) de la selección. La tabla se encarga de mover el resaltado y de seleccionar los sistemas de archivos, mientras que la barra de herramientas gestiona la activación de botones y la navegación cíclica. La tecla Tab consolida el movimiento horizontal en la barra de herramientas sin afectar la selección en la tabla.</translation>
-    </message>
-    <message>
-        <source>To access the toolbar with the keyboard, select a filesystem and click Enter or Space. More info on Help &gt; Keyboard navigation.</source>
-        <translation type="vanished">Para acceder a la barra de herramientas con el teclado, selecciona un sistema de archivos y pulsa Intro o Espacio. Más información en Ayuda &gt; Navegación con teclado.</translation>
-    </message>
-    <message>
-        <source>Press Esc again to exit beekeeper-qt.</source>
-        <translation type="vanished">Presiona Esc de nuevo para salir de beekeeper-qt.</translation>
-    </message>
-    <message>
-        <source>Do you want to access the toolbar? Press Enter or Space.</source>
-        <translation type="vanished">¿Quieres acceder a la barra de herramientas? Presiona Intro o Espacio.</translation>
-    </message>
-    <message>
-        <source>UUID(s) copied to clipboard.</source>
-        <translation type="vanished">UUID copiados al portapapeles.</translation>
-    </message>
-</context>
-<context>
-    <name>KeyboardNavHelpDialog</name>
-    <message>
-        <source>Keyboard Navigation Help</source>
-        <translation type="vanished">Ayuda sobre la navegación por teclado</translation>
-    </message>
-    <message>
-        <source>Accept</source>
-        <translation type="vanished">Aceptar</translation>
-    </message>
-</context>
-<context>
     <name>MainWindow</name>
     <message>
         <location filename="../gui/mainwindow.cpp" line="66"/>
@@ -202,14 +32,6 @@
         <translation>Configurar</translation>
     </message>
     <message>
-        <source>Add selected filesystems to autostart</source>
-        <translation type="vanished">Agregar al autoarranque</translation>
-    </message>
-    <message>
-        <source>Remove selected filesystems from autostart</source>
-        <translation type="vanished">Eliminar del autoarranque</translation>
-    </message>
-    <message>
         <location filename="../gui/mainwindow.cpp" line="54"/>
         <source>Select a filesystem to view its transparent compression status</source>
         <translation>Para verificar si la compresión transparente está funcionando, selecciona un sistema de archivos</translation>
@@ -223,10 +45,6 @@
         <location filename="../gui/mainwindow.cpp" line="71"/>
         <source>Do not start deduplicating filesystems at boot</source>
         <translation>No comenzar a deduplicar archivos al arrancar el sistema</translation>
-    </message>
-    <message>
-        <source>Loading list...</source>
-        <translation type="vanished">Cargando...</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="265"/>
@@ -252,10 +70,6 @@
         <location filename="../gui/mainwindow.cpp" line="272"/>
         <source>Are you sure you want to continue?</source>
         <translation>¿Quieres continuar?</translation>
-    </message>
-    <message>
-        <source>If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much you had before and how much you have now.</source>
-        <translation type="vanished">Si solamente quieres saber cuánto espacio en disco has liberado desde que iniciaste el servicio, solo pasa el cursor sobre un sistema de archivos o selecciónalo, lo que te mostrará cuánto espacio libre tenías antes de comenzar y cuánto tienes ahora.</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="271"/>
@@ -288,10 +102,6 @@
         <translation>Estado de deduplicación</translation>
     </message>
     <message>
-        <source>Multiple filesystems selected. To show free space statistics, select only one.</source>
-        <translation type="vanished">Múltiples sistemas de archivos seleccionados. Para mostrar el espacio libre de alguno, selecciona solo uno.</translation>
-    </message>
-    <message>
         <location filename="../gui/buttonhandlers.cpp" line="108"/>
         <source>Transparent compression stopped for selected filesystems</source>
         <translation>Compresión transparente detenida para los sistemas de archivos seleccionados</translation>
@@ -302,25 +112,9 @@
         <translation>Compresión transparente ejecutándose para los sistemas de archivos seleccionados</translation>
     </message>
     <message>
-        <source>Starting</source>
-        <translation type="vanished">Iniciando</translation>
-    </message>
-    <message>
-        <source>Stopping</source>
-        <translation type="vanished">Deteniendo</translation>
-    </message>
-    <message>
         <location filename="../gui/mainwindow.cpp" line="73"/>
         <source>Show logs</source>
         <translation>Mostrar el registro</translation>
-    </message>
-    <message>
-        <source>Please select only one filesystem to show its deduplication logs.</source>
-        <translation type="vanished">Por favor selecciona solamente un sistema de archivos para mostrar su historial de deduplicación.</translation>
-    </message>
-    <message>
-        <source>Filesystem logs for: </source>
-        <translation type="vanished">Registros del sistema de archivos: </translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="342"/>
@@ -354,67 +148,9 @@
         <translation>Confirmar la eliminación de la configuración</translation>
     </message>
     <message>
-        <source>Please select at least one filesystem to remove its configuration.</source>
-        <translation type="vanished">Por favor, selecciona el sistema de archivos el cual deseas eliminar su configuración.</translation>
-    </message>
-    <message>
-        <source>This does not provoke data loss but you won&apos;t have file deduplication functionality unless you set up Beesd again by selecting the filesystem and clicking the Setup button.
-
-</source>
-        <translation type="vanished">Esto no provoca pérdida de datos, pero de ahora en adelante no podrás deduplicar archivos a menos de que vuelvas a configurar Beesd de nuevo al seleccionar el sistema de archivos y presionar el botón Configurar.
-
-</translation>
-    </message>
-    <message>
-        <source>Are you sure?
-</source>
-        <translation type="obsolete">¿Estás seguro?
-</translation>
-    </message>
-    <message>
-        <source>Confirm removal</source>
-        <translation type="vanished">Confirmar la eliminación</translation>
-    </message>
-    <message>
-        <source>You&apos;re about to remove the file deduplication engine configuration.
-</source>
-        <translation type="vanished">Estás a punto de eliminar la configuración del servicio de deduplicación de archivos para este sistema de archivos.
-</translation>
-    </message>
-    <message>
-        <source>This does not provoke data loss but you won&apos;t have file deduplication functionality unless you set up Beesd again by selecting the filesystem and clicking the Setup button.
-</source>
-        <translation type="vanished">Esto no provoca pérdida de datos, pero de ahora en adelante no podrás deduplicar archivos a menos de que vuelvas a configurar Beesd de nuevo al seleccionar el sistema de archivos y presionar el botón Configurar.
-</translation>
-    </message>
-    <message>
-        <source>This does not provoke data loss but you won&apos;t have file deduplication functionality
-</source>
-        <translation type="obsolete">Esto no provoca pérdida de datos, pero de ahora en adelante no podrás deduplicar archivos
-</translation>
-    </message>
-    <message>
-        <source>unless you set up Beesd again by selecting the filesystem and clicking the Setup button.
-</source>
-        <translation type="obsolete">a menos de que vuelvas a configurar Beesd de nuevo al seleccionar el sistema de archivos y presionar el botón Configurar.
-</translation>
-    </message>
-    <message>
-        <source>Are you sure?</source>
-        <translation type="vanished">¿Estás seguro?</translation>
-    </message>
-    <message>
-        <source>Bees status</source>
-        <translation type="vanished">Estado de deduplicación</translation>
-    </message>
-    <message>
         <location filename="../gui/mainwindow.cpp" line="109"/>
         <source>&amp;File</source>
         <translation>&amp;Archivo</translation>
-    </message>
-    <message>
-        <source>View debug logs</source>
-        <translation type="vanished">Abrir registro de depuración</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="113"/>
@@ -466,10 +202,6 @@
         <translation>No se pudo abrir el archivo de registro en </translation>
     </message>
     <message>
-        <source>Help for keyboard navigation</source>
-        <translation type="vanished">Ayuda para la navegación por teclado</translation>
-    </message>
-    <message>
         <location filename="../gui/eventfilter.cpp" line="66"/>
         <source>Deduplicating files. Started with %1 free, now you have %2 free.</source>
         <translation>Deduplicando archivos. Comenzaste con %1 libre, ahora tienes %2 libre.</translation>
@@ -490,24 +222,6 @@ Install it from: </source>
 Instálalo desde: </translation>
     </message>
     <message>
-        <source>beesd is not installed in your system.
-Install it from: </source>
-        <translation type="obsolete">beesd no está instalado en tu sistema.
-Instálalo desde: </translation>
-    </message>
-    <message>
-        <source>beesd is not installed in your system.
-Install it from: https://github.com/techmanwalker/beekeeper-qt/releases</source>
-        <translation type="vanished">beesd no está instalado en tu sistema.
-Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</translation>
-    </message>
-    <message>
-        <source>beesd is not installed in your system.
-Install it from: https://github.com/Zygo/bees</source>
-        <translation type="vanished">beesd no está instalado en tu sistema.
-Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</translation>
-    </message>
-    <message>
         <location filename="../cli/beekeeperman.cpp" line="62"/>
         <source>If you see this string translated, translations are being applied to CLI!</source>
         <translation>Si ves esta cadena traducida, ¡las traducciones están funcionando en la CLI!</translation>
@@ -519,10 +233,6 @@ Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</transl
         <location filename="../gui/setupdialog.cpp" line="69"/>
         <source>Setting up selected filesystems</source>
         <translation>Configurar los sistemas de archivos seleccionados</translation>
-    </message>
-    <message>
-        <source>Database size, in bytes: </source>
-        <translation type="vanished">Tamaño de la base de datos, en bytes: </translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="78"/>
@@ -611,28 +321,6 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
         <translation>Error intento: la ventana principal no existe.</translation>
     </message>
     <message>
-        <source>Filesystem %1 could not be remounted to enable transparent compression.</source>
-        <translation type="vanished">El sistema de archivos %1 no pudo ser remontado para habilitar la compresión transparente.</translation>
-    </message>
-    <message>
-        <source>Note: compression only works for new files created while it is running.
-To compress your filesystem for the first time, run:
-sudo btrfs filesystem defrag -r -calgo mountpoint
-Pro tip: you can install beekeeper-qt right after installing your Linux to reduce compression overhead.</source>
-        <translation type="vanished">Nota: la compresión solo funciona para archivos nuevos creados mientras está funcionando.
-Para comprimir tus archivos por primera vez, ejecuta:
-sudo btrfs filesystem defrag -r -czstd mountpoint
-Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para mejorar los niveles de compresión desde el principio.</translation>
-    </message>
-    <message>
-        <source>Remount for transparent compression failed</source>
-        <translation type="vanished">Error al remontar para compresión transparente</translation>
-    </message>
-    <message>
-        <source>Filesystem %1 could not be remounted with compression.</source>
-        <translation type="vanished">El sistema de archivos %1 no pudo ser remontado para habilitar la compresión transparente.</translation>
-    </message>
-    <message>
         <location filename="../gui/setupdialog.cpp" line="162"/>
         <source>Accept</source>
         <translation>Aceptar</translation>
@@ -650,14 +338,6 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
 </translation>
     </message>
     <message>
-        <source>Leave the field empty to use the default (1 GiB). This value covers most of the use cases.</source>
-        <translation type="vanished">Deja el campo en blanco para usar el valor por defecto: (1 GiB). Este valor cubre la mayoría de los escenarios para el usuario común.</translation>
-    </message>
-    <message>
-        <source>Leave the field empty to use the default (1 GiB).</source>
-        <translation type="vanished">Deja el campo en blanco para usar el valor por defecto: (1 GiB).</translation>
-    </message>
-    <message>
         <location filename="../gui/setupdialog.cpp" line="187"/>
         <location filename="../gui/setupdialog.cpp" line="203"/>
         <source>Error</source>
@@ -668,14 +348,6 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
         <source>Cannot start root shell. Exiting setup.</source>
         <translation>No se pudieron obtener privilegios. Saliendo.</translation>
     </message>
-    <message>
-        <source>Invalid value</source>
-        <translation type="vanished">Valor no válido</translation>
-    </message>
-    <message>
-        <source>Database size must be a positive integer (bytes).</source>
-        <translation type="vanished">El tamaño de la base de datos debe ser un número entero positivo (bytes).</translation>
-    </message>
 </context>
 <context>
     <name>UUIDColumnDelegate</name>
@@ -683,145 +355,6 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
         <location filename="../gui/delegates/uuidcolumn.cpp" line="57"/>
         <source>UUID copied to clipboard.</source>
         <translation>Identificador copiado al portapapeles.</translation>
-    </message>
-</context>
-<context>
-    <name>beekeeper::clauses</name>
-    <message>
-        <source>Started beesd for %1</source>
-        <translation type="vanished">Se inició beesd para %1</translation>
-    </message>
-    <message>
-        <source>Started beesd for %1 with logging enabled</source>
-        <translation type="vanished">Se inició beesd para %1 con registros de depuración</translation>
-    </message>
-    <message>
-        <source>Failed to start beesd for %1</source>
-        <translation type="vanished">No se pudo iniciar beesd para %1</translation>
-    </message>
-    <message>
-        <source>Stopped beesd for %1</source>
-        <translation type="vanished">Se detuvo beesd para %1</translation>
-    </message>
-    <message>
-        <source>Failed to stop beesd for %1</source>
-        <translation type="vanished">No se pudo detener beesd para %1</translation>
-    </message>
-    <message>
-        <source>Restarted beesd for %1</source>
-        <translation type="vanished">Se reinició beesd para %1</translation>
-    </message>
-    <message>
-        <source>Failed to restart beesd for %1</source>
-        <translation type="vanished">No se pudo reiniciar beesd para %1</translation>
-    </message>
-    <message>
-        <source>Status for %1: %2</source>
-        <translation type="vanished">Estado de %1: %2</translation>
-    </message>
-    <message>
-        <source>No UUID specified</source>
-        <translation type="vanished">No se especificó un UUID</translation>
-    </message>
-    <message>
-        <source>Cleaned PID file for %1</source>
-        <translation type="vanished">Se borró el archivo PID para %1</translation>
-    </message>
-    <message>
-        <source>Error: db-size must be a positive integer.</source>
-        <translation type="vanished">Error: db-size debe ser un entero positivo</translation>
-    </message>
-    <message>
-        <source>Error: Invalid db-size value. Must be a positive integer.</source>
-        <translation type="vanished">Error: Valor inválido de db-size. Debe ser un entero positivo.</translation>
-    </message>
-    <message>
-        <source>Failed to remove %1: %2</source>
-        <translation type="vanished">No se pudo remover %1: %2</translation>
-    </message>
-    <message>
-        <source>Nothing removed (file did not exist): %1</source>
-        <translation type="vanished">No se quitó nada (el archivo no existe): %1</translation>
-    </message>
-    <message>
-        <source>Removed config: %1</source>
-        <translation type="vanished">Se eliminó la configuración: %1</translation>
-    </message>
-    <message>
-        <source>Configuration created/updated: %1</source>
-        <translation type="vanished">Configuración creada/actualizada: %1</translation>
-    </message>
-    <message>
-        <source>Error: Failed to create/update configuration</source>
-        <translation type="vanished">Error: No se pudo crear/actualizar la configuración</translation>
-    </message>
-    <message>
-        <source>Points that %1 is mounted on:</source>
-        <translation type="vanished">Puntos en los que %1 está montado:</translation>
-    </message>
-    <message>
-        <source>%1: not mounted or not found</source>
-        <translation type="vanished">%1: no montado o no encontrado</translation>
-    </message>
-    <message>
-        <source>No btrfs filesystems found.</source>
-        <translation type="vanished">No se encontraron sistemas de archivos btrfs.</translation>
-    </message>
-    <message>
-        <source>UUID</source>
-        <translation type="vanished">UUID</translation>
-    </message>
-    <message>
-        <source>LABEL</source>
-        <translation type="vanished">ETIQUETA</translation>
-    </message>
-    <message>
-        <source>STATUS</source>
-        <translation type="vanished">ESTADO</translation>
-    </message>
-    <message>
-        <source>Error: UUID not specified</source>
-        <translation type="vanished">Error: UUID no especificado</translation>
-    </message>
-    <message>
-        <source>Free space: %1</source>
-        <translation type="vanished">Espacio libre: %1</translation>
-    </message>
-    <message>
-        <source>Used space: %2</source>
-        <translation type="vanished">Espacio usado: %2</translation>
-    </message>
-    <message>
-        <source>Configuration exists: %1</source>
-        <translation type="vanished">Configuración existente: %1</translation>
-    </message>
-    <message>
-        <source>No configuration found for %1</source>
-        <translation type="vanished">No se encontraron configuraciones para %1</translation>
-    </message>
-    <message>
-        <source>Enabled to automatically compress at boot;</source>
-        <translation type="vanished">Se activó la compresión automática al arrancar;</translation>
-    </message>
-    <message>
-        <source>Disabled to automatically compress at boot;</source>
-        <translation type="vanished">Se desactivó la compresión automática al arrancar;</translation>
-    </message>
-    <message>
-        <source>compressing</source>
-        <translation type="vanished">comprimiendo</translation>
-    </message>
-    <message>
-        <source>paused, not running</source>
-        <translation type="vanished">pausado, no se está ejecutando</translation>
-    </message>
-    <message>
-        <source>with algorithm %1</source>
-        <translation type="vanished">con el algoritmo %1</translation>
-    </message>
-    <message>
-        <source>at level %1</source>
-        <translation type="vanished">al nivel %1</translation>
     </message>
 </context>
 <context>
@@ -1053,10 +586,6 @@ Options --algorithm / --algo and --level override presets given by --compression
 Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compression-level.</translation>
     </message>
     <message>
-        <source>Show the mountpoint of a btrfs filesystem by UUID</source>
-        <translation type="vanished">Mostrar los puntos de montaje para un sistema de archivos btrfs por UUID</translation>
-    </message>
-    <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="106"/>
         <source>List available btrfs filesystems</source>
         <translation>Mostrar sistemas de archivos btrfs disponibles</translation>
@@ -1070,12 +599,6 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="126"/>
         <source>Add or remove filesystems from the autostart file</source>
         <translation>Añadir o quitar sistemas de archivos del arranque automático</translation>
-    </message>
-    <message>
-        <source>Control transparent compression (start, pause, status, add, or remove) on filesystems.
-Options --algorithm / --algo and --level override presets given by --compression-level.</source>
-        <translation type="vanished">Ajustar la compresión transparente (iniciar, pausar, estado, añadir o quitar) en los sistemas de archivos.
-Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compression-level.</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="157"/>
@@ -1264,10 +787,6 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <translation>__&amp;quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&amp;quot;__</translation>
     </message>
     <message>
-        <source>__&quot;Storage is cheap in the big 2025, they say... Pfft.&quot;__</source>
-        <translation type="vanished">__&quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&quot;__</translation>
-    </message>
-    <message>
         <location filename="../gui/help/texts.cpp" line="59"/>
         <source># Transparent compression and deduplication</source>
         <translation># Compresión transparente y deduplicación</translation>
@@ -1323,10 +842,6 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <translation>En resumen, la compresión transparente y la deduplicación son características que se complementan. La deduplicación limpia patrones redundantes en datos ya existentes, mientras que la compresión se asegura de que cada archivo nuevo que se escriba ocupe el menor espacio en disco posible. Juntos, maximizan el ahorro de espacio y prolongan la vida de tu almacenamiento.</translation>
     </message>
     <message>
-        <source># Transparent compression and Deduplication</source>
-        <translation type="vanished"># Compresión transparente y deduplicación</translation>
-    </message>
-    <message>
         <location filename="../gui/help/texts.cpp" line="60"/>
         <source>You may have seen this note when setting up a filesystem:</source>
         <translation>Tal vez leíste esta leyenda al configurar un sistema de archivos:</translation>
@@ -1335,10 +850,6 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <location filename="../gui/help/texts.cpp" line="61"/>
         <source>&gt; *Note: compression only works for new files when they are created. Run this command to compress your filesystem for the first time.*</source>
         <translation>&gt; *Nota: la compresión solo funciona para archivos nuevos creados mientras está funcionando. Ejecuta este comando para comprimir tus archivos por primera vez.*</translation>
-    </message>
-    <message>
-        <source>At first this can sound confusing, because **deduplication** and **transparent compression** work under very different logic. They are two separate mechanisms, unrelated to one another, and not handled by the same utilities.</source>
-        <translation type="vanished">A primera instancia puede sonar algo confuso porque la **deduplicación** y la **compresión transparente** funcionan bajo lógica muy diferentes. Aunque ambas trabajan en conjunto para reducir el espacio usado en disco, no están relacionadas entre sí y no son hechas por las mismas herramientas.</translation>
     </message>
     <message>
         <location filename="../gui/help/texts.cpp" line="70"/>
@@ -1391,10 +902,6 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <translation>🢒 Puedes verificar si la **deduplicación** está activada observando la columna **Estado de deduplicación** en la columna derecha de la tabla en beekeeper-qt.</translation>
     </message>
     <message>
-        <source>## Transparent Compression</source>
-        <translation type="vanished">## Compresión transparente</translation>
-    </message>
-    <message>
         <location filename="../gui/help/texts.cpp" line="95"/>
         <source>By contrast, **transparent compression** works in the opposite way: it compresses **only new files written** to the disk. That means:</source>
         <translation>En contraste, la **compresión transparente** funciona de manera contraria: comprime **solamente los archivos nuevos que se escriben** al disco. Esto significa que:</translation>
@@ -1408,10 +915,6 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <location filename="../gui/help/texts.cpp" line="99"/>
         <source>When enabled, the *btrfs* driver uses its own heuristics to decide whether new data is compressible.</source>
         <translation>Cuando se activa, el controlador de *btrfs* usa sus propias normas para determinar si los nuevos datos escritos se pueden comprimir.</translation>
-    </message>
-    <message>
-        <source>If compressible, the data is written using the selected algorithm and level, which you configure at **Setup** time in beekeeper-qt.</source>
-        <translation type="vanished">Si se pueden comprimir, los datos nuevos se escriben usando el algoritmo de compresión y nivel seleccion, que configuras al momento de **Configurar** en beekeeper-qt.</translation>
     </message>
     <message>
         <location filename="../gui/help/texts.cpp" line="104"/>
@@ -1434,17 +937,9 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <translation>- Puedes habilitar la compresión transparente manualmente presionando el **botón de compresión**.</translation>
     </message>
     <message>
-        <source>This uses the lowest compression level (*feather*).</source>
-        <translation type="vanished">Este usa la compresión más baja (*peso pluma*) si no lo configuraste.</translation>
-    </message>
-    <message>
         <location filename="../gui/help/texts.cpp" line="118"/>
         <source>However, this setting does **not** persist across reboots, so compression will not be active after restarting unless enabled in **Setup**.</source>
         <translation>Nótese que, esta configuración **no** se recuerda para los siguientes arranques del sistema, así que la compresión no será activada automáticamente a menos de que la habilites en **Configurar**.</translation>
-    </message>
-    <message>
-        <source>### If you only want **deduplication** at boot:</source>
-        <translation type="vanished">### Si solo quieres activar la **deduplicación** al arrancar el sistema:</translation>
     </message>
     <message>
         <location filename="../gui/help/texts.cpp" line="123"/>
@@ -1474,10 +969,6 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <translation>*Nota: usar solamente la **deduplicación** es raramente útil por sí misma porque no reducirá el espacio utilizado en disco de forma significativa a menos de que la combines con compresión.*</translation>
     </message>
     <message>
-        <source>### If you only want **transparent compression**:</source>
-        <translation type="vanished">## Si solo quieres usar la **compresión transparente**:</translation>
-    </message>
-    <message>
         <location filename="../gui/help/texts.cpp" line="132"/>
         <location filename="../gui/help/texts.cpp" line="141"/>
         <source>Remove the setup for your **filesystem(s)**.</source>
@@ -1490,34 +981,14 @@ Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compres
         <translation>Elige tu nivel de compresión y presiona **Intro**.</translation>
     </message>
     <message>
-        <source>If **deduplication** is enabled, disable it by pressing the **✕ button** in the toolbar.</source>
-        <translation type="vanished">Si la **deduplicación** está activada para iniciar al arrancar el sistema , desactívala presionando el botón **✕** en la barra de herramientras.</translation>
-    </message>
-    <message>
         <location filename="../gui/help/texts.cpp" line="137"/>
         <source>Compression alone is often more beneficial than deduplication, but you lose the advantages of combining both.</source>
         <translation>La compresión por sí sola es más útil que la deduplicación, pero pierdes las ventajas de combinar las dos.</translation>
     </message>
     <message>
-        <source>### If you want both **transparent compression** and **deduplication**:</source>
-        <translation type="vanished">## Si quieres tanto la **compresión transparente** como la **deduplicación**:</translation>
-    </message>
-    <message>
-        <source>Enable **deduplication** by pressing the **+ button** in the toolbar.</source>
-        <translation type="vanished">Activa la deduplicación al arrancar presionando el botón **+** en la barra de herramientas.</translation>
-    </message>
-    <message>
         <location filename="../gui/help/texts.cpp" line="146"/>
         <source>🢒 Using both together can reduce disk usage by up to **50%**, depending on the type of data you store. Highly repetitive data like logs or virtual machine images benefits greatly from deduplication, while general-purpose data (documents, media, source code) sees savings from compression.</source>
         <translation>🢒 Usando ambas se puede reducir el espacio en uso del disco hasta un **50%**, depende del tipo de datos que almacenes. Archivos con patrones muy comunes como registros o máquinas virtuales se pueden beneficiar bastante de la deduplicación, mientras que el resto de archivos (documentos, medios, código fuente) ahorra más espacio con la compresión.</translation>
-    </message>
-    <message>
-        <source>In summary, **transparent compression** and **deduplication** are complementary features. Deduplication cleans up redundancy in already-existing data, while compression ensures every new file is written in the most space-efficient way. Together they maximize space savings and prolong the life of your storage.</source>
-        <translation type="vanished">En resumen, la compresión transparente y la deduplicación son características que se complementan. La deduplicación limpia patrones redundantes en datos ya existentes, mientras que la compresión se asegura de que cada archivo nuevo que se escriba ocupe el menor espacio en disco posible. Juntos, maximizan el ahorro de espacio y prolongan la vida de tu almacenamiento.</translation>
-    </message>
-    <message>
-        <source>__&quot;Storage is cheap, they say... except when you have a Chromebook.&quot;__</source>
-        <translation type="vanished">__&quot;El almacenamiento ya es muy barato en pleno 2025, dicen... Pfft.&quot;__</translation>
     </message>
 </context>
 <context>

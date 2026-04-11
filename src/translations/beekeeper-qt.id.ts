@@ -358,13 +358,6 @@ Tip pro: Anda dapat memasang beekeeper-qt segera setelah memasang Linux untuk me
     </message>
 </context>
 <context>
-    <name>beekeeper::clauses</name>
-    <message>
-        <source>UUID</source>
-        <translation type="obsolete">UUID</translation>
-    </message>
-</context>
-<context>
     <name>clauses_registry</name>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="37"/>

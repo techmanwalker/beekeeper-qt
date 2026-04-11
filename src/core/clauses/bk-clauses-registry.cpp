@@ -147,16 +147,6 @@ clauses_registry::get() {
                     "Options --algorithm / --algo and --level override presets given by --compression-level.").toStdString(),
                 1, -1
             }
-        },
-        {
-            "help",
-            {
-                clauses::help,
-                {},
-                tr("").toStdString(),
-                tr("Show help information").toStdString(),
-                0, 0
-            }
         }
     };
     return clauses_registry;

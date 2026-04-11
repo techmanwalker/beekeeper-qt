@@ -412,7 +412,7 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="182"/>
         <source>Error: db-size must be a positive integer.</source>
-        <translation>Error: db-size debe ser un entero positivo</translation>
+        <translation>Error: db-size debe ser un entero positivo.</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="188"/>

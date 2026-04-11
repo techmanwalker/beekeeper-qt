@@ -199,7 +199,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/eventfilter.cpp" line="68"/>
+        <location filename="../gui/eventfilter.cpp" line="66"/>
         <source>Deduplicating files. Started with %1 free, now you have %2 free.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -215,6 +215,11 @@
         <location filename="../gui/main.cpp" line="76"/>
         <source>Bees is not installed in your system.
 Install it from: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../cli/beekeeperman.cpp" line="62"/>
+        <source>If you see this string translated, translations are being applied to CLI!</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -341,6 +346,254 @@ Pro tip: you can install beekeeper-qt right after installing your Linux to reduc
     <message>
         <location filename="../gui/delegates/uuidcolumn.cpp" line="57"/>
         <source>UUID copied to clipboard.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>clauses_registry</name>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="37"/>
+        <source>Started beesd for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="40"/>
+        <source>Started beesd for %1 with logging enabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="45"/>
+        <source>Failed to start beesd for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="63"/>
+        <source>Stopped beesd for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="65"/>
+        <source>Failed to stop beesd for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="83"/>
+        <source>Restarted beesd for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="86"/>
+        <source>Failed to restart beesd for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="103"/>
+        <source>Status for %1: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="130"/>
+        <source>No UUID specified</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="137"/>
+        <source>Cleaned PID file for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="182"/>
+        <source>Error: db-size must be a positive integer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="188"/>
+        <source>Error: Invalid db-size value. Must be a positive integer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="202"/>
+        <source>Failed to remove %1: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="206"/>
+        <source>Nothing removed (file did not exist): %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="210"/>
+        <source>Removed config: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="222"/>
+        <source>Configuration created/updated: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="227"/>
+        <source>Error: Failed to create/update configuration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="276"/>
+        <source>Points that %1 is mounted on:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="281"/>
+        <source>%1: not mounted or not found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="345"/>
+        <source>No btrfs filesystems found.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="385"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="19"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="29"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="39"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="49"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="59"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="69"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="83"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="95"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="115"/>
+        <source>UUID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="386"/>
+        <source>LABEL</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="387"/>
+        <source>STATUS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="437"/>
+        <source>Error: UUID not specified</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="483"/>
+        <source>Free space: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="484"/>
+        <source>Used space: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="495"/>
+        <source>Configuration exists: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="500"/>
+        <source>No configuration found for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="642"/>
+        <source>Enabled to automatically compress at boot;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="643"/>
+        <source>Disabled to automatically compress at boot;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="645"/>
+        <source>compressing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="645"/>
+        <source>paused, not running</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="648"/>
+        <source>with algorithm %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="651"/>
+        <source>at level %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="20"/>
+        <source>Start beesd daemon</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="30"/>
+        <source>Stop beesd daemon</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="40"/>
+        <source>Restart beesd daemon</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="50"/>
+        <source>Check beesd status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="60"/>
+        <source>Show log file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="70"/>
+        <source>Clean PID file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="84"/>
+        <source>Create/update configuration for a btrfs filesystem</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="96"/>
+        <source>Show the mountpoints of a btrfs filesystem by UUID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="146"/>
+        <source>Manage transparent compression (start, pause, status, add, or remove) on filesystems.
+Options --algorithm / --algo and --level override presets given by --compression-level.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="106"/>
+        <source>List available btrfs filesystems</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="116"/>
+        <source>Check if a btrfs filesystem has a configuration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="126"/>
+        <source>Add or remove filesystems from the autostart file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="157"/>
+        <source>Show help information</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

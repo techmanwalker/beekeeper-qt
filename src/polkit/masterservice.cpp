@@ -66,13 +66,13 @@ struct clause_runnable : public QRunnable
     {
         command_streams reply;
 
-        auto it = clauses_registry.find(verb.toStdString());
-        if (it == clauses_registry.end()) {
+        auto it = clauses_registry::get().find(verb.toStdString());
+        if (it == clauses_registry::get().end()) {
             reply.errcode = 1;
             reply.stdout_str.clear();
             reply.stderr_str = "Unknown clause: " + verb.toStdString();
         } else {
-            clause &cmd = it->second;
+            const clause &cmd = it->second;
             reply = cmd.handler(
                 masterservice::convert_options(options),
                 masterservice::convert_subjects(subjects)
@@ -116,8 +116,8 @@ masterservice::_internal_execute_clause(const QString &verb,
                                         const QVariantMap &options,
                                         const QStringList &subjects)
 {
-    auto it = clauses_registry.find(verb.toStdString());
-    if (it == clauses_registry.end()) {
+    auto it = clauses_registry::get().find(verb.toStdString());
+    if (it == clauses_registry::get().end()) {
         return {
             "",
             "Unknown clause: " + verb.toStdString(),
@@ -160,6 +160,9 @@ int
 main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+
+    // Get registry reference (untranslated since no QTranslator installed)
+    const auto& clauses_registry = clauses_registry::get();
 
     QDBusConnection bus = QDBusConnection::systemBus();
     if (!bus.isConnected()) {

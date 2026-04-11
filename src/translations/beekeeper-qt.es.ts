@@ -470,7 +470,7 @@
         <translation type="vanished">Ayuda para la navegación por teclado</translation>
     </message>
     <message>
-        <location filename="../gui/eventfilter.cpp" line="68"/>
+        <location filename="../gui/eventfilter.cpp" line="66"/>
         <source>Deduplicating files. Started with %1 free, now you have %2 free.</source>
         <translation>Deduplicando archivos. Comenzaste con %1 libre, ahora tienes %2 libre.</translation>
     </message>
@@ -506,6 +506,11 @@ Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</transl
 Install it from: https://github.com/Zygo/bees</source>
         <translation type="vanished">beesd no está instalado en tu sistema.
 Instálalo desde: https://github.com/techmanwalker/beekeeper-qt/releases</translation>
+    </message>
+    <message>
+        <location filename="../cli/beekeeperman.cpp" line="62"/>
+        <source>If you see this string translated, translations are being applied to CLI!</source>
+        <translation>Si ves esta cadena traducida, ¡las traducciones están funcionando en la CLI!</translation>
     </message>
 </context>
 <context>
@@ -678,6 +683,404 @@ Pro tip: puedes instalar beekeeper-qt justo después de instalar tu Linux para m
         <location filename="../gui/delegates/uuidcolumn.cpp" line="57"/>
         <source>UUID copied to clipboard.</source>
         <translation>Identificador copiado al portapapeles.</translation>
+    </message>
+</context>
+<context>
+    <name>beekeeper::clauses</name>
+    <message>
+        <source>Started beesd for %1</source>
+        <translation type="vanished">Se inició beesd para %1</translation>
+    </message>
+    <message>
+        <source>Started beesd for %1 with logging enabled</source>
+        <translation type="vanished">Se inició beesd para %1 con registros de depuración</translation>
+    </message>
+    <message>
+        <source>Failed to start beesd for %1</source>
+        <translation type="vanished">No se pudo iniciar beesd para %1</translation>
+    </message>
+    <message>
+        <source>Stopped beesd for %1</source>
+        <translation type="vanished">Se detuvo beesd para %1</translation>
+    </message>
+    <message>
+        <source>Failed to stop beesd for %1</source>
+        <translation type="vanished">No se pudo detener beesd para %1</translation>
+    </message>
+    <message>
+        <source>Restarted beesd for %1</source>
+        <translation type="vanished">Se reinició beesd para %1</translation>
+    </message>
+    <message>
+        <source>Failed to restart beesd for %1</source>
+        <translation type="vanished">No se pudo reiniciar beesd para %1</translation>
+    </message>
+    <message>
+        <source>Status for %1: %2</source>
+        <translation type="vanished">Estado de %1: %2</translation>
+    </message>
+    <message>
+        <source>No UUID specified</source>
+        <translation type="vanished">No se especificó un UUID</translation>
+    </message>
+    <message>
+        <source>Cleaned PID file for %1</source>
+        <translation type="vanished">Se borró el archivo PID para %1</translation>
+    </message>
+    <message>
+        <source>Error: db-size must be a positive integer.</source>
+        <translation type="vanished">Error: db-size debe ser un entero positivo</translation>
+    </message>
+    <message>
+        <source>Error: Invalid db-size value. Must be a positive integer.</source>
+        <translation type="vanished">Error: Valor inválido de db-size. Debe ser un entero positivo.</translation>
+    </message>
+    <message>
+        <source>Failed to remove %1: %2</source>
+        <translation type="vanished">No se pudo remover %1: %2</translation>
+    </message>
+    <message>
+        <source>Nothing removed (file did not exist): %1</source>
+        <translation type="vanished">No se quitó nada (el archivo no existe): %1</translation>
+    </message>
+    <message>
+        <source>Removed config: %1</source>
+        <translation type="vanished">Se eliminó la configuración: %1</translation>
+    </message>
+    <message>
+        <source>Configuration created/updated: %1</source>
+        <translation type="vanished">Configuración creada/actualizada: %1</translation>
+    </message>
+    <message>
+        <source>Error: Failed to create/update configuration</source>
+        <translation type="vanished">Error: No se pudo crear/actualizar la configuración</translation>
+    </message>
+    <message>
+        <source>Points that %1 is mounted on:</source>
+        <translation type="vanished">Puntos en los que %1 está montado:</translation>
+    </message>
+    <message>
+        <source>%1: not mounted or not found</source>
+        <translation type="vanished">%1: no montado o no encontrado</translation>
+    </message>
+    <message>
+        <source>No btrfs filesystems found.</source>
+        <translation type="vanished">No se encontraron sistemas de archivos btrfs.</translation>
+    </message>
+    <message>
+        <source>UUID</source>
+        <translation type="vanished">UUID</translation>
+    </message>
+    <message>
+        <source>LABEL</source>
+        <translation type="vanished">ETIQUETA</translation>
+    </message>
+    <message>
+        <source>STATUS</source>
+        <translation type="vanished">ESTADO</translation>
+    </message>
+    <message>
+        <source>Error: UUID not specified</source>
+        <translation type="vanished">Error: UUID no especificado</translation>
+    </message>
+    <message>
+        <source>Free space: %1</source>
+        <translation type="vanished">Espacio libre: %1</translation>
+    </message>
+    <message>
+        <source>Used space: %2</source>
+        <translation type="vanished">Espacio usado: %2</translation>
+    </message>
+    <message>
+        <source>Configuration exists: %1</source>
+        <translation type="vanished">Configuración existente: %1</translation>
+    </message>
+    <message>
+        <source>No configuration found for %1</source>
+        <translation type="vanished">No se encontraron configuraciones para %1</translation>
+    </message>
+    <message>
+        <source>Enabled to automatically compress at boot;</source>
+        <translation type="vanished">Se activó la compresión automática al arrancar;</translation>
+    </message>
+    <message>
+        <source>Disabled to automatically compress at boot;</source>
+        <translation type="vanished">Se desactivó la compresión automática al arrancar;</translation>
+    </message>
+    <message>
+        <source>compressing</source>
+        <translation type="vanished">comprimiendo</translation>
+    </message>
+    <message>
+        <source>paused, not running</source>
+        <translation type="vanished">pausado, no se está ejecutando</translation>
+    </message>
+    <message>
+        <source>with algorithm %1</source>
+        <translation type="vanished">con el algoritmo %1</translation>
+    </message>
+    <message>
+        <source>at level %1</source>
+        <translation type="vanished">al nivel %1</translation>
+    </message>
+</context>
+<context>
+    <name>clauses_registry</name>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="37"/>
+        <source>Started beesd for %1</source>
+        <translation>Se inició beesd para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="40"/>
+        <source>Started beesd for %1 with logging enabled</source>
+        <translation>Se inició beesd para %1 con registros de depuración</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="45"/>
+        <source>Failed to start beesd for %1</source>
+        <translation>No se pudo iniciar beesd para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="63"/>
+        <source>Stopped beesd for %1</source>
+        <translation>Se detuvo beesd para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="65"/>
+        <source>Failed to stop beesd for %1</source>
+        <translation>No se pudo detener beesd para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="83"/>
+        <source>Restarted beesd for %1</source>
+        <translation>Se reinició beesd para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="86"/>
+        <source>Failed to restart beesd for %1</source>
+        <translation>No se pudo reiniciar beesd para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="103"/>
+        <source>Status for %1: %2</source>
+        <translation>Estado de %1: %2</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="130"/>
+        <source>No UUID specified</source>
+        <translation>No se especificó un UUID</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="137"/>
+        <source>Cleaned PID file for %1</source>
+        <translation>Se borró el archivo PID para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="182"/>
+        <source>Error: db-size must be a positive integer.</source>
+        <translation>Error: db-size debe ser un entero positivo</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="188"/>
+        <source>Error: Invalid db-size value. Must be a positive integer.</source>
+        <translation>Error: Valor inválido de db-size. Debe ser un entero positivo.</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="202"/>
+        <source>Failed to remove %1: %2</source>
+        <translation>No se pudo remover %1: %2</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="206"/>
+        <source>Nothing removed (file did not exist): %1</source>
+        <translation>No se quitó nada (el archivo no existe): %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="210"/>
+        <source>Removed config: %1</source>
+        <translation>Se eliminó la configuración: %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="222"/>
+        <source>Configuration created/updated: %1</source>
+        <translation>Configuración creada/actualizada: %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="227"/>
+        <source>Error: Failed to create/update configuration</source>
+        <translation>Error: No se pudo crear/actualizar la configuración</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="276"/>
+        <source>Points that %1 is mounted on:</source>
+        <translation>Puntos en los que %1 está montado:</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="281"/>
+        <source>%1: not mounted or not found</source>
+        <translation>%1: no montado o no encontrado</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="345"/>
+        <source>No btrfs filesystems found.</source>
+        <translation>No se encontraron sistemas de archivos btrfs.</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="385"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="19"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="29"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="39"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="49"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="59"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="69"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="83"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="95"/>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="115"/>
+        <source>UUID</source>
+        <translation>UUID</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="386"/>
+        <source>LABEL</source>
+        <translation>ETIQUETA</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="387"/>
+        <source>STATUS</source>
+        <translation>ESTADO</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="437"/>
+        <source>Error: UUID not specified</source>
+        <translation>Error: UUID no especificado</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="483"/>
+        <source>Free space: %1</source>
+        <translation>Espacio libre: %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="484"/>
+        <source>Used space: %2</source>
+        <translation>Espacio usado: %2</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="495"/>
+        <source>Configuration exists: %1</source>
+        <translation>Configuración existente: %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="500"/>
+        <source>No configuration found for %1</source>
+        <translation>No se encontraron configuraciones para %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="642"/>
+        <source>Enabled to automatically compress at boot;</source>
+        <translation>Se activó la compresión automática al arrancar;</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="643"/>
+        <source>Disabled to automatically compress at boot;</source>
+        <translation>Se desactivó la compresión automática al arrancar;</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="645"/>
+        <source>compressing</source>
+        <translation>comprimiendo</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="645"/>
+        <source>paused, not running</source>
+        <translation>pausado, no se está ejecutando</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="648"/>
+        <source>with algorithm %1</source>
+        <translation>con el algoritmo %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-handlers.cpp" line="651"/>
+        <source>at level %1</source>
+        <translation>al nivel %1</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="20"/>
+        <source>Start beesd daemon</source>
+        <translation>Iniciar demonio beesd</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="30"/>
+        <source>Stop beesd daemon</source>
+        <translation>Detener demonio beesd</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="40"/>
+        <source>Restart beesd daemon</source>
+        <translation>Reiniciar demonio beesd</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="50"/>
+        <source>Check beesd status</source>
+        <translation>Verificar estado de beesd</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="60"/>
+        <source>Show log file</source>
+        <translation>Mostrar registro de depuración</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="70"/>
+        <source>Clean PID file</source>
+        <translation>Quitar archivo PID</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="84"/>
+        <source>Create/update configuration for a btrfs filesystem</source>
+        <translation>Crear/actualizar la configuración para un sistema de archivos btrfs</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="96"/>
+        <source>Show the mountpoints of a btrfs filesystem by UUID</source>
+        <translation>Mostrar los puntos de montaje para un sistema de archivos btrfs por UUID</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="146"/>
+        <source>Manage transparent compression (start, pause, status, add, or remove) on filesystems.
+Options --algorithm / --algo and --level override presets given by --compression-level.</source>
+        <translation>Ajustar la compresión transparente (iniciar, pausar, estado, añadir o quitar) en los sistemas de archivos.
+Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compression-level.</translation>
+    </message>
+    <message>
+        <source>Show the mountpoint of a btrfs filesystem by UUID</source>
+        <translation type="vanished">Mostrar los puntos de montaje para un sistema de archivos btrfs por UUID</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="106"/>
+        <source>List available btrfs filesystems</source>
+        <translation>Mostrar sistemas de archivos btrfs disponibles</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="116"/>
+        <source>Check if a btrfs filesystem has a configuration</source>
+        <translation>Verificar si un sistema de archivos btrfs tiene archivo de configuración</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="126"/>
+        <source>Add or remove filesystems from the autostart file</source>
+        <translation>Añadir o quitar sistemas de archivos del arranque automático</translation>
+    </message>
+    <message>
+        <source>Control transparent compression (start, pause, status, add, or remove) on filesystems.
+Options --algorithm / --algo and --level override presets given by --compression-level.</source>
+        <translation type="vanished">Ajustar la compresión transparente (iniciar, pausar, estado, añadir o quitar) en los sistemas de archivos.
+Opciones: --algorithm / --algo y --level sobreescriben los perfiles de --compression-level.</translation>
+    </message>
+    <message>
+        <location filename="../core/clauses/bk-clauses-registry.cpp" line="157"/>
+        <source>Show help information</source>
+        <translation>Mostrar ayuda</translation>
     </message>
 </context>
 <context>

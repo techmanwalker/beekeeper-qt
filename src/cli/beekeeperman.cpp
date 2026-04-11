@@ -1,4 +1,5 @@
 #include "../core/clauses/bk-clauses.hpp"
+#include "translationsdir.hpp"
 
 #include <CLI/CLI.hpp>
 #include <iostream>
@@ -6,104 +7,114 @@
 #include <string>
 #include <vector>
 
-int
-main (int argc, char **argv)
+#include <QCoreApplication>
+#include <QTranslator>
+#include <QLocale>
+#include <QDir>
+#include <QStringList>
+
+int main(int argc, char **argv)
 {
-    // We'll do this using CLI11 as it's one of the few that support verbs
-    // Declare that this program's name is "beekeeperman"
+    // 1. Create QCoreApplication FIRST (removes Qt args from argc/argv)
+    QCoreApplication qt_app(argc, argv);
+    
+    // 2. Load translator using same logic as GUI
+    QString baseDir = QStringLiteral(TRANSLATIONS_DIR);
+    QString fullLocale = QLocale::system().name();     // ex. "es_MX"
+    QString langOnly = fullLocale.left(2);             // ex: "es"
+    
+    QTranslator translator;
+    bool translatorLoaded = false;
+    
+    auto tryLoad = [&](const QString& localeDir) -> bool {
+        QString path = baseDir + "/" + localeDir + "/LC_MESSAGES/";
+        return translator.load("beekeeper-qt", path);
+    };
+    
+    // Try full locale (es_MX)
+    if (tryLoad(fullLocale)) {
+        translatorLoaded = true;
+    }
+    // Try language only (es)
+    else if (tryLoad(langOnly)) {
+        translatorLoaded = true;
+    }
+    // Search for any directory beginning with es_ ...
+    else {
+        QDir dir(baseDir);
+        QStringList candidates = dir.entryList(
+            QStringList() << (langOnly + "_*"),
+            QDir::Dirs | QDir::NoDotAndDotDot
+        );
+        
+        for (const QString& candidate : candidates) {
+            if (tryLoad(candidate)) {
+                translatorLoaded = true;
+                break;
+            }
+        }
+    }
+    
+    if (translatorLoaded) {
+        qt_app.installTranslator(&translator);
 
+        #ifdef BEEKEEPER_DEBUG_LOGGING
+        std::cout << QObject::tr("If you see this string translated, translations are being applied to CLI!").toStdString() << std::endl;
+        #endif
+    }
+    
+    // 3. NOW safe to access registry (tr() will translate using installed translator)
+    const auto& clauses_registry = clauses_registry::get();
+    
+    // 4. CLI11 setup (uses translated descriptions)
     CLI::App app{"beekeeperman"};
-
-    // We'll store the parsed entities here
     std::string verb;
     std::map<std::string, std::string> options;
     std::vector<std::string> subjects;
-
+    
     // Register each of the verbs dynamically
     for (const auto &[verb_name, meta] : clauses_registry) {
-        // Register the verb and associate with its handler
-        // verb.handleBy(meta.handler);
-
+        // meta.description is now translated if a .qm file was found
         CLI::App *sub = app.add_subcommand(verb_name, meta.description);
         sub->callback([&, verb_name]() {
             verb = verb_name;
         });
-
-        // Associate with its own command options
+        
+        // ... rest of your option setup unchanged ...
         for (const auto &option : meta.allowed_options) {
-            /*
-            register_option_as_valid (
-                option.long_name, // guaranteed to always be present
-                (!option.short_name.empty() ? option.short_name : // don't register its short name)
-                option.description, // make it so this program's help show its description
-                option.requires_value // bail out if value is not present
-            )
-            */
-
             std::string opt_spec = "--" + option.long_name;
-
             if (!option.short_name.empty())
                 opt_spec += ",-" + option.short_name;
-
+            
             if (option.requires_value) {
-                sub->add_option(
-                    opt_spec,
-                    options[option.long_name]
-                    // ,option.description
-                )->required(false);
+                sub->add_option(opt_spec, options[option.long_name]);
             } else {
-                sub->add_flag(
-                    opt_spec,
-                    [&](std::size_t) {
-                        options[option.long_name] = "true";
-                    }
-                    // ,option.description
-                );
+                sub->add_flag(opt_spec, [&](std::size_t) {
+                    options[option.long_name] = "true";
+                });
             }
         }
-
-        // Positional arguments that are not options are subjects
-        sub->add_option(
-            "subjects",
-            subjects,
-            "Subjects for this clause"
-        );
+        
+        sub->add_option("subjects", subjects, "Subjects for this clause");
     }
-
-    // Now that all options are registered:
-
-    // Parse the argc and argv so I have three entities:
-
-    // one for the verb which is absolutely required to be right after the program's name, called std::string verb
-    // one for associative options, preferably called std::map<std::string, std::string> options
-    // one for alone values that don't belong to an option key, called std::vector<std::string> subjects
-
+    
+    // 5. Parse and execute
     try {
         app.require_subcommand(1);
-        app.parse(argc, argv);
+        app.parse(argc, argv);  // argc/argv already cleaned by QCoreApplication
     } catch (const CLI::ParseError &e) {
         return app.exit(e);
     }
-
-    // Now that I have the three entities, take the verb's associated clause, whose name is guaranteed to exist
-    // in the clauses unordered_map due to the way the registration works.
-
-    // The clause does all the handling job. beekeeperman is essentially a wrapper now.
-
-    // Hence, the call trivially becomes:
-
+    
     command_streams execution_result =
         clauses_registry.at(verb).handler(options, subjects);
-
-    // And spit it out to the terminal, in this order: stderr, stdout and finally return with exit code.
-
-    // This becomes:
-
+    
     if (!execution_result.stderr_str.empty())
         std::cerr << execution_result.stderr_str << std::endl;
-
+    
     if (!execution_result.stdout_str.empty())
         std::cout << execution_result.stdout_str << std::endl;
-
+    
     return execution_result.errcode;
+    // translator and qt_app destroyed here
 }

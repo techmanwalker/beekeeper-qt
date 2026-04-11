@@ -33,13 +33,16 @@ clauses::start(const clause_options &options,
     
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesstart(uuid)) {
-            cout << "Started beesd for " << uuid;
             if (enable_logging) {
-                cout << " with logging enabled";
+                cout << clauses_registry::tr("Started beesd for %1").arg(uuid).toStdString();
+
+            } else {
+                cout << clauses_registry::tr("Started beesd for %1 with logging enabled").arg(uuid).toStdString();
             }
-            cout << std::endl;
+
+            cout << '\n';
         } else {
-            cerr << "Failed to start beesd for " << uuid << std::endl;
+            cerr << clauses_registry::tr("Failed to start beesd for %1").arg(uuid).toStdString() << '\n';
             errcode = 1;
         }
     }
@@ -57,9 +60,9 @@ clauses::stop(const clause_options &options,
 
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesstop(uuid)) {
-            cout << "Stopped beesd for " << uuid << std::endl;
+            cout << clauses_registry::tr("Stopped beesd for %1").arg(uuid).toStdString() << '\n';
         } else {
-            cerr << "Failed to stop beesd for " << uuid << std::endl;
+            cerr << clauses_registry::tr("Failed to stop beesd for %1").arg(uuid).toStdString() << '\n';
             errcode = 1;
         }
     }
@@ -77,9 +80,10 @@ clauses::restart(const clause_options &options,
 
     for (const auto& uuid : subjects) {
         if (bk_mgmt::beesrestart(uuid)) {
-            cout << "Restarted beesd for " << uuid << std::endl;
+            cout << clauses_registry::tr("Restarted beesd for %1").arg(uuid).toStdString() << '\n';
+
         } else {
-            cerr << "Failed to restart beesd for " << uuid << std::endl;
+            cerr << clauses_registry::tr("Failed to restart beesd for %1").arg(uuid).toStdString() << '\n';
             errcode = 1;
         }
     }
@@ -96,7 +100,7 @@ clauses::status(const clause_options &options,
     int errcode = 0;
 
     for (const auto& uuid : subjects) {
-        cout << "Status for " << uuid << ": " << bk_mgmt::beesstatus(uuid) << std::endl;
+        cout << clauses_registry::tr("Status for %1: %2").arg(uuid, bk_mgmt::beesstatus(uuid)).toStdString() << '\n';
     }
     
     RETURN_COMMANDSTREAMS
@@ -123,14 +127,14 @@ clauses::clean(const clause_options &options,
     int errcode = 0;
 
     if (subjects.empty()) {
-        cerr << "No UUID specified";
+        cerr << clauses_registry::tr("No UUID specified").toStdString();
         errcode = 1;
         RETURN_COMMANDSTREAMS
     }
     
     bk_mgmt::beescleanlogfiles(subjects[0]);
 
-    cout << "Cleaned PID file for " << subjects[0];
+    cout << clauses_registry::tr("Cleaned PID file for %1").arg(subjects[0]).toStdString();
     
     RETURN_COMMANDSTREAMS
 }
@@ -175,13 +179,13 @@ clauses::setup(const clause_options &options,
             db_size = std::stoull(it->second);
             if (db_size == 0) {
                 if (json_mode) emit_json(0, "Error: db-size must be a positive integer.");
-                else cerr << "Error: db-size must be a positive integer.\n";
+                else cerr << clauses_registry::tr("Error: db-size must be a positive integer.").toStdString() << '\n';
                 errcode = 1;
                 RETURN_COMMANDSTREAMS
             }
         } catch (...) {
             if (json_mode) emit_json(0, "Error: Invalid db-size value. Must be a positive integer.");
-            else cerr << "Error: Invalid db-size value. Must be a positive integer.\n";
+            else cerr << clauses_registry::tr("Error: Invalid db-size value. Must be a positive integer.").toStdString();
             errcode = 1;
             RETURN_COMMANDSTREAMS
         }
@@ -195,13 +199,16 @@ clauses::setup(const clause_options &options,
         bool removed = fs::remove(path, ec);
         if (ec) {
             if (json_mode) emit_json(0, "Failed to remove " + path + ": " + ec.message());
-            else cerr << "Failed to remove " << path << ": " << ec.message() << "\n";
+            else cerr << clauses_registry::tr("Failed to remove %1: %2").arg(path, ec.message()).toStdString() << '\n';
+
         } else if (!removed) {
             if (json_mode) emit_json(0, "Nothing removed (file did not exist): " + path);
-            else cerr << "Nothing removed (file did not exist): " << path << "\n";
+            else cerr << clauses_registry::tr("Nothing removed (file did not exist): %1").arg(path).toStdString() << '\n';
+
         } else {
             if (json_mode) emit_json(1, "Removed config: " + path);
-            else cout << "Removed config: " << path << "\n";
+            else cout << clauses_registry::tr("Removed config: %1").arg(path).toStdString() << '\n';
+            
         }
         errcode = 0;
 
@@ -212,12 +219,12 @@ clauses::setup(const clause_options &options,
     std::string config_path = bk_mgmt::beessetup(uuid, db_size);
     if (!config_path.empty()) {
         if (json_mode) emit_json(1, "Configuration created/updated: " + config_path);
-        else cout << "Configuration created/updated: " << config_path << "\n";
+        else cout << clauses_registry::tr("Configuration created/updated: %1").arg(config_path).toStdString() << '\n';
         errcode = 0;
         RETURN_COMMANDSTREAMS
     } else {
         if (json_mode) emit_json(0, "Error: Failed to create/update configuration");
-        else cerr << "Error: Failed to create/update configuration\n";
+        else cerr << clauses_registry::tr("Error: Failed to create/update configuration").toStdString() << '\n';
         RETURN_COMMANDSTREAMS
     }
 }
@@ -266,12 +273,12 @@ clauses::locate(const clause_options &options,
             clause_subjects mountpoints = bk_mgmt::get_mount_paths(uuid);
 
             if (!mountpoints.empty()) {
-                cout << "Points that " << uuid << " is mounted on:" << std::endl;
+                cout << clauses_registry::tr("Points that %1 is mounted on:").arg(uuid).toStdString() << std::endl;
                 for (const auto &mp : mountpoints) {
                     cout << "\t" << mp << std::endl;
                 }
             } else {
-                cerr << uuid << ": not mounted or not found" << std::endl;
+                cerr << clauses_registry::tr("%1: not mounted or not found").arg(uuid).toStdString() << std::endl;
             }
         }
     }
@@ -335,7 +342,7 @@ clauses::list(const clause_options &options,
     // Pretty-table (human readable)
     // -------------------------
     if (filesystems.empty()) {
-        cout << "No btrfs filesystems found.\n";
+        cout << clauses_registry::tr("No btrfs filesystems found.").toStdString() << '\n';
         errcode = 0;
         RETURN_COMMANDSTREAMS
     }
@@ -375,15 +382,15 @@ clauses::list(const clause_options &options,
 
     // Table header
     cout << std::left
-              << std::setw(uuid_width)  << "UUID"   << " "
-              << std::setw(label_width) << "LABEL"  << " "
-              << std::setw(status_width) << "STATUS"
-              << "\n";
+              << std::setw(uuid_width)  << clauses_registry::tr("UUID").toStdString()   << ' '
+              << std::setw(label_width) << clauses_registry::tr("LABEL").toStdString()  << ' '
+              << std::setw(status_width) << clauses_registry::tr("STATUS").toStdString()
+              << '\n';
 
     // Separator line
-    cout << std::string(uuid_width, '-')  << " "
-              << std::string(label_width, '-') << " "
-              << std::string(status_width, '-') << "\n";
+    cout << std::string(uuid_width, '-')  << ' '
+              << std::string(label_width, '-') << ' '
+              << std::string(status_width, '-') << '\n';
 
     // Print rows
     for (const auto &[src_uuid, info] : filesystems) {
@@ -407,10 +414,10 @@ clauses::list(const clause_options &options,
             status = status.substr(0, status_width - 3) + "...";
         }
 
-        cout << "\n";
+        cout << '\n';
 
-        cout << uuid << " "
-                  << label << " "
+        cout << uuid << ' '
+                  << label << ' '
                   << status;
     }
 
@@ -427,7 +434,7 @@ clauses::stat(const clause_options &options,
     int errcode = 0;
     
     if (subjects.empty()) {
-        cerr << "Error: UUID not specified" << std::endl;
+        cerr << clauses_registry::tr("Error: UUID not specified").toStdString() << std::endl;
         errcode = 1;
         RETURN_COMMANDSTREAMS
     }
@@ -470,11 +477,11 @@ clauses::stat(const clause_options &options,
                 cout << "{\n"
                           << "  \"success\": 1,\n"
                           << "  \"free\": " << free_val << ",\n"
-                          << "  \"used\": " << used_val << "\n"
+                          << "  \"used\": " << used_val << '\n'
                           << "}\n";
             } else {
-                cout << "Free space: " << bk_util::auto_size_suffix(free_val) << std::endl;
-                cout << "Used space: " << bk_util::auto_size_suffix(used_val) << std::endl;
+                cout << clauses_registry::tr("Free space: %1").arg(bk_util::auto_size_suffix(free_val)).toStdString() << '\n';
+                cout << clauses_registry::tr("Used space: %2").arg(bk_util::auto_size_suffix(used_val)).toStdString() << '\n';
             }
             errcode = 0;
             RETURN_COMMANDSTREAMS
@@ -485,12 +492,12 @@ clauses::stat(const clause_options &options,
     std::string config_path = bk_mgmt::btrfstat(uuid);
     if (!config_path.empty()) {
         if (json) emit_json(true, "config_path", config_path);
-        else cout << "Configuration exists: " << config_path << std::endl;
+        else cout << clauses_registry::tr("Configuration exists: %1").arg(config_path).toStdString() << '\n';
         errcode = 0;
         RETURN_COMMANDSTREAMS
     } else {
         if (json) emit_json(false, "config_path", "");
-        else cout << "No configuration found for " << uuid << std::endl;
+        else cout << clauses_registry::tr("No configuration found for %1").arg(uuid).toStdString() << '\n';
         errcode = 1;
         RETURN_COMMANDSTREAMS;
     }
@@ -632,14 +639,16 @@ clauses::compressctl(const clause_options &options,
                           << "}";
             } else {
                 cout << uuid_str << ": "
-                          << (enabled ? "Enabled to automatically compress at boot; "
-                                      : "Disabled to automatically compress at boot; ")
-                          << (running ? "compressing" : "paused, not running");
+                          << (enabled ? clauses_registry::tr("Enabled to automatically compress at boot;").toStdString()
+                                      : clauses_registry::tr("Disabled to automatically compress at boot;").toStdString())
+                          << ' '
+                          << (running ? clauses_registry::tr("compressing").toStdString() : clauses_registry::tr("paused, not running").toStdString());
 
                 if (!algorithm.empty() && algorithm != "none") {
-                    cout << " with algorithm " << algorithm;
+                    cout << ' ' << clauses_registry::tr("with algorithm %1").arg(algorithm).toStdString();
                     if (!level_str.empty() && level_str != "0") {
-                        cout << " at level " << level_str;
+                        cout << ' ';
+                        cout << clauses_registry::tr("at level %1").arg(level_str).toStdString();
                     }
                 }
 
@@ -656,7 +665,7 @@ clauses::compressctl(const clause_options &options,
     }
 
     if (status && want_json) {
-        if (!first_json_item) cout << "\n";
+        if (!first_json_item) cout << '\n';
         cout << "]" << std::endl;
     }
 

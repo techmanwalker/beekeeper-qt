@@ -154,6 +154,9 @@ set_target_properties(beekeeperman PROPERTIES
     INSTALL_RPATH "${BEEKEEPER_INSTALL_LIBDIR}"
 )
 target_link_libraries(beekeeperman PRIVATE beekeeper)
+target_include_directories(beekeeperman PRIVATE
+    ${BUILD_INCLUDE_DIR}
+)
 
 
 # ------------------------------

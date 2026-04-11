@@ -1,10 +1,20 @@
+#pragma once
 #include "beekeeper/clauses.hpp"
 
-// command registry
-extern std::unordered_map<std::string, clause> clauses_registry;
+#include <QCoreApplication>
+
+
+class clauses_registry {
+    Q_DECLARE_TR_FUNCTIONS(clauses_registry)
+public:
+    static const std::unordered_map<std::string, clause>& get();
+};
+
+
 
 // clause handler implementations
 namespace beekeeper { namespace clauses {
+
 command_streams
 start(const clause_options& options, 
       const clause_subjects& subjects);

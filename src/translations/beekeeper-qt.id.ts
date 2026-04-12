@@ -362,102 +362,102 @@ Tip pro: Anda dapat memasang beekeeper-qt segera setelah memasang Linux untuk me
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="37"/>
         <source>Started beesd for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Memulai beesd untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="40"/>
         <source>Started beesd for %1 with logging enabled</source>
-        <translation type="unfinished"></translation>
+        <translation>Memulai beesd untuk %1 dengan pencatatan log diaktifkan</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="45"/>
         <source>Failed to start beesd for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Gagal memulai beesd untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="63"/>
         <source>Stopped beesd for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Menghentikan beesd untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="65"/>
         <source>Failed to stop beesd for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Gagal menghentikan beesd untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="83"/>
         <source>Restarted beesd for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Memulai ulang beesd untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="86"/>
         <source>Failed to restart beesd for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Gagal memulai ulang beesd untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="103"/>
         <source>Status for %1: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Status untuk %1: %2</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="130"/>
         <source>No UUID specified</source>
-        <translation type="unfinished"></translation>
+        <translation>Tidak ada UUID yang ditentukan</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="137"/>
         <source>Cleaned PID file for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Membersihkan file PID untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="182"/>
         <source>Error: db-size must be a positive integer.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kesalahan: db-size harus berupa bilangan bulat positif.</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="188"/>
         <source>Error: Invalid db-size value. Must be a positive integer.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kesalahan: Nilai db-size tidak valid. Harus berupa bilangan bulat positif.</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="202"/>
         <source>Failed to remove %1: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Gagal menghapus %1: %2</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="206"/>
         <source>Nothing removed (file did not exist): %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Tidak ada yang dihapus (file tidak ada): %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="210"/>
         <source>Removed config: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Konfigurasi dihapus: %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="222"/>
         <source>Configuration created/updated: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Konfigurasi dibuat/diperbarui: %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="227"/>
         <source>Error: Failed to create/update configuration</source>
-        <translation type="unfinished"></translation>
+        <translation>Kesalahan: Gagal membuat/memperbarui konfigurasi</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="276"/>
         <source>Points that %1 is mounted on:</source>
-        <translation type="unfinished"></translation>
+        <translation>Titik pemasangan %1:</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="281"/>
         <source>%1: not mounted or not found</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: tidak dipasang atau tidak ditemukan</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="345"/>
         <source>No btrfs filesystems found.</source>
-        <translation type="unfinished"></translation>
+        <translation>Tidak ada sistem berkas btrfs yang ditemukan.</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="385"/>
@@ -471,138 +471,139 @@ Tip pro: Anda dapat memasang beekeeper-qt segera setelah memasang Linux untuk me
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="95"/>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="115"/>
         <source>UUID</source>
-        <translation type="unfinished">UUID</translation>
+        <translation>UUID</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="386"/>
         <source>LABEL</source>
-        <translation type="unfinished"></translation>
+        <translation>LABEL</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="387"/>
         <source>STATUS</source>
-        <translation type="unfinished"></translation>
+        <translation>STATUS</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="437"/>
         <source>Error: UUID not specified</source>
-        <translation type="unfinished"></translation>
+        <translation>Kesalahan: UUID tidak ditentukan</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="483"/>
         <source>Free space: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Ruang kosong: %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="484"/>
         <source>Used space: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Ruang terpakai: %2</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="495"/>
         <source>Configuration exists: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Konfigurasi ada: %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="500"/>
         <source>No configuration found for %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Tidak ada konfigurasi yang ditemukan untuk %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="642"/>
         <source>Enabled to automatically compress at boot;</source>
-        <translation type="unfinished"></translation>
+        <translation>Diaktifkan untuk kompresi otomatis saat boot;</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="643"/>
         <source>Disabled to automatically compress at boot;</source>
-        <translation type="unfinished"></translation>
+        <translation>Dinonaktifkan untuk kompresi otomatis saat boot;</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="645"/>
         <source>compressing</source>
-        <translation type="unfinished"></translation>
+        <translation>mengompresi</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="645"/>
         <source>paused, not running</source>
-        <translation type="unfinished"></translation>
+        <translation>dijeda, tidak berjalan</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="648"/>
         <source>with algorithm %1</source>
-        <translation type="unfinished"></translation>
+        <translation>dengan algoritma %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="651"/>
         <source>at level %1</source>
-        <translation type="unfinished"></translation>
+        <translation>pada level %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="20"/>
         <source>Start beesd daemon</source>
-        <translation type="unfinished"></translation>
+        <translation>Mulai daemon beesd</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="30"/>
         <source>Stop beesd daemon</source>
-        <translation type="unfinished"></translation>
+        <translation>Hentikan daemon beesd</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="40"/>
         <source>Restart beesd daemon</source>
-        <translation type="unfinished"></translation>
+        <translation>Mulai ulang daemon beesd</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="50"/>
         <source>Check beesd status</source>
-        <translation type="unfinished"></translation>
+        <translation>Periksa status beesd</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="60"/>
         <source>Show log file</source>
-        <translation type="unfinished"></translation>
+        <translation>Tampilkan file log</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="70"/>
         <source>Clean PID file</source>
-        <translation type="unfinished"></translation>
+        <translation>Bersihkan file PID</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="84"/>
         <source>Create/update configuration for a btrfs filesystem</source>
-        <translation type="unfinished"></translation>
+        <translation>Buat/perbarui konfigurasi untuk sistem berkas btrfs</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="96"/>
         <source>Show the mountpoints of a btrfs filesystem by UUID</source>
-        <translation type="unfinished"></translation>
+        <translation>Tampilkan titik pemasangan sistem berkas btrfs berdasarkan UUID</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="146"/>
         <source>Manage transparent compression (start, pause, status, add, or remove) on filesystems.
 Options --algorithm / --algo and --level override presets given by --compression-level.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kelola kompresi transparan (mulai, jeda, status, tambah, atau hapus) pada sistem berkas.
+Opsi --algorithm / --algo dan --level menggantikan preset yang diberikan oleh --compression-level.</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="106"/>
         <source>List available btrfs filesystems</source>
-        <translation type="unfinished"></translation>
+        <translation>Tampilkan daftar sistem berkas btrfs yang tersedia</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="116"/>
         <source>Check if a btrfs filesystem has a configuration</source>
-        <translation type="unfinished"></translation>
+        <translation>Periksa apakah sistem berkas btrfs memiliki konfigurasi</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="126"/>
         <source>Add or remove filesystems from the autostart file</source>
-        <translation type="unfinished"></translation>
+        <translation>Tambah atau hapus sistem berkas dari file autostart</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="157"/>
         <source>Show help information</source>
-        <translation type="unfinished"></translation>
+        <translation>Tampilkan informasi bantuan</translation>
     </message>
 </context>
 <context>

@@ -6,17 +6,15 @@
 #include "beekeeper/transparentcompressionmgmt.hpp"
 #include "beekeeper/util.hpp"
 #include <algorithm>
+#include <cstring>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <map>
 
-#ifdef HAVE_LIBBLKID
-  #include <cstring>
-  extern "C" {
+extern "C" {
     #include <blkid/blkid.h>
-  }
-#endif
+}
 
 namespace fs = std::filesystem;
 
@@ -153,8 +151,6 @@ bk_mgmt::btrfsls()
 {
     fs_map available_filesystems;
 
-#ifdef HAVE_LIBBLKID
-
     DEBUG_LOG("btrfsls: using built-in libblkid…");
 
     blkid_cache cache = nullptr;
@@ -178,71 +174,6 @@ bk_mgmt::btrfsls()
 
     blkid_put_cache(cache);
 
-#else
-
-    DEBUG_LOG("btrfsls: falling back to shell blkid…");
-
-    // Fallback: shell out to blkid and parse lines
-    {
-        command_streams res = bk_util::exec_command("blkid", "-s", "UUID", "-s", "LABEL", "-s", "TYPE");
-        // DEBUG_LOG("blkid response: ", res.stdout_str);
-        std::vector<std::string> filesystem_lines = bk_util::split_command_streams_by_lines(res).first;
-        std::vector<std::string> btrfs_lines =
-            bk_util::find_lines_matching_substring_in_vector(filesystem_lines, "TYPE=\"btrfs\"", true);
-        DEBUG_LOG("blkid lines: ", bk_util::serialize_vector(btrfs_lines));
-
-        for (const auto &line : btrfs_lines) {
-            std::pair<std::string, fs_info> entry;
-            entry.first   = "";
-            entry.second.label = "";
-            entry.second.status = "";
-            entry.second.devname = "";
-
-            std::vector<std::string> fs_tokens = bk_util::tokenize(line, ' ');
-            DEBUG_LOG("tokenized line: ", bk_util::serialize_vector(fs_tokens));
-            std::string peeled_uuid;
-            std::string peeled_label;
-
-            for (const auto &tok : fs_tokens) {
-                if (tok.rfind("UUID=", 0) == 0) {
-                    peeled_uuid = bk_util::trip_quotes(tok.substr(5));
-                } else if (tok.rfind("LABEL=", 0) == 0) {
-                    peeled_label = bk_util::trip_quotes(tok.substr(6));
-                }
-            }
-
-            entry.first  = peeled_uuid;
-            entry.second.label = peeled_label;
-
-            if (!peeled_uuid.empty()) {
-                entry.second.status  = bk_mgmt::beesstatus(peeled_uuid);
-                entry.second.devname = bk_mgmt::get_real_device(peeled_uuid);
-                entry.second.config = bk_mgmt::btrfstat(peeled_uuid);
-                entry.second.compressing = bk_mgmt::transparentcompression::is_running(peeled_uuid);
-                entry.second.autostart = bk_mgmt::autostart::is_enabled_for(peeled_uuid);
-            } else {
-                entry.second.status  = "unknown";
-                entry.second.devname = "unknown";
-                entry.second.config = "unknown";
-                entry.second.compressing = "unknown";
-                entry.second.autostart = "unknown";
-            }
-
-            DEBUG_LOG("BLKID found fs: ",
-            "    uuid: ", entry.first, "\n",
-            "    devname: ", entry.second.devname, "\n",
-            "    label: ", entry.second.label, "\n",
-            "    status: ", entry.second.status, "\n",
-            "    config: ", entry.second.config, "\n",
-            "    compressing: ", entry.second.compressing, "\n",
-            "    autostart: ", entry.second.autostart, "\n",
-            "");
-
-            if (!peeled_uuid.empty())
-                available_filesystems.insert(std::move(entry));
-        }
-    }
-#endif
     return available_filesystems;
 }
 

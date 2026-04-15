@@ -245,9 +245,6 @@ if(PkgConfig_FOUND)
     if(LIBBLKID_FOUND)
         message(STATUS "Found libblkid: ${LIBBLKID_VERSION}")
 
-        # Define HAVE_LIBBLKID for all relevant targets
-        add_compile_definitions(HAVE_LIBBLKID=1)
-
         # Include dirs & libraries for beekeeper (core library)
         target_include_directories(beekeeper PRIVATE ${LIBBLKID_INCLUDE_DIRS})
         target_link_libraries(beekeeper PRIVATE ${LIBBLKID_LIBRARIES})

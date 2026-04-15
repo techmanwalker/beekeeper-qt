@@ -18,11 +18,9 @@
 #include <QtConcurrent/QtConcurrent> // QtConcurrent::run
 #include <QFuture>
 
-#ifdef HAVE_LIBBLKID
-  extern "C" {
+extern "C" {
     #include <blkid/blkid.h>
-  }
-#endif
+}
 
 namespace {
 
@@ -54,7 +52,6 @@ std::string uuid_from_devnode(const char *devnode)
     if (!devnode)
         return {};
 
-#ifdef HAVE_LIBBLKID
     blkid_cache cache = nullptr;
 
     if (blkid_get_cache(&cache, nullptr) < 0 || !cache)
@@ -67,16 +64,12 @@ std::string uuid_from_devnode(const char *devnode)
     blkid_put_cache(cache);
 
     return uuid;
-#else
-    return {};
-#endif
 }
 
 // Helper: refresh the libblkid cache when asked to
 void fully_refresh_libblkid_cache() {
 
     DEBUG_LOG("Refreshing blkid cache automatically...");
-#ifdef HAVE_LIBBLKID
 
     blkid_cache cache = nullptr;
 
@@ -91,10 +84,6 @@ void fully_refresh_libblkid_cache() {
 
     // Put and write cache to disk
     blkid_put_cache(cache);
-
-#else
-    bk_util::exec_command("blkid");
-#endif
 }
 
 void async_refresh_libblkid_cache()

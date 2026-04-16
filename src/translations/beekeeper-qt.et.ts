@@ -6,7 +6,7 @@
     <message>
         <location filename="../gui/delegates/cpuusagemeter.cpp" line="17"/>
         <source>CPU: %1%</source>
-        <translation type="unfinished"></translation>
+        <translation>Protsessor: %1%</translation>
     </message>
 </context>
 <context>
@@ -52,17 +52,17 @@
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="355"/>
         <source>Confirm configuration removal</source>
-        <translation type="unfinished"></translation>
+        <translation>Kinnita seadistuse eemdladamine</translation>
     </message>
     <message>
         <location filename="../gui/logconsole.cpp" line="38"/>
         <source>Auto scrolling</source>
-        <translation type="unfinished"></translation>
+        <translation>Automaatne kerimine</translation>
     </message>
     <message>
         <location filename="../gui/logconsole.cpp" line="45"/>
         <source>Failed to open log at </source>
-        <translation type="unfinished"></translation>
+        <translation>Logi avamine asukohast ei õnnestunud: </translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="54"/>
@@ -72,7 +72,7 @@
     <message>
         <location filename="../gui/mainwindow.cpp" line="66"/>
         <source>Refresh</source>
-        <translation type="unfinished"></translation>
+        <translation>Värskenda andmeid</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="67"/>
@@ -102,28 +102,28 @@
     <message>
         <location filename="../gui/mainwindow.cpp" line="73"/>
         <source>Show logs</source>
-        <translation type="unfinished"></translation>
+        <translation>Näita logisid</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="101"/>
         <location filename="../gui/mainwindow.cpp" line="462"/>
         <source>Loading…</source>
-        <translation type="unfinished"></translation>
+        <translation>Laadin andmeid…</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="109"/>
         <source>&amp;File</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Fail</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="113"/>
         <source>Quit</source>
-        <translation type="unfinished"></translation>
+        <translation>Välju</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="117"/>
         <source>&amp;Help</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Abiteave</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="122"/>
@@ -141,57 +141,57 @@
         <location filename="../gui/mainwindow.cpp" line="157"/>
         <location filename="../gui/mainwindow.cpp" line="177"/>
         <source>About beekeeper-qt</source>
-        <translation type="unfinished"></translation>
+        <translation>Rakenduse teave: beekeeper-qt</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="265"/>
         <source>Start with logging enabled</source>
-        <translation type="unfinished"></translation>
+        <translation>Käivitamisel lülita logimine sisse</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="268"/>
         <source>Logging the Beesd deduplication is very resource intensive and takes a lot of disk space because Beesd logs are massive and only intended for debugging purposes.</source>
-        <translation type="unfinished"></translation>
+        <translation>Beesd taustateenuse töö logimine on väga ressursimahukas ja võtab palju kettaruumi. Beesd logifailid on väga suured ja mõeldud ainult veaotsinguks.</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="269"/>
         <source>It is discouraged to enable it by the normal user, hence that&apos;s why this is only visible in the Debug release of beekeeper-qt.</source>
-        <translation type="unfinished"></translation>
+        <translation>Tavakasutajal pole selle funktsionaaluse sisselülitamine soovitatav, mistõttu on see nähtav ainult beekeeper-qt silumisversioonis.</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="270"/>
         <source>If you just want to see how much disk space you have freed since you started the service, just hover over a filesystem or select it and look at the status bar, which will show how much free space you had before and how much you have free now.</source>
-        <translation type="unfinished"></translation>
+        <translation>Kui soovid lihtsalt teada saada, kui palju kettaruumi oled teenuse käivitamisest saadik vabastanud, siis säti kursor failisüsteemi kohale või vali see välja ja vaata teavet olekuribal, kus on näidatud, kui palju vaba ruumi sul varem oli ja kui palju on seda praegu.</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="271"/>
         <source>Again, this is purely for debugging purposes and otherwise discouraged to enable.</source>
-        <translation type="unfinished"></translation>
+        <translation>Seega, see on mõeldud üksnes veaotsinguks ja muudel juhtudel ei soovitata seda sisse lülitada.</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="272"/>
         <source>Are you sure you want to continue?</source>
-        <translation type="unfinished"></translation>
+        <translation>Kas oled kindel, et soovid jätkata?</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="276"/>
         <source>Warning</source>
-        <translation type="unfinished"></translation>
+        <translation>Hoiatus</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="292"/>
         <source>Remove configuration file</source>
-        <translation type="unfinished"></translation>
+        <translation>Eemalda seadistusfail</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="325"/>
         <source>UUID</source>
-        <translation type="unfinished"></translation>
+        <translation>UUID</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="325"/>
         <source>Name</source>
-        <translation type="unfinished"></translation>
+        <translation>Nimi</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="325"/>
@@ -228,48 +228,49 @@ Install it from: </source>
     <message>
         <location filename="../gui/setupdialog.cpp" line="69"/>
         <source>Setting up selected filesystems</source>
-        <translation type="unfinished"></translation>
+        <translation>Seadistan valitud failisüsteeme</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="77"/>
         <source>Only filesystems without an existing configuration will be modified.
 </source>
-        <translation type="unfinished"></translation>
+        <translation>Muudetakse failisüsteeme, kus veel pole seadistust ees.
+</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="78"/>
         <source>Select the database size. This value covers most of the use cases.</source>
-        <translation type="unfinished"></translation>
+        <translation>Vali andmebaasi suurus. Väärtus toimib enamuste kasutusjuhtumite puhul.</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="85"/>
         <source>Database size: </source>
-        <translation type="unfinished"></translation>
+        <translation>Andmebaasi suurus: </translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="98"/>
         <source>16 MiB</source>
-        <translation type="unfinished"></translation>
+        <translation>16 MiB</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="99"/>
         <source>128 MiB</source>
-        <translation type="unfinished"></translation>
+        <translation>128 MiB</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="100"/>
         <source>256 MiB</source>
-        <translation type="unfinished"></translation>
+        <translation>256 MiB</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="101"/>
         <source>1 GiB</source>
-        <translation type="unfinished"></translation>
+        <translation>1 GiB</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="102"/>
         <source>4 GiB</source>
-        <translation type="unfinished"></translation>
+        <translation>4 GiB</translation>
     </message>
     <message>
         <location filename="../gui/setupdialog.cpp" line="123"/>
@@ -483,17 +484,17 @@ Pro tip: you can install beekeeper-qt right after installing your Linux to reduc
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="483"/>
         <source>Free space: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Vaba andmeruum: %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="484"/>
         <source>Used space: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>Kasutusel andmeruum: %2</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="495"/>
         <source>Configuration exists: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Seadistus on olemas: %1</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-handlers.cpp" line="500"/>
@@ -533,27 +534,27 @@ Pro tip: you can install beekeeper-qt right after installing your Linux to reduc
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="20"/>
         <source>Start beesd daemon</source>
-        <translation type="unfinished"></translation>
+        <translation>Käivita taustateenus (beesd)</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="30"/>
         <source>Stop beesd daemon</source>
-        <translation type="unfinished"></translation>
+        <translation>Peata taustateenus (beesd)</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="40"/>
         <source>Restart beesd daemon</source>
-        <translation type="unfinished"></translation>
+        <translation>Käivita taustateenus (beesd) uuesti</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="50"/>
         <source>Check beesd status</source>
-        <translation type="unfinished"></translation>
+        <translation>Kontrolli taustateenuse (beesd) olekut</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="60"/>
         <source>Show log file</source>
-        <translation type="unfinished"></translation>
+        <translation>Näita logifaili</translation>
     </message>
     <message>
         <location filename="../core/clauses/bk-clauses-registry.cpp" line="70"/>

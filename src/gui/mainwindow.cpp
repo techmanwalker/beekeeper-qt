@@ -74,7 +74,7 @@ MainWindow::MainWindow(QWidget* parent)
     #endif
 
     // status text translations mapper
-    if (mapper == nullptr) mapper = new refresh_fs_helpers::status_text_mapper ();
+    if (mapper == nullptr) mapper = new refresh_fs_helpers::status_text_mapper (this);
 
     // ----------------------------
     // SETUP STAGES (only setup, no connections)

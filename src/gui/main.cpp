@@ -86,19 +86,24 @@ main(int argc, char *argv[])
     }
 
     // --- User has permissions, continue normally ---
-    MainWindow w;
-    DEBUG_LOG("[main] MainWindow created, showing...");
-    w.show();
+    std::atomic_int exitCode = 0;
 
-    DEBUG_LOG("[main] Starting root_shell_thread...");
+    {   // raii scope
+        MainWindow w;
+        DEBUG_LOG("[main] MainWindow created, showing...");
+        w.show();
 
-    int exitCode = app.exec();
+        DEBUG_LOG("[main] Starting root_shell_thread...");
 
-    // --- Phase 1: user-perceived exit ---
-    w.hide();
-    QCoreApplication::processEvents();
+        exitCode = app.exec();
+
+        // --- Phase 1: user-perceived exit ---
+        w.hide();
+        QCoreApplication::processEvents();
+    }   // mainwindow destructor is executed here
 
     // --- Phase 2: teardown globals safely ---
+    // at this point we are sure that the window and its threads are dead
     shutdown_globals();
     DEBUG_LOG("[main] Globals cleaned up, exiting.");
     DEBUG_LOG("[main] QApplication exec returned, exit code:", exitCode);

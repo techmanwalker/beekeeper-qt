@@ -54,20 +54,22 @@ MainWindow::refresh_table(const bool fetch_data_from_daemon)
 
     DEBUG_LOG("Refresh snapshot recorded.");
 
-    // Work outside of the GUI thread
-    (void) QtConcurrent::run([this, fetch_data_from_daemon, baseline]() mutable {
-
-        if (fetch_data_from_daemon) {
-            DEBUG_LOG("Asking the daemon for data.");
-            auto future = komander->btrfsls();
-            fs_view_state = future.result();
-
+    if (fetch_data_from_daemon) {
+        DEBUG_LOG("Asking the daemon for data.");
+        
+        // no unnecessary thread lock
+        // if this (mainwindow) is destroyed the callback is cancelled so it doesn't crash
+        komander->btrfsls().then(this, [this, baseline](const fs_map& fetched_data) {
+            
+            fs_view_state = fetched_data;
             DEBUG_LOG("Data fetched. Will ask for refresh. Was:\n", print_fs_view_state());
-
-        }
-
+            
+            emit ask_the_table_to_quickly_refresh(baseline);
+        });
+    } else {
+        // fast execution without asking the daemon
         emit ask_the_table_to_quickly_refresh(baseline);
-    });
+    }
 }
 
 void

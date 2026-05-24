@@ -176,7 +176,7 @@ namespace beekeeper {
         beesrestart (const std::string& uuid);
 
         // Get running status
-        // Returns: "running", "stopped", or "error"
+        // Returns: "running", "stopped", or "unconfigured"
         std::string
         beesstatus (const std::string& uuid);
 

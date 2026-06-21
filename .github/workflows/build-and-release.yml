@@ -81,7 +81,7 @@ jobs:
   cpack-build-ubuntu:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:25.10
+      image: ubuntu:latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -112,7 +112,14 @@ jobs:
           name: deb-ubuntu
           path: build/*.deb
 
-  # Job 2: Build Arch package (.pkg.tar.zst) — left unchanged
+  # Job 2: Build the original bees packages
+  bees-build:
+    if: startsWith(github.ref, 'refs/tags/')
+    uses: ./.github/workflows/bees-packages.yml
+
+
+
+  # Job 3: Build Arch package (.pkg.tar.zst)
   arch-build:
     runs-on: ubuntu-latest
     container: archlinux:latest
@@ -140,7 +147,7 @@ jobs:
 
   # Job 3: Publish release on GitHub (only if a tag)
   release:
-    needs: [cpack-build-fedora, cpack-build-ubuntu, arch-build]
+    needs: [cpack-build-fedora, cpack-build-ubuntu, arch-build, bees-build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -162,6 +169,18 @@ jobs:
         with:
           name: arch-package
           path: dist
+
+      - name: Download Bees packages (.deb y .rpm)
+        uses: actions/download-artifact@v4
+        with:
+          name: bees-packages
+          path: dist
+
+      #- name: Download Bees AUR packages (.pkg.tar.zst)
+      #  uses: actions/download-artifact@v4
+      #  with:
+      #    name: aur-packages
+      #    path: dist
 
       - name: List dist/ (debug)
         run: ls -la dist || true

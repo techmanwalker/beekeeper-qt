@@ -4,7 +4,7 @@
 # download it separately.
 
 pkgname=beekeeper-qt
-pkgver=1.3.3_pre2
+pkgver=1.3.5
 pkgrel=1
 pkgdesc="Deduplicate redundant data in your disk and save space"
 url="https://github.com/techmanwalker/beekeeper-qt"
@@ -14,11 +14,25 @@ license=('AGPL-3.0-or-later')
 makedepends=('git' 'cmake' 'pkgconf' 'ninja' 'cli11')
 optdepends=('doxygen')
 provides=('beekeeper')
-source=("$pkgname-$pkgver.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+
+# the parent directory IS the source
+source=("${pkgname}::git+https://github.com/techmanwalker/beekeeper-qt.git")
 md5sums=('SKIP')
 
+pkgver() {
+  cd "${srcdir}/${pkgname}"
+
+  git describe --tags --abbrev=0 | sed 's/^v//'
+}
+
 build() {
-  cd "$pkgname-$pkgver"
+  cd "${srcdir}/${pkgname}"
+
+  # remove conflictig flags
+  CFLAGS=$(echo "$CFLAGS" | sed -e 's/-floop-[^ ]*//g' -e 's/-ftree-parallelize-loops=[0-9]*//g' -e 's/-fgraphite-identity//g')
+  CXXFLAGS=$(echo "$CXXFLAGS" | sed -e 's/-floop-[^ ]*//g' -e 's/-ftree-parallelize-loops=[0-9]*//g' -e 's/-fgraphite-identity//g')
+  LDFLAGS=$(echo "$LDFLAGS" | sed 's/-Wl,--emit-relocs//g')
+
   cmake -B build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr
@@ -26,7 +40,7 @@ build() {
 }
 
 package() {
-  cd "$pkgname-$pkgver"
+  cd "${srcdir}/${pkgname}"
   # remove samples instal which are only needed for unit tests
   sed '/samples\/cmake_install.cmake/d' -i build/cmake_install.cmake
   DESTDIR="${pkgdir}" cmake --install build

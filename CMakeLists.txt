@@ -1,5 +1,23 @@
 cmake_minimum_required(VERSION 3.21)
-project(beekeeper VERSION 1.1 LANGUAGES CXX)
+
+# Get tag from git
+execute_process(
+    COMMAND git describe --tags --abbrev=0
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+# Chop the beginning 'v' if the tag exists
+if(GIT_TAG MATCHES "^v(.*)")
+    set(PROJECT_VERSION_CLEAN "${CMAKE_MATCH_1}")
+else()
+    # Version since this minisystem was added
+    set(PROJECT_VERSION_CLEAN "1.3.5") 
+endif()
+
+project(beekeeper VERSION ${PROJECT_VERSION_CLEAN} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

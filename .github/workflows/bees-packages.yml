@@ -2,6 +2,7 @@ name: Build Bees Packages (Arch AUR deps + bees .deb/.rpm)
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 env:
   BUILD_DIR: /tmp/build

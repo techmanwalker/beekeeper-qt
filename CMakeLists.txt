@@ -6,7 +6,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto=auto -fdata-sections -ffunction-sections -DNDEBUG -s -fmerge-all-constants -fno-ident")
+option(NO_FLTO "Disable link time optimization (LTO)" OFF)
+
+set(RELEASE_FLAGS "-O3 -fdata-sections -ffunction-sections -DNDEBUG -s -fmerge-all-constants -fno-ident")
+
+if(NOT NO_FLTO)
+    set(RELEASE_FLAGS "${RELEASE_FLAGS} -flto=auto")
+endif()
+
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${RELEASE_FLAGS}")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g -fno-omit-frame-pointer -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections -Wl,-O3 -Wl,--as-needed")

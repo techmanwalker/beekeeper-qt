@@ -6,7 +6,7 @@
     <message>
         <location filename="../gui/delegates/cpuusagemeter.cpp" line="17"/>
         <source>CPU: %1%</source>
-        <translation type="unfinished"></translation>
+        <translation>CPU&#xa0;: %1%</translation>
     </message>
 </context>
 <context>
@@ -14,111 +14,114 @@
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="108"/>
         <source>Transparent compression stopped for selected filesystems</source>
-        <translation type="unfinished"></translation>
+        <translation>Compression transparente arrêtée pour les systèmes de fichiers sélectionnés</translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="111"/>
         <source>Transparent compression running for selected filesystems</source>
-        <translation type="unfinished"></translation>
+        <translation>Compression transparente en cours pour les systèmes de fichiers sélectionnés</translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="342"/>
         <source>No selection</source>
-        <translation type="unfinished"></translation>
+        <translation>Pas de sélection</translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="343"/>
         <source>Please select at least one filesystem to remove its Beesd configuration.</source>
-        <translation type="unfinished"></translation>
+        <translation>Veuillez sélectionner au moins un système de fichiers à retirer de la configuration de Beesd.</translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="349"/>
         <source>You are about to remove the file deduplication engine configuration for the selected filesystem(s).
 </source>
-        <translation type="unfinished"></translation>
+        <translation>Vous allez retirer la configuration du système de déduplication pour le(s) système(s) de fichiers sélectionné(s).
+</translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="350"/>
         <source>This does not cause any data loss, but you will lose deduplication functionality until you set up Beesd again.
 
 </source>
-        <translation type="unfinished"></translation>
+        <translation>Ceci ne cause pas de perte de données, mais vous perdrez la fonctionnalité de déduplication jusqu&apos;à ce que vous configuriez Beesd à nouveau.
+
+</translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="351"/>
         <source>Do you want to continue?</source>
-        <translation type="unfinished"></translation>
+        <translation>Voulez-vous continuer&#x202f;?</translation>
     </message>
     <message>
         <location filename="../gui/buttonhandlers.cpp" line="355"/>
         <source>Confirm configuration removal</source>
-        <translation type="unfinished"></translation>
+        <translation>Confirmer la suppression de la configuration</translation>
     </message>
     <message>
         <location filename="../gui/logconsole.cpp" line="38"/>
         <source>Auto scrolling</source>
-        <translation type="unfinished"></translation>
+        <translation>Défilement automatique</translation>
     </message>
     <message>
         <location filename="../gui/logconsole.cpp" line="45"/>
         <source>Failed to open log at </source>
-        <translation type="unfinished"></translation>
+        <translation>Impossible d&apos;ouvrir le log à </translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="54"/>
         <source>Select a filesystem to view its transparent compression status</source>
-        <translation type="unfinished"></translation>
+        <translation>Sélectionnez un système de fichiers pour voir le statut de la compression transparente</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="66"/>
         <source>Refresh</source>
-        <translation type="unfinished"></translation>
+        <translation>Rafraîchir</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="67"/>
         <source>Start</source>
-        <translation type="unfinished"></translation>
+        <translation>Démarrer</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="68"/>
         <source>Stop</source>
-        <translation type="unfinished"></translation>
+        <translation>Arrêter</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="69"/>
         <source>Setup</source>
-        <translation type="unfinished"></translation>
+        <translation>Configurer</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="70"/>
         <source>Automatically start deduplicating filesystems at boot</source>
-        <translation type="unfinished"></translation>
+        <translation>Commencer la déduplication de fichiers au démarrage</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="71"/>
         <source>Do not start deduplicating filesystems at boot</source>
-        <translation type="unfinished"></translation>
+        <translation>Ne pas commencer la déduplication de fichiers au démarrage</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="73"/>
         <source>Show logs</source>
-        <translation type="unfinished"></translation>
+        <translation>Montrer les logs</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="101"/>
         <location filename="../gui/mainwindow.cpp" line="462"/>
         <source>Loading…</source>
-        <translation type="unfinished"></translation>
+        <translation>Chargement…</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="109"/>
         <source>&amp;File</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Fichier</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="113"/>
         <source>Quit</source>
-        <translation type="unfinished"></translation>
+        <translation>Quitter</translation>
     </message>
     <message>
         <location filename="../gui/mainwindow.cpp" line="117"/>
@@ -1012,7 +1015,7 @@ Options --algorithm / --algo and --level override presets given by --compression
     <message>
         <location filename="../gui/refreshfilesystems_helpers.cpp" line="87"/>
         <source>Deduplicating files. You have %1 free right now.</source>
-        <translation type="unfinished"></translation>
+        <translation>Déduplication en cours. Vous avez %1 disponible actuellement.</translation>
     </message>
 </context>
 </TS>

@@ -319,7 +319,7 @@ sudo btrfs filesystem defrag -r -czstd mountpoint
 Pro tip: you can install beekeeper-qt right after installing your Linux to reduce compression overhead from the start.</source>
         <translation>குறிப்பு: இது இயங்கும் போது உருவாக்கப்பட்ட புதிய கோப்புகளுக்கு மட்டுமே சுருக்க வேலை செய்யும். 
 முதல் முறையாக உங்கள் கோப்பு முறைமையை சுருக்க, இயக்கவும்: 
-sudo btrfs கோப்பு முறைமை defrag -r -czstd மவுண்ட்பாயிண்ட் 
+sudo btrfs filesystem defrag -r -czstd மவுண்ட்பாயிண்ட் 
 ப்ரோ உதவிக்குறிப்பு: உங்கள் லினக்சை நிறுவிய உடனேயே தேனீ வளர்ப்பவர்-qt ஐ நிறுவி, தொடக்கத்திலிருந்தே சுருக்கத்தின் மேல்நிலையைக் குறைக்கலாம்.</translation>
     </message>
     <message>
